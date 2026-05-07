@@ -1,0 +1,277 @@
+/* =====================================================
+   ArcadeHub FPS — style.css v2
+   ===================================================== */
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: #000;
+  overflow: hidden;
+  font-family: 'Courier New', Courier, monospace;
+  user-select: none;
+}
+
+#gameCanvas { display:block; width:100vw; height:100vh; }
+
+/* ── HUD ─────────────────────────────────────────────── */
+#hud {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  display: none;
+}
+
+/* Crosshair */
+#crosshair {
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  width:24px; height:24px;
+}
+#crosshair::before, #crosshair::after {
+  content:''; position:absolute;
+  background:rgba(255,255,255,0.85);
+  border-radius:1px;
+}
+#crosshair::before { width:2px; height:24px; top:0; left:11px; }
+#crosshair::after  { width:24px; height:2px; top:11px; left:0; }
+
+/* Health */
+#health-container {
+  position:absolute; bottom:28px; left:28px;
+  display:flex; align-items:center; gap:10px;
+}
+#health-bar {
+  width:180px; height:13px;
+  background:rgba(0,0,0,0.55);
+  border:1px solid rgba(255,255,255,0.2);
+  border-radius:7px; overflow:hidden;
+}
+#health-fill {
+  height:100%; width:100%;
+  background:#2ecc71; border-radius:7px;
+  transition: width .2s ease, background .3s ease;
+}
+#health-text { color:#fff; font-size:13px; text-shadow:1px 1px 3px #000; min-width:28px; }
+
+/* Ammo + Gun name */
+#ammo-display {
+  position:absolute; bottom:46px; right:28px;
+  color:#fff; font-size:22px; letter-spacing:3px;
+  text-shadow:1px 1px 5px #000;
+}
+#gun-name {
+  position:absolute; bottom:26px; right:28px;
+  color:#f1c40f; font-size:13px; letter-spacing:4px;
+  text-shadow:1px 1px 4px #000;
+}
+
+/* Kill count */
+#kill-count {
+  position:absolute; top:18px; left:50%;
+  transform:translateX(-50%);
+  color:#f1c40f; font-size:15px; letter-spacing:4px;
+  text-shadow:1px 1px 4px #000;
+}
+
+/* Level display */
+#level-display {
+  position:absolute; top:18px; left:22px;
+  color:#88ccff; font-size:15px; letter-spacing:4px;
+  text-shadow:1px 1px 4px #000;
+}
+
+/* Enemy count */
+#enemy-count {
+  position:absolute; top:40px; left:22px;
+  color:#ff6666; font-size:12px; letter-spacing:3px;
+  text-shadow:1px 1px 3px #000;
+}
+
+/* Kill feed */
+#kill-feed {
+  position:absolute; top:50px; right:18px;
+  text-align:right; max-width:270px;
+}
+.kill-entry {
+  color:#e74c3c; font-size:13px;
+  text-shadow:1px 1px 3px #000;
+  margin-bottom:5px;
+  animation: kfFade 3s ease-out forwards;
+}
+@keyframes kfFade { 0%,65%{opacity:1} 100%{opacity:0} }
+
+/* ── START screen ────────────────────────────────────── */
+#start-screen {
+  position:fixed; inset:0;
+  background:radial-gradient(ellipse at center, #180808 0%, #000 70%);
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  z-index:100; gap:8px; padding:20px;
+  overflow-y:auto;
+}
+
+#start-screen h1 {
+  font-size:60px; color:#fff;
+  letter-spacing:8px; text-transform:uppercase; line-height:1;
+}
+#start-screen h1 span {
+  color:#e74c3c;
+  text-shadow:0 0 18px #e74c3c, 0 0 40px rgba(231,76,60,.4);
+}
+#start-screen .subtitle {
+  color:#555; font-size:12px; letter-spacing:7px; margin-bottom:12px;
+}
+
+/* Gun selector */
+.selector-label {
+  color:#888; font-size:11px; letter-spacing:5px; margin-bottom:10px;
+}
+.gun-cards {
+  display:flex; gap:14px; margin-bottom:14px; flex-wrap:wrap; justify-content:center;
+}
+.gun-card {
+  width:140px; padding:14px 12px;
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:6px; cursor:pointer;
+  background:rgba(255,255,255,0.04);
+  transition:border-color .15s, background .15s, transform .15s;
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+}
+.gun-card:hover {
+  border-color:rgba(231,76,60,.6);
+  background:rgba(231,76,60,.08);
+  transform:translateY(-2px);
+}
+.gun-card.active {
+  border-color:#e74c3c;
+  background:rgba(231,76,60,.14);
+  box-shadow:0 0 16px rgba(231,76,60,.3);
+}
+.gun-card-name {
+  color:#fff; font-size:13px; letter-spacing:3px; font-weight:bold;
+}
+
+/* Simple CSS gun silhouettes */
+.gun-card-art { height:36px; display:flex; align-items:center; justify-content:center; }
+.gfx-pistol, .gfx-smg, .gfx-minigun, .gfx-sniper {
+  background:#555; border-radius:2px; position:relative;
+}
+.gfx-pistol  { width:50px; height:8px; }
+.gfx-pistol::after  { content:''; position:absolute; width:10px; height:14px; background:#555; bottom:-14px; right:10px; border-radius:0 0 3px 3px; }
+.gfx-smg     { width:72px; height:9px; }
+.gfx-smg::before { content:''; position:absolute; width:8px; height:16px; background:#555; bottom:-16px; left:22px; border-radius:0 0 2px 2px; }
+.gfx-smg::after  { content:''; position:absolute; width:24px; height:6px; background:#444; top:-6px; left:0; border-radius:2px 2px 0 0; }
+.gfx-minigun { width:80px; height:14px; border-radius:4px; }
+.gfx-minigun::before { content:''; position:absolute; width:36px; height:5px; background:#444; top:-5px; left:0; border-radius:2px; }
+.gfx-minigun::after  { content:''; position:absolute; width:36px; height:5px; background:#444; bottom:-5px; left:0; border-radius:2px; }
+
+.gfx-sniper  { width:96px; height:6px; border-radius:1px; }
+/* scope on top */
+.gfx-sniper::before { content:''; position:absolute; width:30px; height:10px; background:#444; top:-10px; left:18px; border-radius:3px; }
+/* grip below */
+.gfx-sniper::after  { content:''; position:absolute; width:9px; height:13px; background:#555; bottom:-13px; right:26px; border-radius:0 0 3px 2px; }
+
+/* Stat bars */
+.gun-card-stats { width:100%; font-size:11px; color:#888; display:flex; flex-direction:column; gap:4px; }
+.gun-card-stats > div { display:flex; align-items:center; gap:6px; }
+.stat-l { width:28px; color:#aaa; flex-shrink:0; }
+.stat-r { color:#fff; margin-left:auto; }
+.bars { display:flex; gap:2px; }
+.bars::before { content:''; display:block; }
+
+/* Dot bars via JS-free approach using shadows */
+.bars { height:8px; display:flex; gap:3px; }
+.bars::before, .bars::after { content:none; }
+.b1::before, .b2::before, .b3::before, .b4::before, .b5::before { content:''; }
+
+/* Use outline for empty dots, filled for active — implemented via multiple box-shadows */
+.b1 { width:5px; height:8px; background:#e74c3c; border-radius:1px; box-shadow:8px 0 0 rgba(255,255,255,.15), 16px 0 0 rgba(255,255,255,.15), 24px 0 0 rgba(255,255,255,.15), 32px 0 0 rgba(255,255,255,.15); }
+.b2 { width:5px; height:8px; background:#e74c3c; border-radius:1px; box-shadow:8px 0 0 #e74c3c, 16px 0 0 rgba(255,255,255,.15), 24px 0 0 rgba(255,255,255,.15), 32px 0 0 rgba(255,255,255,.15); }
+.b3 { width:5px; height:8px; background:#e74c3c; border-radius:1px; box-shadow:8px 0 0 #e74c3c, 16px 0 0 #e74c3c, 24px 0 0 rgba(255,255,255,.15), 32px 0 0 rgba(255,255,255,.15); }
+.b4 { width:5px; height:8px; background:#e74c3c; border-radius:1px; box-shadow:8px 0 0 #e74c3c, 16px 0 0 #e74c3c, 24px 0 0 #e74c3c, 32px 0 0 rgba(255,255,255,.15); }
+.b5 { width:5px; height:8px; background:#e74c3c; border-radius:1px; box-shadow:8px 0 0 #e74c3c, 16px 0 0 #e74c3c, 24px 0 0 #e74c3c, 32px 0 0 #e74c3c; }
+
+/* Controls list */
+.controls-list {
+  list-style:none; color:#666; font-size:12px;
+  line-height:2.2; text-align:center; margin-bottom:20px;
+}
+.controls-list kbd {
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:4px; padding:1px 7px;
+  font-family:inherit; color:#ccc; font-size:11px;
+}
+
+#play-button {
+  padding:13px 56px; font-size:17px;
+  font-family:'Courier New',monospace;
+  letter-spacing:5px; background:#e74c3c; color:#fff;
+  border:none; border-radius:3px; cursor:pointer;
+  transition:background .15s, transform .15s, box-shadow .15s;
+  box-shadow:0 0 22px rgba(231,76,60,.35);
+}
+#play-button:hover { background:#c0392b; transform:scale(1.06); box-shadow:0 0 32px rgba(231,76,60,.65); }
+#play-button:active { transform:scale(0.98); }
+
+#reset-button {
+  margin-top:10px;
+  padding:9px 32px; font-size:12px;
+  font-family:'Courier New',monospace;
+  letter-spacing:4px; background:transparent; color:#666;
+  border:1px solid #333; border-radius:3px; cursor:pointer;
+  transition:color .15s, border-color .15s;
+}
+#reset-button:hover { color:#e74c3c; border-color:#e74c3c; }
+#reset-button:active { transform:scale(0.97); }
+
+/* ── Sniper scope overlay ────────────────────────────────────── */
+#scope-overlay {
+  position:fixed; inset:0;
+  display:none;
+  pointer-events:none;
+  z-index:48;
+  /* circular clear window, dark surround */
+  background: radial-gradient(circle at 50% 50%,
+    transparent 27vmin,
+    rgba(0,0,0,0.04) 27.2vmin,
+    rgba(0,0,0,0.97) 28.8vmin,
+    rgba(0,0,0,0.99) 100%
+  );
+}
+/* Scope lens border ring */
+#scope-overlay::after {
+  content:'';
+  position:absolute;
+  width:56vmin; height:56vmin;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  border:1.5px solid rgba(60,60,60,0.9);
+  box-shadow:inset 0 0 40px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.6);
+}
+/* Horizontal reticle line */
+.scope-h {
+  position:absolute;
+  width:56vmin; height:1px;
+  background:rgba(0,0,0,0.72);
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+}
+/* Vertical reticle line */
+.scope-v {
+  position:absolute;
+  width:1px; height:56vmin;
+  background:rgba(0,0,0,0.72);
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+}
+/* Centre dot */
+.scope-v::after {
+  content:'';
+  position:absolute;
+  width:5px; height:5px;
+  background:rgba(0,0,0,0.85);
+  border-radius:50%;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+}

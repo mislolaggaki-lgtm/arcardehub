@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArcadeHub — Your Games. Your Friends.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+  <style>
+    /* ── Reset & base ─────────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:      #0a0a0f;
+      --surface: #0f0f1a;
+      --border:  rgba(255,255,255,0.07);
+      --text:    #ddddf0;
+      --muted:   #4a4a68;
+      --dim:     #22222e;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Navbar ───────────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      height: 62px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px;
+      background: rgba(10,10,15,0.82);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 26px;
+      letter-spacing: 4px;
+      color: #fff;
+      user-select: none;
+    }
+    .logo em { font-style: normal; color: #e74c3c; text-shadow: 0 0 18px rgba(231,76,60,0.5); }
+
+    .nav-right { display: flex; align-items: center; gap: 24px; }
+
+    .online-badge {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 12px; font-weight: 500;
+      color: var(--muted); letter-spacing: 0.5px;
+    }
+    .online-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #22dd66; box-shadow: 0 0 7px #22dd66;
+      animation: dotpulse 2.2s ease-in-out infinite; flex-shrink: 0;
+    }
+    @keyframes dotpulse {
+      0%,100% { box-shadow: 0 0 5px #22dd66; opacity: 1; }
+      50%      { box-shadow: 0 0 14px #22dd66; opacity: 0.7; }
+    }
+    #online-count { color: #b0b0cc; font-weight: 600; }
+
+    .btn-login {
+      padding: 7px 22px;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 5px;
+      color: #aaaacc;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px; font-weight: 600;
+      letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s;
+    }
+    .btn-login:hover {
+      border-color: rgba(255,255,255,0.4); color: #fff;
+      background: rgba(255,255,255,0.05);
+    }
+
+    /* Logged-in nav state */
+    #nav-user { display: none; align-items: center; gap: 14px; }
+    .nav-username { font-size: 13px; font-weight: 500; color: #6666aa; letter-spacing: 0.3px; }
+    .nav-username strong { color: #c0c0ee; font-weight: 600; }
+
+    .btn-logout {
+      padding: 7px 18px;
+      background: transparent;
+      border: 1px solid rgba(231,76,60,0.22);
+      border-radius: 5px;
+      color: #774444;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px; font-weight: 600;
+      letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s;
+    }
+    .btn-logout:hover {
+      border-color: rgba(231,76,60,0.55); color: #e74c3c;
+      background: rgba(231,76,60,0.07);
+    }
+    .btn-delete-account {
+      background: none; border: none; padding: 4px 0;
+      color: #2e1212;
+      font-family: 'Inter', sans-serif;
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      cursor: pointer; transition: color .15s;
+    }
+    .btn-delete-account:hover { color: #e74c3c; }
+
+    /* ── Hero ─────────────────────────────────────────────── */
+    .hero {
+      padding: 150px 40px 90px;
+      text-align: center; position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,0.045) 1px, transparent 1px);
+      background-size: 36px 36px;
+      mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, black 20%, transparent 75%);
+      -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, black 20%, transparent 75%);
+      pointer-events: none;
+    }
+    .hero-eyebrow {
+      font-size: 11px; font-weight: 600; letter-spacing: 6px;
+      text-transform: uppercase; color: #e74c3c;
+      margin-bottom: 20px; position: relative;
+    }
+    .hero h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(54px, 9vw, 104px);
+      letter-spacing: 5px; line-height: 1; color: #fff;
+      position: relative; margin-bottom: 22px;
+    }
+    .hero-sub {
+      font-size: 17px; font-weight: 300;
+      color: var(--muted); letter-spacing: 0.8px;
+      font-style: italic; position: relative;
+    }
+    .divider {
+      width: 48px; height: 2px;
+      background: rgba(231,76,60,0.4); border-radius: 2px;
+      margin: 40px auto 0; position: relative;
+    }
+
+    /* ── Games section ────────────────────────────────────── */
+    .games-section { max-width: 1160px; margin: 0 auto; padding: 12px 40px 110px; }
+    .section-label {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 12px; letter-spacing: 6px;
+      color: var(--muted); margin-bottom: 26px;
+    }
+    .cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+
+    /* ── Game card ────────────────────────────────────────── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+      transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+      display: flex; flex-direction: column;
+    }
+    .card:hover {
+      transform: translateY(-7px);
+      box-shadow: 0 20px 56px var(--glow, rgba(100,100,200,0.12));
+      border-color: var(--accent-color, rgba(255,255,255,0.16));
+    }
+    .card-banner {
+      height: 108px; background: var(--banner-bg);
+      position: relative; overflow: hidden;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .card-banner::before {
+      content: ''; position: absolute; inset: 0;
+      background: repeating-linear-gradient(-48deg, rgba(0,0,0,0.10) 0, rgba(0,0,0,0.10) 1px, transparent 1px, transparent 14px);
+    }
+    .card-banner::after {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--accent-color, rgba(255,255,255,0.2));
+      box-shadow: 0 0 12px var(--accent-color, rgba(255,255,255,0.2));
+    }
+    .card-icon { font-size: 44px; position: relative; z-index: 1; filter: drop-shadow(0 3px 14px rgba(0,0,0,0.7)); line-height: 1; }
+    .card-body { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 9px; flex: 1; }
+    .card-top { display: flex; align-items: center; justify-content: space-between; }
+    .card-title { font-family: 'Bebas Neue', sans-serif; font-size: 21px; letter-spacing: 2px; color: #fff; }
+    .genre-tag {
+      font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+      padding: 3px 9px; border-radius: 3px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07);
+      color: var(--muted); white-space: nowrap;
+    }
+    .card-desc { font-size: 13px; font-weight: 400; color: var(--muted); line-height: 1.65; flex: 1; }
+    .btn-play, .btn-soon {
+      display: block; margin-top: 8px; padding: 10px 0; width: 100%;
+      border-radius: 6px; font-family: 'Inter', sans-serif;
+      font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+      text-align: center; text-decoration: none;
+      transition: background .15s, box-shadow .15s, transform .1s; cursor: pointer;
+    }
+    .btn-play {
+      background: rgba(231,76,60,0.11); border: 1px solid rgba(231,76,60,0.35);
+      color: var(--accent-color, #e74c3c);
+    }
+    .btn-play:hover {
+      background: rgba(231,76,60,0.22);
+      box-shadow: 0 0 22px var(--glow, rgba(231,76,60,0.25));
+      transform: scale(1.015);
+    }
+    .btn-soon {
+      background: transparent; border: 1px solid rgba(255,255,255,0.06);
+      color: var(--dim); cursor: not-allowed; pointer-events: none;
+    }
+
+    /* ── Footer ───────────────────────────────────────────── */
+    footer {
+      text-align: center; padding: 26px 20px;
+      border-top: 1px solid rgba(255,255,255,0.04);
+      font-size: 12px; color: #22222e; letter-spacing: 1px;
+    }
+    footer span { color: #2e2e42; }
+
+    /* ── Auth modal ───────────────────────────────────────── */
+    .auth-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,0.72);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s ease;
+    }
+    .auth-overlay.open { opacity: 1; pointer-events: all; }
+
+    .auth-modal {
+      width: 100%; max-width: 400px; margin: 16px;
+      background: #0d0d1a;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 36px 32px 32px;
+      position: relative;
+      transform: scale(0.93) translateY(12px);
+      transition: transform .22s ease;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+    }
+    .auth-overlay.open .auth-modal { transform: scale(1) translateY(0); }
+
+    .auth-close {
+      position: absolute; top: 14px; right: 16px;
+      background: none; border: none;
+      color: #44445a; font-size: 18px; line-height: 1;
+      padding: 4px 6px; cursor: pointer;
+      transition: color .15s;
+    }
+    .auth-close:hover { color: #fff; }
+
+    .auth-logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px; letter-spacing: 4px;
+      color: #fff; margin-bottom: 24px;
+    }
+    .auth-logo em { font-style: normal; color: #e74c3c; }
+
+    .auth-tabs {
+      display: flex; margin-bottom: 28px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .auth-tab {
+      flex: 1; background: none; border: none;
+      padding: 9px 0 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: #333350; cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: color .15s, border-color .15s;
+    }
+    .auth-tab:hover { color: #777799; }
+    .auth-tab.active { color: #fff; border-bottom-color: #e74c3c; }
+
+    .auth-form { display: flex; flex-direction: column; gap: 16px; }
+    .auth-field { display: flex; flex-direction: column; gap: 7px; }
+    .auth-field label {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 2.5px; text-transform: uppercase; color: #444466;
+    }
+    .auth-field input {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 7px; padding: 11px 14px;
+      color: #e0e0f0; font-family: 'Inter', sans-serif; font-size: 14px;
+      outline: none; transition: border-color .15s, box-shadow .15s;
+    }
+    .auth-field input:focus {
+      border-color: rgba(231,76,60,0.45);
+      box-shadow: 0 0 0 3px rgba(231,76,60,0.07);
+    }
+    .auth-field input::placeholder { color: #2a2a3a; }
+
+    .auth-msg {
+      font-size: 13px; line-height: 1.45;
+      min-height: 18px; margin-top: -4px;
+    }
+    .auth-msg.error   { color: #e74c3c; }
+    .auth-msg.success { color: #22dd66; }
+
+    .auth-submit {
+      padding: 12px 0; margin-top: 4px;
+      background: rgba(231,76,60,0.12);
+      border: 1px solid rgba(231,76,60,0.38);
+      border-radius: 7px; color: #e74c3c;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      cursor: pointer; transition: background .15s, box-shadow .15s;
+    }
+    .auth-submit:hover {
+      background: rgba(231,76,60,0.24);
+      box-shadow: 0 0 22px rgba(231,76,60,0.18);
+    }
+    .auth-submit:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── Responsive ───────────────────────────────────────── */
+    @media (max-width: 920px) {
+      .cards-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 580px) {
+      nav { padding: 0 18px; }
+      .logo { font-size: 22px; letter-spacing: 3px; }
+      .btn-login { display: none; }
+      #nav-user .nav-username { display: none; }
+      .hero { padding: 120px 20px 70px; }
+      .games-section { padding: 10px 16px 80px; }
+      .cards-grid { grid-template-columns: 1fr; gap: 14px; }
+      .auth-modal { padding: 28px 20px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Auth modal ─────────────────────────────────────────── -->
+  <div class="auth-overlay" id="auth-overlay" role="dialog" aria-modal="true">
+    <div class="auth-modal">
+      <button class="auth-close" id="auth-close" aria-label="Close">✕</button>
+      <div class="auth-logo">ARCADE<em>HUB</em></div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">Login</button>
+        <button class="auth-tab" data-tab="register">Register</button>
+      </div>
+
+      <!-- Login form -->
+      <form class="auth-form" id="form-login">
+        <div class="auth-field">
+          <label for="login-username">Username</label>
+          <input id="login-username" type="text" placeholder="Your username" autocomplete="username">
+        </div>
+        <div class="auth-field">
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" placeholder="Your password" autocomplete="current-password">
+        </div>
+        <div class="auth-msg" id="login-msg"></div>
+        <button type="submit" class="auth-submit">Sign In</button>
+      </form>
+
+      <!-- Register form -->
+      <form class="auth-form" id="form-register" style="display:none">
+        <div class="auth-field">
+          <label for="reg-username">Username</label>
+          <input id="reg-username" type="text" placeholder="Choose a username (3–24 chars)" autocomplete="username">
+        </div>
+        <div class="auth-field">
+          <label for="reg-password">Password</label>
+          <input id="reg-password" type="password" placeholder="Choose a password (min 6 chars)" autocomplete="new-password">
+        </div>
+        <div class="auth-msg" id="reg-msg"></div>
+        <button type="submit" class="auth-submit">Create Account</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Navbar ──────────────────────────────────────────── -->
+  <nav>
+    <div class="logo">ARCADE<em>HUB</em></div>
+    <div class="nav-right">
+      <div class="online-badge">
+        <span class="online-dot"></span>
+        <span id="online-count">3</span>&nbsp;ONLINE
+      </div>
+      <!-- Logged-out state -->
+      <button class="btn-login" id="btn-login">LOGIN</button>
+      <!-- Logged-in state (hidden until auth) -->
+      <div id="nav-user">
+        <span class="nav-username">Hello,&nbsp;<strong id="nav-username-text"></strong></span>
+        <button class="btn-logout" id="btn-logout">LOGOUT</button>
+        <button class="btn-delete-account" id="btn-delete-account">DELETE ACCOUNT</button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- ── Hero ──────────────────────────────────────────── -->
+    <section class="hero">
+      <p class="hero-eyebrow">Welcome to ArcadeHub</p>
+      <h1>YOUR GAMES.<br>YOUR FRIENDS.</h1>
+      <p class="hero-sub">Pick a game, jump in, play together</p>
+      <div class="divider"></div>
+    </section>
+
+    <!-- ── Games grid ─────────────────────────────────────── -->
+    <section class="games-section">
+      <p class="section-label">Available Now &amp; Coming Soon</p>
+      <div class="cards-grid">
+
+        <!-- FPS Arena — LIVE -->
+        <div class="card" style="--accent-color:#e74c3c;--glow:rgba(231,76,60,0.18);--banner-bg:linear-gradient(135deg,#1a0404 0%,#3b0a0a 55%,#5e1212 100%);">
+          <div class="card-banner"><span class="card-icon">🎯</span></div>
+          <div class="card-body">
+            <div class="card-top">
+              <span class="card-title">FPS ARENA</span>
+              <span class="genre-tag">Shooter</span>
+            </div>
+            <p class="card-desc">Fast-paced first-person combat. Fight through 100 escalating rooms armed with pistol, SMG, minigun, or sniper rifle.</p>
+            <a class="btn-play" href="/games/fps/index.html">▶&nbsp;&nbsp;PLAY</a>
+          </div>
+        </div>
+
+        <!-- Top-Down Racer -->
+        <div class="card" style="--accent-color:#3b9ee8;--glow:rgba(59,158,232,0.16);--banner-bg:linear-gradient(135deg,#030e1c 0%,#081e3a 55%,#0d3060 100%);">
+          <div class="card-banner"><span class="card-icon">🏎️</span></div>
+          <div class="card-body">
+            <div class="card-top">
+              <span class="card-title">TOP-DOWN RACER</span>
+              <span class="genre-tag">Racing</span>
+            </div>
+            <p class="card-desc">Burn rubber on handcrafted circuits. Drift through corners, hit boost pads, and outrace the competition.</p>
+            <button class="btn-soon">COMING SOON</button>
+          </div>
+        </div>
+
+        <!-- Bomberman -->
+        <div class="card" style="--accent-color:#e8962a;--glow:rgba(232,150,42,0.16);--banner-bg:linear-gradient(135deg,#160a00 0%,#321600 55%,#562600 100%);">
+          <div class="card-banner"><span class="card-icon">💣</span></div>
+          <div class="card-body">
+            <div class="card-top">
+              <span class="card-title">BOMBERMAN</span>
+              <span class="genre-tag">Action</span>
+            </div>
+            <p class="card-desc">Drop bombs, blast through walls, and blow up your opponents before they get to you first.</p>
+            <button class="btn-soon">COMING SOON</button>
+          </div>
+        </div>
+
+        <!-- Chess -->
+        <div class="card" style="--accent-color:#9b6fe0;--glow:rgba(155,111,224,0.16);--banner-bg:linear-gradient(135deg,#0c0516 0%,#1a0b30 55%,#2c1254 100%);">
+          <div class="card-banner"><span class="card-icon">♞</span></div>
+          <div class="card-body">
+            <div class="card-top">
+              <span class="card-title">CHESS</span>
+              <span class="genre-tag">Strategy</span>
+            </div>
+            <p class="card-desc">Classic chess reimagined with a sleek dark interface, live matchmaking, and ELO-based rankings.</p>
+            <button class="btn-soon">COMING SOON</button>
+          </div>
+        </div>
+
+        <!-- Snake -->
+        <div class="card" style="--accent-color:#27c96a;--glow:rgba(39,201,106,0.16);--banner-bg:linear-gradient(135deg,#021008 0%,#062414 55%,#0a3820 100%);">
+          <div class="card-banner"><span class="card-icon">🐍</span></div>
+          <div class="card-body">
+            <div class="card-top">
+              <span class="card-title">SNAKE</span>
+              <span class="genre-tag">Arcade</span>
+            </div>
+            <p class="card-desc">Grow your snake by eating pellets — but don't hit the walls, and whatever you do, don't eat yourself.</p>
+            <button class="btn-soon">COMING SOON</button>
+          </div>
+        </div>
+
+        <!-- Tower Defense -->
+        <div class="card" style="--accent-color:#18c4a8;--glow:rgba(24,196,168,0.16);--banner-bg:linear-gradient(135deg,#021210 0%,#062822 55%,#0a3c34 100%);">
+          <div class="card-banner"><span class="card-icon">🏰</span></div>
+          <div class="card-body">
+            <div class="card-top">
+              <span class="card-title">TOWER DEFENSE</span>
+              <span class="genre-tag">Strategy</span>
+            </div>
+            <p class="card-desc">Place towers, manage resources, and hold the line against endless waves of increasingly dangerous enemies.</p>
+            <button class="btn-soon">COMING SOON</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    ArcadeHub &copy; 2026 &nbsp;—&nbsp; <span>Built with Claude Code</span>
+  </footer>
+
+  <script>
+    const isLocal = ['localhost','127.0.0.1'].includes(window.location.hostname);
+    const API = (isLocal ? 'http://localhost:3001' : window.location.origin) + '/api';
+
+    // ── Nav auth state ──────────────────────────────────────
+    function setLoggedIn(username) {
+      document.getElementById('btn-login').style.display = 'none';
+      document.getElementById('nav-username-text').textContent = username;
+      document.getElementById('nav-user').style.display = 'flex';
+    }
+
+    function setLoggedOut() {
+      document.getElementById('btn-login').style.display = '';
+      document.getElementById('nav-user').style.display = 'none';
+    }
+
+    // ── Modal helpers ────────────────────────────────────────
+    const overlay = document.getElementById('auth-overlay');
+
+    function openModal(tab) {
+      overlay.classList.add('open');
+      switchTab(tab || 'login');
+      const firstInput = overlay.querySelector('.auth-form:not([style*="none"]) input');
+      if (firstInput) setTimeout(() => firstInput.focus(), 40);
+    }
+
+    function closeModal() {
+      overlay.classList.remove('open');
+      clearMsg('login-msg');
+      clearMsg('reg-msg');
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.auth-tab').forEach(t =>
+        t.classList.toggle('active', t.dataset.tab === tab)
+      );
+      document.getElementById('form-login').style.display     = tab === 'login'    ? 'flex' : 'none';
+      document.getElementById('form-register').style.display  = tab === 'register' ? 'flex' : 'none';
+    }
+
+    function showMsg(id, text, type) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = 'auth-msg ' + (type || '');
+    }
+
+    function clearMsg(id) {
+      const el = document.getElementById(id);
+      el.textContent = '';
+      el.className = 'auth-msg';
+    }
+
+    // Close on backdrop click or Escape
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    document.getElementById('auth-close').addEventListener('click', closeModal);
+    document.getElementById('btn-login').addEventListener('click', () => openModal('login'));
+
+    document.querySelectorAll('.auth-tab').forEach(tab =>
+      tab.addEventListener('click', () => switchTab(tab.dataset.tab))
+    );
+
+    // ── Register ─────────────────────────────────────────────
+    document.getElementById('form-register').addEventListener('submit', async e => {
+      e.preventDefault();
+      const username = document.getElementById('reg-username').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const btn = e.target.querySelector('.auth-submit');
+
+      clearMsg('reg-msg');
+      btn.disabled = true;
+
+      try {
+        const res  = await fetch(`${API}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showMsg('reg-msg', data.error, 'error');
+        } else {
+          showMsg('reg-msg', 'Account created! Redirecting to login…', 'success');
+          document.getElementById('reg-username').value = '';
+          document.getElementById('reg-password').value = '';
+          setTimeout(() => { clearMsg('reg-msg'); switchTab('login'); }, 1500);
+        }
+      } catch {
+        showMsg('reg-msg', 'Could not reach server. Is it running on port 3001?', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // ── Login ─────────────────────────────────────────────────
+    document.getElementById('form-login').addEventListener('submit', async e => {
+      e.preventDefault();
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+      const btn = e.target.querySelector('.auth-submit');
+
+      clearMsg('login-msg');
+      btn.disabled = true;
+
+      try {
+        const res  = await fetch(`${API}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showMsg('login-msg', data.error, 'error');
+        } else {
+          localStorage.setItem('ah_token',    data.token);
+          localStorage.setItem('ah_username', data.username);
+          setLoggedIn(data.username);
+          closeModal();
+        }
+      } catch {
+        showMsg('login-msg', 'Could not reach server. Is it running on port 3001?', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // ── Logout ────────────────────────────────────────────────
+    document.getElementById('btn-logout').addEventListener('click', () => {
+      localStorage.removeItem('ah_token');
+      localStorage.removeItem('ah_username');
+      setLoggedOut();
+    });
+
+    // ── Delete account ────────────────────────────────────────
+    document.getElementById('btn-delete-account').addEventListener('click', async () => {
+      if (!confirm('Permanently delete your account?\nThis cannot be undone.')) return;
+
+      const token = localStorage.getItem('ah_token');
+      try {
+        const res  = await fetch(`${API}/account`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.removeItem('ah_token');
+          localStorage.removeItem('ah_username');
+          setLoggedOut();
+        } else {
+          alert(data.error || 'Failed to delete account.');
+        }
+      } catch {
+        alert('Could not reach server. Is it running on port 3001?');
+      }
+    });
+
+    // ── Restore session on page load ──────────────────────────
+    (function restoreSession() {
+      const token    = localStorage.getItem('ah_token');
+      const username = localStorage.getItem('ah_username');
+      if (token && username) setLoggedIn(username);
+    })();
+
+    // ── Fake online count drift ───────────────────────────────
+    const countEl = document.getElementById('online-count');
+    let count = 3;
+    setInterval(() => {
+      count = Math.max(1, Math.min(9, count + (Math.random() < 0.5 ? 1 : -1)));
+      countEl.textContent = count;
+    }, 4000 + Math.random() * 3000);
+  </script>
+
+</body>
+</html>

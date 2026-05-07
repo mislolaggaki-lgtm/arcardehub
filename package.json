@@ -1,0 +1,12 @@
+{
+  "name": "arcadehub",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "live-server --port=3000 --open=index.html",
+    "server": "node server/server.js"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}

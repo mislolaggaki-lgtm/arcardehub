@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArcadeHub FPS</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Sniper scope overlay (shown on ADS hold) -->
+  <div id="scope-overlay">
+    <div class="scope-h"></div>
+    <div class="scope-v"></div>
+  </div>
+
+  <!-- HUD (shown during gameplay) -->
+  <div id="hud">
+    <div id="crosshair"></div>
+    <div id="health-container">
+      <div id="health-bar"><div id="health-fill"></div></div>
+      <span id="health-text">100</span>
+    </div>
+    <div id="ammo-display">30 / 90</div>
+    <div id="gun-name">PISTOL</div>
+    <div id="kill-count">KILLS: 0</div>
+    <div id="level-display">LVL 1</div>
+    <div id="enemy-count">ENEMIES: 0/0</div>
+    <div id="kill-feed"></div>
+  </div>
+
+  <!-- START / GUN SELECT screen -->
+  <div id="start-screen">
+    <h1>ARCADE<span>HUB</span></h1>
+    <p class="subtitle">FPS ARENA</p>
+
+    <p class="selector-label">SELECT WEAPON</p>
+    <div class="gun-cards">
+
+      <div class="gun-card active" data-gun="pistol">
+        <div class="gun-card-name">PISTOL</div>
+        <div class="gun-card-art">
+          <div class="gfx-pistol"></div>
+        </div>
+        <div class="gun-card-stats">
+          <div><span class="stat-l">DMG</span><span class="bars b2"></span></div>
+          <div><span class="stat-l">RPM</span><span class="bars b1"></span></div>
+          <div><span class="stat-l">MAG</span><span class="stat-r">12</span></div>
+        </div>
+      </div>
+
+      <div class="gun-card" data-gun="smg">
+        <div class="gun-card-name">SMG</div>
+        <div class="gun-card-art">
+          <div class="gfx-smg"></div>
+        </div>
+        <div class="gun-card-stats">
+          <div><span class="stat-l">DMG</span><span class="bars b2"></span></div>
+          <div><span class="stat-l">RPM</span><span class="bars b4"></span></div>
+          <div><span class="stat-l">MAG</span><span class="stat-r">30</span></div>
+        </div>
+      </div>
+
+      <div class="gun-card" data-gun="minigun">
+        <div class="gun-card-name">MINIGUN</div>
+        <div class="gun-card-art">
+          <div class="gfx-minigun"></div>
+        </div>
+        <div class="gun-card-stats">
+          <div><span class="stat-l">DMG</span><span class="bars b3"></span></div>
+          <div><span class="stat-l">RPM</span><span class="bars b5"></span></div>
+          <div><span class="stat-l">MAG</span><span class="stat-r">100</span></div>
+        </div>
+      </div>
+
+      <div class="gun-card" data-gun="sniper">
+        <div class="gun-card-name">SNIPER</div>
+        <div class="gun-card-art">
+          <div class="gfx-sniper"></div>
+        </div>
+        <div class="gun-card-stats">
+          <div><span class="stat-l">DMG</span><span class="bars b5"></span></div>
+          <div><span class="stat-l">RPM</span><span class="bars b1"></span></div>
+          <div><span class="stat-l">MAG</span><span class="stat-r">1</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <ul class="controls-list">
+      <li><kbd>W A S D</kbd> Move &nbsp;|&nbsp; <kbd>Space</kbd> Jump</li>
+      <li><kbd>Mouse</kbd> Look &nbsp;|&nbsp; <kbd>LClick</kbd> Shoot &nbsp;|&nbsp; <kbd>Hold LClick</kbd> Scope (sniper) &nbsp;|&nbsp; <kbd>R</kbd> Reload</li>
+      <li><kbd>T</kbd> Pause / switch weapon</li>
+    </ul>
+
+    <button id="play-button">&#9654;&nbsp;&nbsp;PLAY</button>
+    <button id="reset-button">&#8635;&nbsp;&nbsp;RESET PROGRESS</button>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
