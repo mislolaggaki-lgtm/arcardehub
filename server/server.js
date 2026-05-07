@@ -146,6 +146,11 @@ app.get('/api/users/online', (_req, res) => {
   res.json({ online: players.size || 3 });
 });
 
+// ── Catch-all: serve index.html for any unmatched route ───────
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'index.html'));
+});
+
 // ── Start ─────────────────────────────────────────────────────
 httpServer.listen(PORT, () => {
   console.log(`ArcadeHub server running on http://localhost:${PORT}`);
