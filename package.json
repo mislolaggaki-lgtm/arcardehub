@@ -6,6 +6,14 @@
     "dev": "live-server --port=3000 --open=index.html",
     "server": "node server/server.js"
   },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
+    "express": "^4.22.1",
+    "jsonwebtoken": "^9.0.3",
+    "lowdb": "^1.0.0",
+    "socket.io": "^4.8.3"
+  },
   "devDependencies": {
     "live-server": "^1.2.2"
   }
