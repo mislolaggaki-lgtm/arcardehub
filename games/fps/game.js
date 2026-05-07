@@ -873,6 +873,7 @@ function rndPos(){
 }
 
 let bots = [];
+const ammoPickups = [];   // { group, posX, posZ, bobClock, lifetime, amount }
 
 // Walk up parent chain to find the bot whose group contains `obj`
 function findBot(obj){
@@ -933,6 +934,7 @@ function killBot(bot){
   bot.eyeMatR.color.setHex(0x220000);
   spawnSparks(bot.group.position.clone().setY(1.2));
   setTimeout(()=>{ bot.group.visible=false; },180);
+  spawnAmmoPickup(bot.group.position);
   player.kills++;
   updateKillHUD();
   pushKillFeed('Robot destroyed');
@@ -948,6 +950,37 @@ function spawnSparks(pos){
       new THREE.Vector3(Math.random()-.5, Math.random()*.8+.2, Math.random()-.5).normalize(), .5);
     scene.add(p); setTimeout(()=>scene.remove(p),350);
   }
+}
+
+function spawnAmmoPickup(pos) {
+  const amount = 6 + Math.floor(Math.random() * 13);  // 6–18 bullets
+
+  const g = new THREE.Group();
+
+  // Crate body (golden-orange)
+  const bodyMat = new THREE.MeshLambertMaterial({ color: 0xb8860b, emissive: new THREE.Color(0x3a2400) });
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.30, 0.30), bodyMat));
+
+  // Glowing top & bottom rims
+  const rimMat = new THREE.MeshBasicMaterial({ color: 0xffdd00 });
+  const rimT = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.05, 0.32), rimMat);
+  rimT.position.y = 0.145; g.add(rimT);
+  const rimB = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.05, 0.32), rimMat);
+  rimB.position.y = -0.145; g.add(rimB);
+
+  // Bullet silhouette on front face (shaft + wider tip)
+  const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const bShaft = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.15, 0.01), bulletMat);
+  bShaft.position.set(0, -0.01, -0.16); g.add(bShaft);
+  const bTip = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.05, 0.01), bulletMat);
+  bTip.position.set(0, 0.095, -0.16); g.add(bTip);
+  const bBase = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.03, 0.01), bulletMat);
+  bBase.position.set(0, -0.09, -0.16); g.add(bBase);
+
+  g.position.set(pos.x, 0.55, pos.z);
+  scene.add(g);
+
+  ammoPickups.push({ group: g, posX: pos.x, posZ: pos.z, bobClock: Math.random() * Math.PI * 2, lifetime: 14, amount });
 }
 
 // ============================================================
@@ -1290,6 +1323,40 @@ function update(dt){
       rp.legR.rotation.x = -Math.sin(rp.walkClock * 2.5) * 0.32;
     }
   });
+
+  // ── Ammo pickup animation & collection ──────────────────────
+  for (let i = ammoPickups.length - 1; i >= 0; i--) {
+    const pk = ammoPickups[i];
+    pk.lifetime -= dt;
+    pk.bobClock += dt * 2.4;
+
+    // Float and spin
+    pk.group.position.y  = 0.44 + Math.sin(pk.bobClock) * 0.14;
+    pk.group.rotation.y += dt * 1.8;
+
+    // Blink during last 4 seconds
+    if (pk.lifetime < 4) {
+      pk.group.visible = Math.sin(pk.lifetime * 14) > 0;
+    }
+
+    // Collect on proximity
+    const dx = camera.position.x - pk.posX;
+    const dz = camera.position.z - pk.posZ;
+    if (dx * dx + dz * dz < 1.6 * 1.6) {
+      gun.reserve += pk.amount;
+      updateAmmoHUD();
+      pushKillFeed(`+${pk.amount} AMMO PICKED UP`);
+      scene.remove(pk.group);
+      ammoPickups.splice(i, 1);
+      continue;
+    }
+
+    // Expire
+    if (pk.lifetime <= 0) {
+      scene.remove(pk.group);
+      ammoPickups.splice(i, 1);
+    }
+  }
 }
 
 // ============================================================
@@ -1360,6 +1427,8 @@ function getLevelConfig(n) {
 function clearBots() {
   bots.forEach(b => scene.remove(b.group));
   bots.length = 0;
+  ammoPickups.forEach(pk => scene.remove(pk.group));
+  ammoPickups.length = 0;
 }
 
 function spawnBots(cfg) {
