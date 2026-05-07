@@ -54,6 +54,8 @@ io.on('connection', socket => {
       color,
       x: 0, y: 1.65, z: 2,
       rotationY: 0,
+      pvpMode:   true,
+      health:    100,
     };
     players.set(socket.id, player);
 
@@ -66,16 +68,27 @@ io.on('connection', socket => {
   });
 
   // ── move ──────────────────────────────────────────────────
-  socket.on('move', ({ x, y, z, rotationY }) => {
+  socket.on('move', ({ x, y, z, rotationY, health }) => {
     const player = players.get(socket.id);
     if (!player) return;
     player.x = x; player.y = y; player.z = z; player.rotationY = rotationY;
-    socket.broadcast.emit('playerMoved', { id: socket.id, x, y, z, rotationY });
+    if (health !== undefined) player.health = health;
+    socket.broadcast.emit('playerMoved', { id: socket.id, x, y, z, rotationY, health });
+  });
+
+  // ── pvpMode ───────────────────────────────────────────────
+  socket.on('pvpMode', ({ enabled }) => {
+    const player = players.get(socket.id);
+    if (!player) return;
+    player.pvpMode = !!enabled;
+    io.emit('pvpModeChanged', { id: socket.id, pvpMode: player.pvpMode });
   });
 
   // ── shoot ─────────────────────────────────────────────────
   socket.on('shoot', ({ targetId }) => {
-    if (!players.has(targetId)) return;
+    const target = players.get(targetId);
+    if (!target) return;
+    if (!target.pvpMode) return;   // target has PVP off — immune to player shots
     io.emit('playerHit', { shooterId: socket.id, targetId, damage: 25 });
   });
 

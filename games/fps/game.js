@@ -19,11 +19,20 @@ const levelDisplayEl= document.getElementById('level-display');
 const enemyCountEl  = document.getElementById('enemy-count');
 const scopeOverlay  = document.getElementById('scope-overlay');
 const crosshairEl   = document.getElementById('crosshair');
+const pvpBtnEl      = document.getElementById('pvp-btn');
 
 // ─── Multiplayer state ────────────────────────────────────────
 let socket       = null;
 let moveInterval = null;
-const remotePlayers = new Map();   // socketId → { group, legL, legR, allMats, targetPos, targetRotY, walkClock }
+const remotePlayers = new Map();   // socketId → { group, legL, legR, allMats, targetPos, targetRotY, walkClock, ... }
+let pvpMode      = true;
+
+// ─── Mobile state ────────────────────────────────────────────
+const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 ||
+                 window.matchMedia('(pointer: coarse)').matches;
+let  mobileGameActive = false;
+const touchMoveInput  = { x: 0, y: 0 };  // normalised joystick vector (-1…1)
+let  touchFireHeld    = false;
 
 // ─── Gun definitions ─────────────────────────────────────────
 const GUN_DEFS = {
@@ -474,44 +483,85 @@ function buildSniper(root) {
 
 // ── Remote player helpers ────────────────────────────────────
 
-// Sprite with player's name drawn on a canvas texture
-function makeNameSprite(name) {
-  const c = document.createElement('canvas');
-  c.width = 256; c.height = 64;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = 'rgba(0,0,0,0.55)';
-  ctx.fillRect(8, 14, 240, 36);
-  ctx.font = 'bold 18px monospace';
+function _drawLabelCanvas(ctx, name, hp, pvpOn) {
+  const W = 256, H = 88;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillRect(6, 6, W - 12, H - 12);
+
+  // Name
+  ctx.font = 'bold 15px monospace';
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(name.slice(0, 18), 128, 38);
+  ctx.fillStyle = '#fff';
+  ctx.fillText(name.slice(0, 18), 128, 26);
+
+  // HP bar bg
+  ctx.fillStyle = '#220000';
+  ctx.fillRect(16, 33, 224, 9);
+  const pct = Math.max(0, Math.min(100, hp)) / 100;
+  ctx.fillStyle = hp > 60 ? '#22dd44' : hp > 30 ? '#ffaa00' : '#ff2200';
+  ctx.fillRect(16, 33, Math.round(224 * pct), 9);
+
+  // HP text
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ccc';
+  ctx.fillText(Math.max(0, Math.round(hp)) + ' HP', 128, 57);
+
+  // PVP indicator
+  const pvpCol = pvpOn ? '#3b9ee8' : '#666';
+  ctx.fillStyle = pvpCol;
+  ctx.fillRect(72, 65, 8, 8);
+  ctx.font = 'bold 10px monospace';
+  ctx.fillStyle = pvpCol;
+  ctx.textAlign = 'left';
+  ctx.fillText(pvpOn ? 'PVP ON' : 'PVP OFF', 86, 73);
+}
+
+function makePlayerLabel(name, hp, pvpOn) {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 88;
+  const ctx = c.getContext('2d');
+  _drawLabelCanvas(ctx, name, hp, pvpOn);
   const tex = new THREE.CanvasTexture(c);
   const mat = new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false });
   const sp = new THREE.Sprite(mat);
-  sp.scale.set(1.6, 0.4, 1);
-  sp.position.y = 3.2;
+  sp.scale.set(1.8, 0.62, 1);
+  sp.position.y = 3.5;
+  sp.userData.canvas = c;
+  sp.userData.ctx = ctx;
   return sp;
+}
+
+function refreshPlayerLabel(rp) {
+  _drawLabelCanvas(rp.labelSprite.userData.ctx, rp.username, rp.health, rp.pvpMode);
+  rp.labelSprite.material.map.needsUpdate = true;
 }
 
 function addRemotePlayer(data) {
   if (remotePlayers.has(data.id)) return;
   const rob = buildRobot();
-  // Colour the eyes to this player's unique server-assigned colour
   const col = new THREE.Color(data.color || '#e74c3c');
   rob.eyeMatL.color.copy(col);
   rob.eyeMatR.color.copy(col);
-  // Hide the HP bar — we don't track remote HP client-side
   rob.hpBarGroup.visible = false;
 
   const groundY = Math.max(0, (data.y || EYE_H) - EYE_H);
   rob.group.position.set(data.x || 0, groundY, data.z || 0);
   scene.add(rob.group);
 
-  const nameSprite = makeNameSprite(data.username || 'Player');
-  rob.group.add(nameSprite);
+  const username = data.username || 'Player';
+  const health   = data.health   !== undefined ? data.health   : 100;
+  const pvpOn    = data.pvpMode  !== undefined ? data.pvpMode  : true;
+  const labelSprite = makePlayerLabel(username, health, pvpOn);
+  rob.group.add(labelSprite);
 
   remotePlayers.set(data.id, {
     ...rob,
+    labelSprite,
+    username,
+    health,
+    pvpMode:    pvpOn,
     targetPos:  new THREE.Vector3(data.x || 0, groundY, data.z || 0),
     targetRotY: data.rotationY || 0,
     walkClock:  0,
@@ -903,15 +953,28 @@ function spawnSparks(pos){
 // ============================================================
 //  INPUT
 // ============================================================
+function togglePvp() {
+  pvpMode = !pvpMode;
+  if (pvpBtnEl) {
+    pvpBtnEl.textContent = pvpMode ? '⚔ PVP ON' : '⚔ PVP OFF';
+    pvpBtnEl.classList.toggle('pvp-off', !pvpMode);
+  }
+  if (socket && socket.connected) socket.emit('pvpMode', { enabled: pvpMode });
+}
+
+if (pvpBtnEl) pvpBtnEl.addEventListener('click', togglePvp);
+
 const keys={};
 document.addEventListener('keydown',e=>{
   keys[e.code]=true;
   if(e.code==='KeyR') reloadGun();
   if(e.code==='KeyT' && pointerLocked()) { deactivateScope(); document.exitPointerLock(); }
+  if(e.code==='KeyP') togglePvp();
 });
 document.addEventListener('keyup', e=>{ keys[e.code]=false; });
 
 document.addEventListener('mousedown', e=>{
+  if(isMobile) return;
   if(e.button!==0) return;
   mouseHeld=true;
   if(!pointerLocked()||!gun.def) return;
@@ -924,6 +987,7 @@ document.addEventListener('mousedown', e=>{
 });
 
 document.addEventListener('mouseup', e=>{
+  if(isMobile) return;
   if(e.button!==0) return;
   mouseHeld=false;
   if(scopeActive){
@@ -971,7 +1035,10 @@ function pointerLocked(){ return document.pointerLockElement===canvas; }
 
 let gameStarted = false;
 
-playBtn.addEventListener('click',()=>canvas.requestPointerLock());
+playBtn.addEventListener('click', () => {
+  if (isMobile) startMobileGame();
+  else canvas.requestPointerLock();
+});
 
 document.getElementById('reset-button').addEventListener('click', () => {
   gameStarted    = false;
@@ -986,6 +1053,13 @@ document.getElementById('reset-button').addEventListener('click', () => {
   updateLevelHUD();
   updateEnemyCountHUD();
   updateHealthHUD();
+  if (isMobile) {
+    mobileGameActive = false;
+    const tc = document.getElementById('touch-controls');
+    if (tc) tc.style.display = 'none';
+    startScreen.style.display = 'flex';
+    hudEl.style.display = 'none';
+  }
 });
 
 document.addEventListener('pointerlockchange',()=>{
@@ -998,7 +1072,7 @@ document.addEventListener('pointerlockchange',()=>{
       startLevel(1);
       initSocket();
     }
-  } else if(!player.dead && !levelTransitioning){
+  } else if(!player.dead && !levelTransitioning && !mobileGameActive){
     deactivateScope();
     startScreen.style.display='flex';
     hudEl.style.display='none';
@@ -1063,7 +1137,7 @@ function respawnPlayer(){
   player.health=player.maxHealth; player.dead=false;
   camera.position.copy(SPAWN); yaw=0; pitch=0; velY=0; grounded=true;
   deathScreen.style.display='none';
-  if(pointerLocked()) hudEl.style.display='block';
+  if(pointerLocked() || mobileGameActive) hudEl.style.display='block';
   updateHealthHUD();
   // Restore ammo
   gun.ammo=gun.def.ammo; gun.reserve=gun.def.reserve; updateAmmoHUD();
@@ -1087,7 +1161,7 @@ function update(dt){
   if(camera.position.y<=EYE_H){ camera.position.y=EYE_H; velY=0; grounded=true; }
   if(camera.position.y>=WH-.6){ camera.position.y=WH-.6; velY=Math.min(0,velY); }
 
-  if(!pointerLocked()||player.dead) return;
+  if((!pointerLocked() && !mobileGameActive)||player.dead) return;
 
   // ── Jump input ──────────────────────────────────────────
   if(keys['Space']&&grounded){ velY=JUMP_VEL; grounded=false; }
@@ -1100,6 +1174,11 @@ function update(dt){
   if(keys['KeyS']) moveVec.sub(viewDir);
   if(keys['KeyA']) moveVec.sub(rightDir);
   if(keys['KeyD']) moveVec.add(rightDir);
+  // Touch joystick movement (mobile)
+  if(touchMoveInput.x !== 0 || touchMoveInput.y !== 0){
+    moveVec.addScaledVector(viewDir,  -touchMoveInput.y);
+    moveVec.addScaledVector(rightDir,  touchMoveInput.x);
+  }
 
   const moving=moveVec.lengthSq()>0;
   if(moving){
@@ -1109,7 +1188,7 @@ function update(dt){
   }
 
   // ── Auto fire ───────────────────────────────────────────
-  if(mouseHeld && gun.def && gun.def.auto) shoot();
+  if((mouseHeld || touchFireHeld) && gun.def && gun.def.auto) shoot();
 
   // ── Shoot cooldown ──────────────────────────────────────
   if(!gun.canShoot){ gun.shootTimer-=dt; if(gun.shootTimer<=0) gun.canShoot=true; }
@@ -1407,7 +1486,7 @@ function initSocket() {
   socket.on('connect', () => {
     socket.emit('join', { username });
 
-    // Broadcast position every 50 ms
+    // Broadcast position + health every 50 ms
     if (moveInterval) clearInterval(moveInterval);
     moveInterval = setInterval(() => {
       if (socket && socket.connected) {
@@ -1416,9 +1495,13 @@ function initSocket() {
           y: camera.position.y,
           z: camera.position.z,
           rotationY: yaw,
+          health: player.health,
         });
       }
     }, 50);
+
+    // Sync initial PVP state with server on connect
+    socket.emit('pvpMode', { enabled: pvpMode });
   });
 
   // Populate existing players when we first join
@@ -1438,12 +1521,25 @@ function initSocket() {
     if (!rp) return;
     rp.targetPos.set(data.x, Math.max(0, data.y - EYE_H), data.z);
     rp.targetRotY = data.rotationY;
+    if (data.health !== undefined && data.health !== rp.health) {
+      rp.health = data.health;
+      refreshPlayerLabel(rp);
+    }
+  });
+
+  // PVP mode changed for a remote player
+  socket.on('pvpModeChanged', data => {
+    const rp = remotePlayers.get(data.id);
+    if (!rp) return;
+    rp.pvpMode = data.pvpMode;
+    refreshPlayerLabel(rp);
   });
 
   // A hit was registered by the server
   socket.on('playerHit', data => {
     if (data.targetId === socket.id) {
-      // We were hit — apply damage locally
+      // We were hit — only apply if we have PVP on (server already guards, but belt+suspenders)
+      if (!pvpMode) return;
       player.health -= data.damage;
       updateHealthHUD();
       flashDmg();
@@ -1470,6 +1566,157 @@ function initSocket() {
     if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
     remotePlayers.forEach((_, id) => removeRemotePlayer(id));
   });
+}
+
+// ============================================================
+//  MOBILE TOUCH CONTROLS
+// ============================================================
+function startMobileGame() {
+  mobileGameActive = true;
+  setupWeapon(selectedGunId);
+  startScreen.style.display = 'none';
+  hudEl.style.display = 'block';
+  const tc = document.getElementById('touch-controls');
+  if (tc) tc.style.display = 'block';
+  if (!gameStarted) {
+    gameStarted = true;
+    startLevel(1);
+    initSocket();
+  }
+}
+
+if (isMobile) {
+  const moveZone  = document.getElementById('touch-move-zone');
+  const lookZone  = document.getElementById('touch-look-zone');
+  const joyOuter  = document.getElementById('touch-joystick-outer');
+  const joyInner  = document.getElementById('touch-joystick-inner');
+  const shootBtn  = document.getElementById('touch-shoot-btn');
+  const jumpBtn   = document.getElementById('touch-jump-btn');
+  const reloadBtn = document.getElementById('touch-reload-btn');
+
+  const JOYSTICK_RADIUS = 52;
+  let joystickTouchId = null, joystickCenterX = 0, joystickCenterY = 0;
+  let lookTouchId = null, lookLastX = 0, lookLastY = 0;
+  const TOUCH_SENS = 0.0055;
+
+  // ── Movement joystick ──────────────────────────────────
+  if (moveZone) {
+    moveZone.addEventListener('touchstart', e => {
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        if (joystickTouchId === null) {
+          joystickTouchId  = t.identifier;
+          joystickCenterX  = t.clientX;
+          joystickCenterY  = t.clientY;
+          joyOuter.style.left    = t.clientX + 'px';
+          joyOuter.style.top     = t.clientY + 'px';
+          joyOuter.style.display = 'block';
+        }
+      }
+    }, { passive: false });
+
+    moveZone.addEventListener('touchmove', e => {
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        if (t.identifier !== joystickTouchId) continue;
+        let dx = t.clientX - joystickCenterX;
+        let dy = t.clientY - joystickCenterY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > JOYSTICK_RADIUS) { dx = dx / dist * JOYSTICK_RADIUS; dy = dy / dist * JOYSTICK_RADIUS; }
+        joyInner.style.left = (50 + dx / JOYSTICK_RADIUS * 50) + '%';
+        joyInner.style.top  = (50 + dy / JOYSTICK_RADIUS * 50) + '%';
+        touchMoveInput.x    = dx / JOYSTICK_RADIUS;
+        touchMoveInput.y    = dy / JOYSTICK_RADIUS;
+      }
+    }, { passive: false });
+
+    const endJoy = e => {
+      for (const t of e.changedTouches) {
+        if (t.identifier !== joystickTouchId) continue;
+        joystickTouchId     = null;
+        touchMoveInput.x    = 0;
+        touchMoveInput.y    = 0;
+        joyOuter.style.display = 'none';
+        joyInner.style.left = '50%';
+        joyInner.style.top  = '50%';
+      }
+    };
+    moveZone.addEventListener('touchend',    endJoy, { passive: false });
+    moveZone.addEventListener('touchcancel', endJoy, { passive: false });
+  }
+
+  // ── Camera look ────────────────────────────────────────
+  if (lookZone) {
+    lookZone.addEventListener('touchstart', e => {
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        if (lookTouchId === null) {
+          lookTouchId = t.identifier;
+          lookLastX   = t.clientX;
+          lookLastY   = t.clientY;
+        }
+      }
+    }, { passive: false });
+
+    lookZone.addEventListener('touchmove', e => {
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        if (t.identifier !== lookTouchId) continue;
+        yaw   -= (t.clientX - lookLastX) * TOUCH_SENS;
+        pitch -= (t.clientY - lookLastY) * TOUCH_SENS;
+        pitch = Math.max(-1.35, Math.min(1.35, pitch));
+        lookLastX = t.clientX;
+        lookLastY = t.clientY;
+      }
+    }, { passive: false });
+
+    const endLook = e => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === lookTouchId) lookTouchId = null;
+      }
+    };
+    lookZone.addEventListener('touchend',    endLook, { passive: false });
+    lookZone.addEventListener('touchcancel', endLook, { passive: false });
+  }
+
+  // ── Shoot button ───────────────────────────────────────
+  if (shootBtn) {
+    shootBtn.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (!mobileGameActive || player.dead || !gun.def) return;
+      if (gun.def.oneShot) {
+        if (gun.ammo > 0) activateScope();
+      } else if (gun.def.auto) {
+        touchFireHeld = true;
+      } else {
+        shoot();
+      }
+    }, { passive: false });
+
+    const endShoot = e => {
+      e.preventDefault();
+      touchFireHeld = false;
+      if (scopeActive) { shoot(); deactivateScope(); }
+    };
+    shootBtn.addEventListener('touchend',    endShoot, { passive: false });
+    shootBtn.addEventListener('touchcancel', e => { e.preventDefault(); touchFireHeld = false; if (scopeActive) deactivateScope(); }, { passive: false });
+  }
+
+  // ── Jump button ────────────────────────────────────────
+  if (jumpBtn) {
+    jumpBtn.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (grounded && mobileGameActive && !player.dead) { velY = JUMP_VEL; grounded = false; }
+    }, { passive: false });
+  }
+
+  // ── Reload button ──────────────────────────────────────
+  if (reloadBtn) {
+    reloadBtn.addEventListener('touchstart', e => {
+      e.preventDefault();
+      reloadGun();
+    }, { passive: false });
+  }
 }
 
 // ─── Bootstrap ───────────────────────────────────────────────

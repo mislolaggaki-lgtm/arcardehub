@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ArcadeHub FPS</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -19,6 +19,7 @@
   <!-- HUD (shown during gameplay) -->
   <div id="hud">
     <div id="crosshair"></div>
+    <button id="pvp-btn" title="Press P to toggle PVP">&#9876; PVP ON</button>
     <div id="health-container">
       <div id="health-bar"><div id="health-fill"></div></div>
       <span id="health-text">100</span>
@@ -92,11 +93,23 @@
     <ul class="controls-list">
       <li><kbd>W A S D</kbd> Move &nbsp;|&nbsp; <kbd>Space</kbd> Jump</li>
       <li><kbd>Mouse</kbd> Look &nbsp;|&nbsp; <kbd>LClick</kbd> Shoot &nbsp;|&nbsp; <kbd>Hold LClick</kbd> Scope (sniper) &nbsp;|&nbsp; <kbd>R</kbd> Reload</li>
-      <li><kbd>T</kbd> Pause / switch weapon</li>
+      <li><kbd>T</kbd> Pause / switch weapon &nbsp;|&nbsp; <kbd>P</kbd> Toggle PVP</li>
     </ul>
 
     <button id="play-button">&#9654;&nbsp;&nbsp;PLAY</button>
     <button id="reset-button">&#8635;&nbsp;&nbsp;RESET PROGRESS</button>
+  </div>
+
+  <!-- Touch controls (mobile/tablet only — shown via JS on game start) -->
+  <div id="touch-controls">
+    <div id="touch-move-zone"></div>
+    <div id="touch-look-zone"></div>
+    <div id="touch-joystick-outer">
+      <div id="touch-joystick-inner"></div>
+    </div>
+    <button id="touch-jump-btn">&#8679;</button>
+    <button id="touch-reload-btn">R</button>
+    <button id="touch-shoot-btn">FIRE</button>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
