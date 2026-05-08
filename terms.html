@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArcadeHub — Terms of Service</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:      #0a0a0f;
+      --surface: #0f0f1a;
+      --border:  rgba(255,255,255,0.07);
+      --text:    #ddddf0;
+      --muted:   #4a4a68;
+      --dim:     #22222e;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      letter-spacing: 5px;
+      color: #fff;
+      text-align: center;
+      margin-bottom: 32px;
+      user-select: none;
+    }
+    .logo em { font-style: normal; color: #e74c3c; text-shadow: 0 0 18px rgba(231,76,60,0.5); }
+
+    /* ── Step wrapper ─────────────────────────────────────── */
+    .step {
+      width: 100%;
+      max-width: 480px;
+    }
+
+    /* ── Register card ────────────────────────────────────── */
+    .reg-card {
+      background: #0d0d1a;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 36px 32px 32px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+    }
+
+    .reg-card h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 3px;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .reg-card p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 28px;
+      line-height: 1.55;
+    }
+
+    .reg-form { display: flex; flex-direction: column; gap: 16px; }
+
+    .field { display: flex; flex-direction: column; gap: 7px; }
+    .field label {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 2.5px; text-transform: uppercase; color: #444466;
+    }
+    .field input {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 7px; padding: 11px 14px;
+      color: #e0e0f0; font-family: 'Inter', sans-serif; font-size: 14px;
+      outline: none; transition: border-color .15s, box-shadow .15s;
+    }
+    .field input:focus {
+      border-color: rgba(231,76,60,0.45);
+      box-shadow: 0 0 0 3px rgba(231,76,60,0.07);
+    }
+    .field input::placeholder { color: #2a2a3a; }
+
+    .form-msg {
+      font-size: 13px; line-height: 1.45; min-height: 18px;
+    }
+    .form-msg.error   { color: #e74c3c; }
+    .form-msg.success { color: #22dd66; }
+
+    .btn-primary {
+      padding: 12px 0; margin-top: 4px;
+      background: rgba(231,76,60,0.12);
+      border: 1px solid rgba(231,76,60,0.38);
+      border-radius: 7px; color: #e74c3c;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      cursor: pointer; transition: background .15s, box-shadow .15s;
+    }
+    .btn-primary:hover {
+      background: rgba(231,76,60,0.24);
+      box-shadow: 0 0 22px rgba(231,76,60,0.18);
+    }
+    .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .signin-link {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .signin-link a {
+      color: #6666aa;
+      text-decoration: none;
+      transition: color .15s;
+    }
+    .signin-link a:hover { color: #aaaadd; }
+
+    /* ── Terms step ───────────────────────────────────────── */
+    #step-terms { display: none; width: 100%; max-width: 680px; }
+
+    .terms-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .terms-header h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px; letter-spacing: 4px;
+      color: #fff; margin-bottom: 8px;
+    }
+    .terms-header p {
+      font-size: 13px; color: var(--muted);
+    }
+
+    .terms-box {
+      background: #0d0d1a;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      height: 440px;
+      overflow-y: auto;
+      padding: 28px 28px 0;
+      scroll-behavior: smooth;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+      position: relative;
+    }
+
+    .terms-box::-webkit-scrollbar { width: 6px; }
+    .terms-box::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); border-radius: 3px; }
+    .terms-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+
+    .terms-content h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px; letter-spacing: 3px;
+      color: #e74c3c; margin-bottom: 16px;
+    }
+    .terms-content h3 {
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: #aaaacc; margin: 24px 0 10px;
+    }
+    .terms-content p {
+      font-size: 13px; color: #8888aa;
+      line-height: 1.7; margin-bottom: 8px;
+    }
+    .terms-content ul {
+      list-style: none; padding: 0; margin-bottom: 8px;
+    }
+    .terms-content ul li {
+      font-size: 13px; color: #8888aa;
+      line-height: 1.7; padding-left: 16px; position: relative;
+    }
+    .terms-content ul li::before {
+      content: '—';
+      position: absolute; left: 0;
+      color: #e74c3c; font-weight: 700;
+    }
+    .terms-content .last-updated {
+      font-size: 11px; color: var(--muted);
+      letter-spacing: 1px; margin-bottom: 24px;
+    }
+    .scroll-hint {
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #333355;
+      padding: 28px 0 24px;
+    }
+
+    /* ── Accept section (hidden until scrolled) ───────────── */
+    #accept-section {
+      display: none;
+      padding: 24px 28px 28px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 18px;
+      cursor: pointer;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      flex-shrink: 0;
+      margin-top: 1px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 4px;
+      background: rgba(255,255,255,0.04);
+      cursor: pointer;
+      position: relative;
+      transition: border-color .15s, background .15s;
+    }
+    .checkbox-row input[type="checkbox"]:checked {
+      background: rgba(231,76,60,0.2);
+      border-color: rgba(231,76,60,0.6);
+    }
+    .checkbox-row input[type="checkbox"]:checked::after {
+      content: '✓';
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      color: #e74c3c;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .checkbox-row span {
+      font-size: 13px;
+      color: #8888aa;
+      line-height: 1.6;
+      user-select: none;
+    }
+
+    #agree-btn {
+      width: 100%;
+      padding: 13px 0;
+      background: rgba(231,76,60,0.07);
+      border: 1px solid rgba(231,76,60,0.18);
+      border-radius: 7px;
+      color: #44334a;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      cursor: not-allowed;
+      transition: background .15s, box-shadow .15s, color .15s, border-color .15s;
+    }
+    #agree-btn:not(:disabled) {
+      background: rgba(231,76,60,0.14);
+      border-color: rgba(231,76,60,0.45);
+      color: #e74c3c;
+      cursor: pointer;
+    }
+    #agree-btn:not(:disabled):hover {
+      background: rgba(231,76,60,0.26);
+      box-shadow: 0 0 24px rgba(231,76,60,0.2);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="logo">ARCADE<em>HUB</em></div>
+
+  <!-- ── Step 1: Register ──────────────────────────────────── -->
+  <div id="step-register" class="step">
+    <div class="reg-card">
+      <h2>Create Your Account</h2>
+      <p>Join ArcadeHub to play games with friends. After registering you'll be asked to read and accept our Terms of Service.</p>
+
+      <form class="reg-form" id="reg-form">
+        <div class="field">
+          <label for="reg-username">Username</label>
+          <input id="reg-username" type="text" placeholder="Choose a username (3–24 chars)" autocomplete="username">
+        </div>
+        <div class="field">
+          <label for="reg-password">Password</label>
+          <input id="reg-password" type="password" placeholder="Choose a password (min 6 chars)" autocomplete="new-password">
+        </div>
+        <div class="form-msg" id="reg-msg"></div>
+        <button type="submit" class="btn-primary" id="reg-btn">CREATE ACCOUNT</button>
+      </form>
+
+      <p class="signin-link">Already have an account? <a href="/">Sign in</a></p>
+    </div>
+  </div>
+
+  <!-- ── Step 2: Terms ─────────────────────────────────────── -->
+  <div id="step-terms">
+    <div class="terms-header">
+      <h1>Terms of Service</h1>
+      <p>Read all the way to the bottom, then check the box and click <strong style="color:#c0c0ee">I Agree</strong> to continue.</p>
+    </div>
+
+    <div class="terms-box" id="terms-box">
+      <div class="terms-content">
+
+        <h2>ArcadeHub — Terms of Service &amp; Community Rules</h2>
+        <p class="last-updated">Last updated: May 2026</p>
+
+        <h3>1. Acceptance of Terms</h3>
+        <p>By creating an account on ArcadeHub you agree to be bound by these terms. If you do not agree, do not use this platform.</p>
+
+        <h3>2. Account Rules</h3>
+        <ul>
+          <li>You must be at least 13 years old to create an account</li>
+          <li>You are responsible for keeping your account credentials secure</li>
+          <li>Account sharing is strictly prohibited</li>
+          <li>One account per person — duplicate accounts will be banned</li>
+          <li>You must use an appropriate username — offensive or impersonating names are not allowed</li>
+        </ul>
+
+        <h3>3. Fair Play</h3>
+        <ul>
+          <li>Cheating, hacking or exploiting game bugs is strictly prohibited</li>
+          <li>Using external software to gain an unfair advantage will result in a permanent ban</li>
+          <li>Teaming with opponents in competitive modes is not allowed</li>
+          <li>Any form of match manipulation is forbidden</li>
+        </ul>
+
+        <h3>4. Community Conduct</h3>
+        <ul>
+          <li>Treat all players with respect</li>
+          <li>Harassment, bullying, hate speech or discrimination of any kind is not tolerated</li>
+          <li>Threatening other players inside or outside the platform is grounds for immediate ban</li>
+          <li>Toxic behaviour including excessive trash talk will result in warnings or bans</li>
+        </ul>
+
+        <h3>5. Admin &amp; Moderation</h3>
+        <ul>
+          <li>If you believe you have been wrongly banned you may appeal by contacting the admin</li>
+          <li>ArcadeHub reserves the right to ban any account at any time without notice</li>
+          <li>Do not attempt to impersonate admins or moderators</li>
+        </ul>
+
+        <h3>6. Changes to Terms</h3>
+        <p>ArcadeHub reserves the right to update these terms at any time. Continued use of the platform after changes means you accept the new terms.</p>
+
+        <h3>7. Contact</h3>
+        <p>For any issues or ban appeals contact the ArcadeHub admin through the platform.</p>
+
+        <p class="scroll-hint">— Scroll down to accept —</p>
+
+      </div>
+
+      <!-- Accept section — hidden until scrolled to bottom -->
+      <div id="accept-section">
+        <label class="checkbox-row">
+          <input type="checkbox" id="agree-check">
+          <span>I have read and agree to the ArcadeHub Terms of Service &amp; Community Rules.</span>
+        </label>
+        <button id="agree-btn" disabled>I Agree</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const isLocal = ['localhost','127.0.0.1'].includes(window.location.hostname);
+    const API = (isLocal ? 'http://localhost:3001' : window.location.origin) + '/api';
+
+    let pendingUsername = '';
+    let pendingPassword = '';
+
+    // ── Register ─────────────────────────────────────────────
+    document.getElementById('reg-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const username = document.getElementById('reg-username').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const btn = document.getElementById('reg-btn');
+      const msg = document.getElementById('reg-msg');
+
+      msg.textContent = '';
+      msg.className = 'form-msg';
+      btn.disabled = true;
+
+      try {
+        const res  = await fetch(`${API}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          msg.textContent = data.error;
+          msg.className = 'form-msg error';
+          btn.disabled = false;
+        } else {
+          pendingUsername = username;
+          pendingPassword = password;
+          document.getElementById('step-register').style.display = 'none';
+          document.getElementById('step-terms').style.display = 'block';
+        }
+      } catch {
+        msg.textContent = 'Could not reach server. Is it running?';
+        msg.className = 'form-msg error';
+        btn.disabled = false;
+      }
+    });
+
+    // ── Terms scroll detection ────────────────────────────────
+    const termsBox     = document.getElementById('terms-box');
+    const acceptSection = document.getElementById('accept-section');
+    const agreeCheck   = document.getElementById('agree-check');
+    const agreeBtn     = document.getElementById('agree-btn');
+    let scrolledToBottom = false;
+
+    termsBox.addEventListener('scroll', () => {
+      if (!scrolledToBottom) {
+        const atBottom = termsBox.scrollTop + termsBox.clientHeight >= termsBox.scrollHeight - 8;
+        if (atBottom) {
+          scrolledToBottom = true;
+          acceptSection.style.display = 'block';
+        }
+      }
+      updateBtn();
+    });
+
+    agreeCheck.addEventListener('change', updateBtn);
+
+    function updateBtn() {
+      agreeBtn.disabled = !(scrolledToBottom && agreeCheck.checked);
+    }
+
+    // ── Agree → auto-login → redirect ────────────────────────
+    agreeBtn.addEventListener('click', async () => {
+      agreeBtn.disabled = true;
+      agreeBtn.textContent = 'Signing in…';
+
+      try {
+        const res  = await fetch(`${API}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: pendingUsername, password: pendingPassword }),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          localStorage.setItem('ah_token',    data.token);
+          localStorage.setItem('ah_username', data.username);
+          localStorage.setItem('isAdmin',     data.isAdmin ? 'true' : 'false');
+          window.location.href = '/';
+        } else {
+          agreeBtn.textContent = 'I Agree';
+          agreeBtn.disabled = false;
+        }
+      } catch {
+        agreeBtn.textContent = 'I Agree';
+        agreeBtn.disabled = false;
+      }
+    });
+  </script>
+
+</body>
+</html>
