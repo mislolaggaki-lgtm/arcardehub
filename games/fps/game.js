@@ -58,7 +58,7 @@ const gun = { def:null, ammo:0, reserve:0, shootTimer:0, canShoot:true };
 let mgSpinSpeed = 0;    // current rad/s
 let mgSpin      = 0;    // accumulated angle (for visual)
 let barrelCluster = null;  // the rotating barrel group
-const MG_MAX_SPIN = 28, MG_UP = 10, MG_DOWN = 7;
+const MG_MAX_SPIN = 28, MG_UP = 26, MG_DOWN = 12;
 
 // ─── Renderer ────────────────────────────────────────────────
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:false, powerPreference:'high-performance' });
@@ -74,7 +74,7 @@ renderer.toneMappingExposure = 0.82;
 // ─── Scene ───────────────────────────────────────────────────
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x080810);
-scene.fog = new THREE.FogExp2(0x080810, 0.014);
+scene.fog = new THREE.FogExp2(0x080810, 0.008);
 
 // ─── Camera ──────────────────────────────────────────────────
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 200);
@@ -116,7 +116,7 @@ const sun = new THREE.DirectionalLight(0xfff0dd, 0.80);
 sun.position.set(8, 20, 10);
 sun.castShadow = true;
 sun.shadow.mapSize.set(512, 512);
-Object.assign(sun.shadow.camera, { near:1, far:130, left:-58, right:58, top:58, bottom:-58 });
+Object.assign(sun.shadow.camera, { near:1, far:200, left:-90, right:90, top:90, bottom:-90 });
 scene.add(sun);
 
 function mkPt(col, i, r, x, y, z) {
@@ -142,7 +142,25 @@ const M_YELO = new THREE.MeshBasicMaterial  ({ color:0xffee44 });
 // ============================================================
 //  ARENA
 // ============================================================
-const AW=22, AD=22, WH=7, WT=0.8;
+const AW=40, AD=40, WH=9, WT=0.8;
+const MEZZ_H     = 4.0;   // mezzanine floor surface height
+const MEZZ_INNER = 33;    // inner edge of mezzanine (AW - 7)
+// Staircase zones: x0/x1 = footprint width, zB = bottom (ground), zT = top (mezzanine)
+const STAIR_DEFS = [
+  { x0:24, x1:34,  zB:-27, zT:-33 },  // NE stair
+  { x0:-34, x1:-24, zB:27,  zT:33  },  // SW stair
+];
+function getGroundY(pos) {
+  for (const s of STAIR_DEFS) {
+    const zLo = Math.min(s.zB, s.zT) - 1, zHi = Math.max(s.zB, s.zT) + 1;
+    if (pos.x >= s.x0 && pos.x <= s.x1 && pos.z >= zLo && pos.z <= zHi) {
+      const t = Math.max(0, Math.min(1, (pos.z - s.zB) / (s.zT - s.zB)));
+      return t * MEZZ_H;
+    }
+  }
+  if (Math.abs(pos.x) >= MEZZ_INNER || Math.abs(pos.z) >= MEZZ_INNER) return MEZZ_H;
+  return 0;
+}
 
 function makeFloorTex() {
   const c = document.createElement('canvas'); c.width = c.height = 512;
@@ -174,7 +192,7 @@ function makeFloorTex() {
     ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+18,y+6);ctx.stroke();
   }
   const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(20,20);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(36,36);
   return tex;
 }
 
@@ -221,10 +239,12 @@ TRIM_H.forEach(ty => {
   addBox(.78,.14,.78, px,.07,pz, ARENA_M.trim,false,false);
 });
 
-// Ceiling light fixtures + point lights
-[[-8,-8],[8,-8],[-8,8],[8,8],[0,0],[0,-14],[0,14],[-14,0],[14,0]].forEach(([lx,lz])=>{
+// Ceiling light fixtures + point lights (spread over larger arena)
+[[-20,-20],[20,-20],[-20,20],[20,20],[0,0],
+ [0,-30],[0,30],[-30,0],[30,0],
+ [-10,-10],[10,-10],[-10,10],[10,10]].forEach(([lx,lz])=>{
   addBox(4,.09,.3, lx,WH-.04,lz, ARENA_M.clight,false,false);
-  const pl=new THREE.PointLight(0xaaccff,1.4,22); pl.position.set(lx,WH-.8,lz); scene.add(pl);
+  const pl=new THREE.PointLight(0xaaccff,1.4,28); pl.position.set(lx,WH-.8,lz); scene.add(pl);
 });
 
 // Neon floor-edge strips along all 4 walls
@@ -234,11 +254,12 @@ addBox(AW*2+WT*2,.03,.04, 0,.015,  AD+WT/2,  neonEdgeMat,false,false);
 addBox(.04,.03,AD*2, -(AW+WT/2),.015,0, neonEdgeMat,false,false);
 addBox(.04,.03,AD*2,   AW+WT/2, .015,0, neonEdgeMat,false,false);
 
-// Internal cover walls
+// Ground-floor cover walls (scaled for larger arena)
 const COVER_DEFS = [
-  [9,1,-6,-4],[1,7,9,-9],[7,1,4,7],[1,6,-11,9],
-  [5,1,0,-14],[1,5,14,1],[5,1,-4,13],[1,5,-16,-4],
-  [4,1,10,-17],[1,4,-17,12],
+  [10,1.2,  -12, -8],[1.2,10,  14,-14],[10,1.2,   6, 10],[1.2, 9, -18, 14],
+  [ 8,1.2,   0,-22],[1.2, 8,  22,  2],[ 8,1.2,  -6, 20],[1.2, 8, -26, -6],
+  [ 7,1.2,  18,-28],[1.2, 7, -28, 18],[ 6,1.2,  -8,  0],[1.2, 6,   8, -8],
+  [12,1.2,   0, -4],[1.2,12, -4,   0],
 ];
 const coverBoxes = [];
 COVER_DEFS.forEach(([w,d,cx,cz])=>{
@@ -248,9 +269,84 @@ COVER_DEFS.forEach(([w,d,cx,cz])=>{
   coverBoxes.push({cx,cz,hw:w/2,hd:d/2});
 });
 
-// Decorative tech panels on walls (dark recessed insets)
-[[0,WH/2,-(AD+.01), 4,.5,1],[0,WH/2,AD+.01, 4,.5,1],
- [-(AW+.01),WH/2,0, 1,.5,4],[AW+.01,WH/2,0, 1,.5,4]].forEach(([x,y,z,w,h,d])=>{
+// ── MEZZANINE (second floor) ─────────────────────────────────
+// AW=40, AD=40, MEZZ_INNER=33 → platforms are 7 units deep around the perimeter
+const mezzFloorMat = new THREE.MeshStandardMaterial({ map:makeFloorTex(), roughness:0.85, metalness:0.10 });
+const mezzFT = 0.4;           // slab thickness
+const mezzCY = MEZZ_H - mezzFT/2;  // slab centre Y = 3.8
+
+// North slab — leaves stair-A gap (x:24–34). Two boxes: left (-40→24) and right (34→40)
+addBox(64, mezzFT, 7,  -8, mezzCY, -36.5, mezzFloorMat, false, true);  // x:-40→24, z:-40→-33
+addBox( 6, mezzFT, 7,  37, mezzCY, -36.5, mezzFloorMat, false, true);  // x:34→40
+// South slab — leaves stair-B gap (x:-34–-24)
+addBox( 6, mezzFT, 7, -37, mezzCY,  36.5, mezzFloorMat, false, true);  // x:-40→-34
+addBox(64, mezzFT, 7,   8, mezzCY,  36.5, mezzFloorMat, false, true);  // x:-24→40
+// West slab (full z between inner edges)
+addBox(7, mezzFT, 66, -36.5, mezzCY, 0, mezzFloorMat, false, true);    // x:-40→-33, z:-33→33
+// East slab
+addBox(7, mezzFT, 66,  36.5, mezzCY, 0, mezzFloorMat, false, true);    // x:33→40, z:-33→33
+
+// Support pillars under mezzanine
+[[-37,-37],[37,-37],[-37,37],[37,37],[-37,0],[37,0],[0,-37],[0,37]].forEach(([sx,sz])=>{
+  addBox(.8, MEZZ_H, .8, sx, MEZZ_H/2, sz, ARENA_M.pillar);
+});
+
+// Inner railings — N/S have gaps for stairs; W/E are solid
+const railH=1.0, railY=MEZZ_H+0.5, railT=0.22;
+// North — left of stair A gap (x:-40→24, width=64, cx=-8)
+addBox(64, railH, railT,  -8, railY, -33, ARENA_M.pillar, false, false);
+// North — right of stair A gap (x:34→40, width=6, cx=37)
+addBox( 6, railH, railT,  37, railY, -33, ARENA_M.pillar, false, false);
+// South — left of stair B gap (x:-40→-34, width=6, cx=-37)
+addBox( 6, railH, railT, -37, railY,  33, ARENA_M.pillar, false, false);
+// South — right of stair B gap (x:-24→40, width=64, cx=8)
+addBox(64, railH, railT,   8, railY,  33, ARENA_M.pillar, false, false);
+// West and East — full inner edge
+addBox(railT, railH, 66, -33, railY, 0, ARENA_M.pillar, false, false);
+addBox(railT, railH, 66,  33, railY, 0, ARENA_M.pillar, false, false);
+
+// Mezzanine neon strips along inner edge
+const mezzNeon = new THREE.MeshBasicMaterial({ color:0x0044cc });
+addBox(80, .025, .025,  0, MEZZ_H+.01, -33, mezzNeon, false, false);
+addBox(80, .025, .025,  0, MEZZ_H+.01,  33, mezzNeon, false, false);
+addBox(.025, .025, 66, -33, MEZZ_H+.01,  0, mezzNeon, false, false);
+addBox(.025, .025, 66,  33, MEZZ_H+.01,  0, mezzNeon, false, false);
+
+// Second-floor point lights
+[[0,-37],[0,37],[-37,0],[37,0],[-20,-20],[20,20],[-20,20],[20,-20]].forEach(([lx,lz])=>{
+  const pl2=new THREE.PointLight(0xbbccff, 1.2, 22);
+  pl2.position.set(lx, MEZZ_H+2.5, lz); scene.add(pl2);
+});
+
+// ── STAIRCASES ───────────────────────────────────────────────
+// Stair A: NE corner — x:24–34, z: −27 to −33 (10 steps, 0.4h × 0.6d)
+for(let i=0;i<10;i++){
+  const h=(i+1)*0.4;
+  addBox(10, h, 0.6, 29, h/2, -27-(i+0.5)*0.6, mezzFloorMat, false, true);
+}
+// Stair B: SW corner — x:−34 to −24, z: 27 to 33
+for(let i=0;i<10;i++){
+  const h=(i+1)*0.4;
+  addBox(10, h, 0.6, -29, h/2, 27+(i+0.5)*0.6, mezzFloorMat, false, true);
+}
+
+// Second-floor crates / cover on mezzanine
+const cov2 = ARENA_M.cover;
+const ch2 = 1.4;
+[
+  [4,1.2, -37,-18],[4,1.2,  37, 18],
+  [1.2,4,  37,-18],[1.2,4, -37, 18],
+  [4,1.2, -37,  0],[4,1.2,  37,  0],
+  [1.2,3,   0,-37],[1.2,3,   0, 37],
+].forEach(([w,d,cx,cz])=>{
+  addBox(w,ch2,d, cx,MEZZ_H+ch2/2,cz, cov2);
+  addBox(w+.04,.10,d+.04, cx,MEZZ_H+ch2+.05,cz, ARENA_M.ctrim,false,false);
+  coverBoxes.push({cx,cz,hw:w/2,hd:d/2, minY:MEZZ_H, maxY:MEZZ_H+ch2+0.5});
+});
+
+// Decorative tech panels on walls
+[[0,WH/2,-(AD+.01), 6,.6,1],[0,WH/2,AD+.01, 6,.6,1],
+ [-(AW+.01),WH/2,0, 1,.6,6],[AW+.01,WH/2,0, 1,.6,6]].forEach(([x,y,z,w,h,d])=>{
   addBox(w,h,d,x,y,z, new THREE.MeshLambertMaterial({color:0x0a0a1e}),false,false);
 });
 
@@ -966,7 +1062,23 @@ const BOT_DMG_INT = 0.9;   // seconds between bot hits (fixed)
 const BOT_MELEE   = 2.2;
 
 function rndPos(){
-  return new THREE.Vector3((Math.random()-.5)*(AW*2-5),0,(Math.random()-.5)*(AD*2-5));
+  return new THREE.Vector3((Math.random()-.5)*(AW*2-8),0,(Math.random()-.5)*(AD*2-8));
+}
+
+// Stair waypoints: ground entries and mezzanine exits
+const STAIR_WP = {
+  gndA: new THREE.Vector3(29, 0, -25),
+  mezA: new THREE.Vector3(29, MEZZ_H, -35),
+  gndB: new THREE.Vector3(-29, 0, 25),
+  mezB: new THREE.Vector3(-29, MEZZ_H, 35),
+};
+function nearestStairEntry(bp, toMezz) {
+  const candidates = toMezz
+    ? [STAIR_WP.mezA, STAIR_WP.mezB]
+    : [STAIR_WP.gndA, STAIR_WP.gndB];
+  return candidates.reduce((best,p)=>
+    bp.distanceTo(p)<bp.distanceTo(best)?p:best
+  );
 }
 
 let bots = [];
@@ -988,7 +1100,7 @@ let mouseHeld=false;
 function shoot(){
   const def=gun.def;
   if(!gun.canShoot||gun.ammo<=0||player.dead||!levelActive) return;
-  if(def.spinUp && mgSpinSpeed < MG_MAX_SPIN*.72) return;  // minigun needs to spin up
+  if(def.spinUp && mgSpinSpeed < MG_MAX_SPIN*.38) return;  // minigun needs to spin up
 
   gun.ammo--; updateAmmoHUD();
 
@@ -1217,6 +1329,11 @@ function resolveCollision(pos, r){
   pos.x=Math.max(-AW+e, Math.min(AW-e, pos.x));
   pos.z=Math.max(-AD+e, Math.min(AD-e, pos.z));
   for(const b of coverBoxes){
+    // Skip second-floor cover when player is on ground floor and vice-versa
+    if(b.minY !== undefined){
+      const playerFloorY = getGroundY(pos);
+      if(playerFloorY < b.minY - 1.0) continue;
+    }
     const dx=pos.x-b.cx, dz=pos.z-b.cz;
     const ox=b.hw+r-Math.abs(dx), oz=b.hd+r-Math.abs(dz);
     if(ox>0&&oz>0){
@@ -1288,8 +1405,9 @@ function update(dt){
   // ── Jump / gravity ──────────────────────────────────────
   velY += GRAVITY*dt;
   camera.position.y += velY*dt;
-  if(camera.position.y<=EYE_H){ camera.position.y=EYE_H; velY=0; grounded=true; }
-  if(camera.position.y>=WH-.6){ camera.position.y=WH-.6; velY=Math.min(0,velY); }
+  const _floorY = getGroundY(camera.position) + EYE_H;
+  if(camera.position.y <= _floorY){ camera.position.y = _floorY; velY=0; grounded=true; }
+  if(camera.position.y >= WH-.6){ camera.position.y=WH-.6; velY=Math.min(0,velY); }
 
   if((!pointerLocked() && !mobileGameActive)||player.dead) return;
 
@@ -1325,7 +1443,7 @@ function update(dt){
 
   // ── Minigun spin ────────────────────────────────────────
   if(gun.def && gun.def.spinUp){
-    const spinning = mouseHeld && gun.ammo>0;
+    const spinning = (mouseHeld || touchFireHeld) && gun.ammo>0;
     mgSpinSpeed = spinning
       ? Math.min(MG_MAX_SPIN, mgSpinSpeed+MG_UP*dt)
       : Math.max(0, mgSpinSpeed-MG_DOWN*dt);
@@ -1356,22 +1474,42 @@ function update(dt){
 
   // ── Bot AI ──────────────────────────────────────────────
   const px=camera.position.x, pz=camera.position.z;
+  const playerGroundY = getGroundY(camera.position);
   bots.forEach(bot=>{
-    if(!bot.alive) return;   // dead bots stay dead until next level
+    if(!bot.alive) return;
 
     const bp  = bot.group.position;
-    const dx  = px-bp.x, dz=pz-bp.z;
-    const dist= Math.sqrt(dx*dx+dz*dz);
     const spd = bot.speed, det=bot.detectR, dmg=bot.damage;
 
-    if(dist < det){
+    // Snap bot Y to terrain height
+    const botGY = getGroundY(bp);
+    bp.y = botGY;
+
+    // Determine if player is on a different floor
+    const heightDiff = playerGroundY - botGY;
+    const diffFloor  = Math.abs(heightDiff) > 1.5;
+
+    // Choose movement target — steer toward staircase when floors differ
+    let targetX = px, targetZ = pz;
+    if(diffFloor){
+      const wp = heightDiff > 0
+        ? nearestStairEntry(bp, false)   // player is higher: go to stair ground entry
+        : nearestStairEntry(bp, true);   // player is lower: go to stair mezz exit
+      targetX = wp.x; targetZ = wp.z;
+    }
+
+    const dx=targetX-bp.x, dz=targetZ-bp.z;
+    const dist=Math.sqrt(dx*dx+dz*dz);
+    const distToPlayer=Math.sqrt((px-bp.x)**2+(pz-bp.z)**2);
+
+    if(distToPlayer < det){
       bot.group.rotation.y = Math.atan2(dx,dz);
       const mv = (dist<10 ? spd : spd*.55)*dt;
-      bp.x += (dx/dist)*mv;  bp.z += (dz/dist)*mv;
+      if(dist>0.1){ bp.x += (dx/dist)*mv; bp.z += (dz/dist)*mv; }
       bot.walkClock += dt*spd;
 
-      if(dist<BOT_MELEE && player.hurtTimer<=0){
-        player.health -= dmg;  player.hurtTimer = BOT_DMG_INT;
+      if(!diffFloor && distToPlayer<BOT_MELEE && player.hurtTimer<=0){
+        player.health -= dmg; player.hurtTimer = BOT_DMG_INT;
         updateHealthHUD(); flashDmg();
         if(player.health<=0) killPlayer();
       }
@@ -1393,10 +1531,10 @@ function update(dt){
     bot.legL.rotation.x =  legSwing;
     bot.legR.rotation.x = -legSwing;
 
-    // Health bar: shrinks left-to-right, changes colour
+    // Health bar
     const f = bot.hp / bot.maxHp;
-    bot.hpFill.scale.x        = Math.max(0.001, f);
-    bot.hpFill.position.x     = (f-1)*0.34;
+    bot.hpFill.scale.x    = Math.max(0.001, f);
+    bot.hpFill.position.x = (f-1)*0.34;
     bot.hpFillMat.color.setHex(f>.66 ? 0x22dd44 : f>.33 ? 0xffaa00 : 0xff2200);
     bot.hpBarGroup.lookAt(camera.position);
 
