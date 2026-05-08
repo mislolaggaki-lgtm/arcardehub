@@ -68,7 +68,7 @@ renderer.shadowMap.enabled   = true;
 renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
 renderer.outputEncoding      = THREE.sRGBEncoding;
 renderer.toneMapping         = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+renderer.toneMappingExposure = 0.82;
 
 // ─── Scene ───────────────────────────────────────────────────
 const scene = new THREE.Scene();
@@ -88,9 +88,9 @@ composer.addPass(new THREE.RenderPass(scene, camera));
 
 const bloomPass = new THREE.UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  1.65,   // strength
-  0.55,   // radius
-  0.18    // threshold
+  0.30,   // strength
+  0.40,   // radius
+  0.80    // threshold
 );
 composer.addPass(bloomPass);
 
@@ -109,9 +109,9 @@ let targetFov    = NORMAL_FOV;
 let scopeActive  = false;
 
 // ─── Lights ──────────────────────────────────────────────────
-scene.add(new THREE.AmbientLight(0x1a2040, 0.5));
+scene.add(new THREE.AmbientLight(0x1a2040, 0.28));
 
-const sun = new THREE.DirectionalLight(0xfff0dd, 1.3);
+const sun = new THREE.DirectionalLight(0xfff0dd, 0.80);
 sun.position.set(8, 20, 10);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
@@ -123,10 +123,10 @@ function mkPt(col, i, r, x, y, z) {
 }
 // Store accent light refs so applyTheme() can recolour them each level
 const accentLights = [
-  mkPt(0xff2200, 4.0, 44, -15, 4, -15),
-  mkPt(0x0044ff, 4.0, 44,  15, 4,  15),
-  mkPt(0x00ff88, 3.0, 36,  15, 4, -15),
-  mkPt(0xff9900, 3.0, 34, -15, 4,  15),
+  mkPt(0xff2200, 2.4, 44, -15, 4, -15),
+  mkPt(0x0044ff, 2.4, 44,  15, 4,  15),
+  mkPt(0x00ff88, 1.8, 36,  15, 4, -15),
+  mkPt(0xff9900, 1.8, 34, -15, 4,  15),
 ];
 
 // ─── Shared materials (PBR) ──────────────────────────────────
@@ -146,16 +146,16 @@ const AW=22, AD=22, WH=7, WT=0.8;
 function makeFloorTex() {
   const c = document.createElement('canvas'); c.width = c.height = 512;
   const ctx = c.getContext('2d');
-  // Base: dark metallic blue-grey
-  ctx.fillStyle='#0b0c14'; ctx.fillRect(0,0,512,512);
+  // Base: dark concrete grey
+  ctx.fillStyle='#060608'; ctx.fillRect(0,0,512,512);
   // Fine grid
-  ctx.strokeStyle='#16172a'; ctx.lineWidth=0.8;
+  ctx.strokeStyle='#0d0d14'; ctx.lineWidth=0.8;
   for(let i=0;i<=512;i+=32){
     ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();
     ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();
   }
-  // Major grid (brighter)
-  ctx.strokeStyle='#1e2850'; ctx.lineWidth=1.8;
+  // Major grid (slightly brighter)
+  ctx.strokeStyle='#0e1220'; ctx.lineWidth=1.8;
   for(let i=0;i<=512;i+=128){
     ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();
     ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();
@@ -178,13 +178,13 @@ function makeFloorTex() {
 }
 
 const ARENA_M = {
-  floor  : new THREE.MeshStandardMaterial({ map:makeFloorTex(), roughness:0.40, metalness:0.40 }),
+  floor  : new THREE.MeshStandardMaterial({ map:makeFloorTex(), roughness:0.88, metalness:0.08 }),
   ceil   : new THREE.MeshStandardMaterial({ color:0x030306,  roughness:1.00, metalness:0.00 }),
   wall   : new THREE.MeshStandardMaterial({ color:0x10182a,  roughness:0.78, metalness:0.22 }),
-  trim   : new THREE.MeshStandardMaterial({ color:0x2050a0,  emissive:new THREE.Color(0x2050e0), emissiveIntensity:2.8, roughness:0.12, metalness:0.88 }),
+  trim   : new THREE.MeshStandardMaterial({ color:0x1a3a70,  emissive:new THREE.Color(0x1a3a90), emissiveIntensity:1.0, roughness:0.18, metalness:0.88 }),
   pillar : new THREE.MeshStandardMaterial({ color:0x18243a,  roughness:0.62, metalness:0.38 }),
   cover  : new THREE.MeshStandardMaterial({ color:0x1a0c0c,  roughness:0.80, metalness:0.18 }),
-  ctrim  : new THREE.MeshStandardMaterial({ color:0x601818,  emissive:new THREE.Color(0xaa1800), emissiveIntensity:2.2, roughness:0.15, metalness:0.78 }),
+  ctrim  : new THREE.MeshStandardMaterial({ color:0x3e1010,  emissive:new THREE.Color(0x660e00), emissiveIntensity:0.8, roughness:0.20, metalness:0.78 }),
   clight : new THREE.MeshBasicMaterial  ({ color:0xccddff }),
 };
 
@@ -223,15 +223,15 @@ TRIM_H.forEach(ty => {
 // Ceiling light fixtures + point lights
 [[-8,-8],[8,-8],[-8,8],[8,8],[0,0],[0,-14],[0,14],[-14,0],[14,0]].forEach(([lx,lz])=>{
   addBox(4,.09,.3, lx,WH-.04,lz, ARENA_M.clight,false,false);
-  const pl=new THREE.PointLight(0xaaccff,2.4,22); pl.position.set(lx,WH-.8,lz); scene.add(pl);
+  const pl=new THREE.PointLight(0xaaccff,1.4,22); pl.position.set(lx,WH-.8,lz); scene.add(pl);
 });
 
-// Neon floor-edge strips along all 4 walls (blooms with UnrealBloom)
-const neonEdgeMat = new THREE.MeshBasicMaterial({ color:0x0044ee });
-addBox(AW*2+WT*2,.05,.07, 0,.025,-(AD+WT/2), neonEdgeMat,false,false);
-addBox(AW*2+WT*2,.05,.07, 0,.025,  AD+WT/2,  neonEdgeMat,false,false);
-addBox(.07,.05,AD*2, -(AW+WT/2),.025,0, neonEdgeMat,false,false);
-addBox(.07,.05,AD*2,   AW+WT/2, .025,0, neonEdgeMat,false,false);
+// Neon floor-edge strips along all 4 walls
+const neonEdgeMat = new THREE.MeshBasicMaterial({ color:0x002db3 });
+addBox(AW*2+WT*2,.03,.04, 0,.015,-(AD+WT/2), neonEdgeMat,false,false);
+addBox(AW*2+WT*2,.03,.04, 0,.015,  AD+WT/2,  neonEdgeMat,false,false);
+addBox(.04,.03,AD*2, -(AW+WT/2),.015,0, neonEdgeMat,false,false);
+addBox(.04,.03,AD*2,   AW+WT/2, .015,0, neonEdgeMat,false,false);
 
 // Internal cover walls
 const COVER_DEFS = [
@@ -1508,7 +1508,7 @@ function applyTheme(level) {
   ARENA_M.wall.color.setHex(t.wall);
   ARENA_M.trim.color.setHex(t.trim);
   ARENA_M.trim.emissive.setHex(t.trimE);
-  ARENA_M.trim.emissiveIntensity = 2.8;
+  ARENA_M.trim.emissiveIntensity = 1.0;
   ARENA_M.pillar.color.setHex(t.wall);
   accentLights.forEach((l,i) => l.color.setHex(t.lights[i % t.lights.length]));
 }
