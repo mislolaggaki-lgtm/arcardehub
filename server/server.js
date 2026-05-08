@@ -123,12 +123,13 @@ async function start() {
       socket.broadcast.emit('playerJoined', player);
     });
 
-    socket.on('move', ({ x, y, z, rotationY, health }) => {
+    socket.on('move', ({ x, y, z, rotationY, health, gunId }) => {
       const player = players.get(socket.id);
       if (!player) return;
       player.x = x; player.y = y; player.z = z; player.rotationY = rotationY;
       if (health !== undefined) player.health = health;
-      socket.broadcast.emit('playerMoved', { id: socket.id, x, y, z, rotationY, health });
+      if (gunId  !== undefined) player.gunId  = gunId;
+      socket.broadcast.emit('playerMoved', { id: socket.id, x, y, z, rotationY, health, gunId });
     });
 
     socket.on('pvpMode', ({ enabled }) => {

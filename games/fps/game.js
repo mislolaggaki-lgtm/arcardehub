@@ -644,8 +644,10 @@ function buildSniper(root) {
 
 // ── Remote player helpers ────────────────────────────────────
 
-function _drawLabelCanvas(ctx, name, hp, pvpOn, isAdmin) {
-  const W = 256, H = 88;
+const GUN_LABELS = { pistol:'PISTOL', smg:'SMG', minigun:'MINIGUN', sniper:'SNIPER' };
+
+function _drawLabelCanvas(ctx, name, hp, pvpOn, isAdmin, gunId) {
+  const W = 256, H = 100;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = 'rgba(0,0,0,0.65)';
   ctx.fillRect(6, 6, W - 12, H - 12);
@@ -678,17 +680,26 @@ function _drawLabelCanvas(ctx, name, hp, pvpOn, isAdmin) {
   ctx.fillStyle = pvpCol;
   ctx.textAlign = 'left';
   ctx.fillText(pvpOn ? 'PVP ON' : 'PVP OFF', 86, 73);
+
+  // Gun indicator
+  const gunLabel = GUN_LABELS[gunId] || '';
+  if (gunLabel) {
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#f39c12';
+    ctx.fillText('✦ ' + gunLabel, 128, 88);
+  }
 }
 
-function makePlayerLabel(name, hp, pvpOn, isAdmin) {
+function makePlayerLabel(name, hp, pvpOn, isAdmin, gunId) {
   const c = document.createElement('canvas');
-  c.width = 256; c.height = 88;
+  c.width = 256; c.height = 100;
   const ctx = c.getContext('2d');
-  _drawLabelCanvas(ctx, name, hp, pvpOn, isAdmin);
+  _drawLabelCanvas(ctx, name, hp, pvpOn, isAdmin, gunId);
   const tex = new THREE.CanvasTexture(c);
   const mat = new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false });
   const sp = new THREE.Sprite(mat);
-  sp.scale.set(1.8, 0.62, 1);
+  sp.scale.set(1.8, 0.70, 1);
   sp.position.y = 3.5;
   sp.userData.canvas = c;
   sp.userData.ctx = ctx;
@@ -696,7 +707,7 @@ function makePlayerLabel(name, hp, pvpOn, isAdmin) {
 }
 
 function refreshPlayerLabel(rp) {
-  _drawLabelCanvas(rp.labelSprite.userData.ctx, rp.username, rp.health, rp.pvpMode, rp.isAdmin);
+  _drawLabelCanvas(rp.labelSprite.userData.ctx, rp.username, rp.health, rp.pvpMode, rp.isAdmin, rp.gunId);
   rp.labelSprite.material.map.needsUpdate = true;
 }
 
@@ -716,7 +727,8 @@ function addRemotePlayer(data) {
   const health   = data.health   !== undefined ? data.health   : 100;
   const pvpOn    = data.pvpMode  !== undefined ? data.pvpMode  : true;
   const isAdmin  = !!data.isAdmin;
-  const labelSprite = makePlayerLabel(username, health, pvpOn, isAdmin);
+  const gunId    = data.gunId || 'pistol';
+  const labelSprite = makePlayerLabel(username, health, pvpOn, isAdmin, gunId);
   rob.group.add(labelSprite);
 
   remotePlayers.set(data.id, {
@@ -726,6 +738,7 @@ function addRemotePlayer(data) {
     health,
     pvpMode:    pvpOn,
     isAdmin,
+    gunId,
     targetPos:  new THREE.Vector3(data.x || 0, groundY, data.z || 0),
     targetRotY: data.rotationY || 0,
     walkClock:  0,
@@ -1827,6 +1840,7 @@ function initSocket() {
           z: camera.position.z,
           rotationY: yaw,
           health: player.health,
+          gunId: selectedGunId,
         });
       }
     }, 50);
@@ -1852,10 +1866,16 @@ function initSocket() {
     if (!rp) return;
     rp.targetPos.set(data.x, Math.max(0, data.y - EYE_H), data.z);
     rp.targetRotY = data.rotationY;
+    let needsLabelRefresh = false;
     if (data.health !== undefined && data.health !== rp.health) {
       rp.health = data.health;
-      refreshPlayerLabel(rp);
+      needsLabelRefresh = true;
     }
+    if (data.gunId !== undefined && data.gunId !== rp.gunId) {
+      rp.gunId = data.gunId;
+      needsLabelRefresh = true;
+    }
+    if (needsLabelRefresh) refreshPlayerLabel(rp);
   });
 
   // PVP mode changed for a remote player
@@ -1894,6 +1914,7 @@ function initSocket() {
 
   // Kicked by admin ban
   socket.on('banned', () => {
+    socket.disconnect();
     if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
     remotePlayers.forEach((_, id) => removeRemotePlayer(id));
     document.exitPointerLock();
