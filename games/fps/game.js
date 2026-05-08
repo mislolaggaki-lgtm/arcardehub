@@ -644,17 +644,18 @@ function buildSniper(root) {
 
 // ── Remote player helpers ────────────────────────────────────
 
-function _drawLabelCanvas(ctx, name, hp, pvpOn) {
+function _drawLabelCanvas(ctx, name, hp, pvpOn, isAdmin) {
   const W = 256, H = 88;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = 'rgba(0,0,0,0.65)';
   ctx.fillRect(6, 6, W - 12, H - 12);
 
-  // Name
-  ctx.font = 'bold 15px monospace';
+  // Name (+ hammer badge for admins)
+  const displayName = isAdmin ? name.slice(0, 16) + ' 🔨' : name.slice(0, 18);
+  ctx.font = 'bold 15px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#fff';
-  ctx.fillText(name.slice(0, 18), 128, 26);
+  ctx.fillStyle = isAdmin ? '#3b9ee8' : '#fff';
+  ctx.fillText(displayName, 128, 26);
 
   // HP bar bg
   ctx.fillStyle = '#220000';
@@ -679,11 +680,11 @@ function _drawLabelCanvas(ctx, name, hp, pvpOn) {
   ctx.fillText(pvpOn ? 'PVP ON' : 'PVP OFF', 86, 73);
 }
 
-function makePlayerLabel(name, hp, pvpOn) {
+function makePlayerLabel(name, hp, pvpOn, isAdmin) {
   const c = document.createElement('canvas');
   c.width = 256; c.height = 88;
   const ctx = c.getContext('2d');
-  _drawLabelCanvas(ctx, name, hp, pvpOn);
+  _drawLabelCanvas(ctx, name, hp, pvpOn, isAdmin);
   const tex = new THREE.CanvasTexture(c);
   const mat = new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false });
   const sp = new THREE.Sprite(mat);
@@ -695,7 +696,7 @@ function makePlayerLabel(name, hp, pvpOn) {
 }
 
 function refreshPlayerLabel(rp) {
-  _drawLabelCanvas(rp.labelSprite.userData.ctx, rp.username, rp.health, rp.pvpMode);
+  _drawLabelCanvas(rp.labelSprite.userData.ctx, rp.username, rp.health, rp.pvpMode, rp.isAdmin);
   rp.labelSprite.material.map.needsUpdate = true;
 }
 
@@ -714,7 +715,8 @@ function addRemotePlayer(data) {
   const username = data.username || 'Player';
   const health   = data.health   !== undefined ? data.health   : 100;
   const pvpOn    = data.pvpMode  !== undefined ? data.pvpMode  : true;
-  const labelSprite = makePlayerLabel(username, health, pvpOn);
+  const isAdmin  = !!data.isAdmin;
+  const labelSprite = makePlayerLabel(username, health, pvpOn, isAdmin);
   rob.group.add(labelSprite);
 
   remotePlayers.set(data.id, {
@@ -723,6 +725,7 @@ function addRemotePlayer(data) {
     username,
     health,
     pvpMode:    pvpOn,
+    isAdmin,
     targetPos:  new THREE.Vector3(data.x || 0, groundY, data.z || 0),
     targetRotY: data.rotationY || 0,
     walkClock:  0,
@@ -1890,13 +1893,13 @@ function initSocket() {
   });
 
   // Kicked by admin ban
-  socket.on('banned', ({ reason }) => {
+  socket.on('banned', () => {
     if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
     remotePlayers.forEach((_, id) => removeRemotePlayer(id));
     document.exitPointerLock();
     const msg = document.createElement('div');
     msg.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;font-family:sans-serif;color:#e74c3c;font-size:22px;font-weight:700;letter-spacing:2px;text-transform:uppercase';
-    msg.innerHTML = `<div>🔨 BANNED</div><div style="font-size:13px;color:#888;font-weight:400;letter-spacing:1px">${reason || 'You have been banned.'}</div>`;
+    msg.innerHTML = `<div>🔨 BANNED</div><div style="font-size:14px;color:#aaaacc;font-weight:400;letter-spacing:1px;text-transform:none;max-width:480px;text-align:center;line-height:1.6">You have been banned by Stotch the Dev.<br>You have been placed on a private server until you are unbanned.</div>`;
     document.body.appendChild(msg);
   });
 
