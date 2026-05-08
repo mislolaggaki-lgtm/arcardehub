@@ -64,8 +64,11 @@ const MG_MAX_SPIN = 28, MG_UP = 10, MG_DOWN = 7;
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled   = true;
+renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
+renderer.outputEncoding      = THREE.sRGBEncoding;
+renderer.toneMapping         = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
 
 // ─── Scene ───────────────────────────────────────────────────
 const scene = new THREE.Scene();
@@ -79,6 +82,26 @@ const EYE_H = 1.65;
 camera.position.set(0, EYE_H, 2);
 scene.add(camera);  // must be in scene for camera-child weapon to render
 
+// ─── Post-processing ─────────────────────────────────────────
+const composer  = new THREE.EffectComposer(renderer);
+composer.addPass(new THREE.RenderPass(scene, camera));
+
+const bloomPass = new THREE.UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  1.65,   // strength
+  0.55,   // radius
+  0.18    // threshold
+);
+composer.addPass(bloomPass);
+
+const fxaaPass  = new THREE.ShaderPass(THREE.FXAAShader);
+const _PR = Math.min(window.devicePixelRatio, 2);
+fxaaPass.material.uniforms['resolution'].value.set(
+  1 / (window.innerWidth  * _PR),
+  1 / (window.innerHeight * _PR)
+);
+composer.addPass(fxaaPass);
+
 // ─── Scope / FOV state ───────────────────────────────────────
 const NORMAL_FOV = 72;
 const SCOPE_FOV  = 15;
@@ -86,9 +109,9 @@ let targetFov    = NORMAL_FOV;
 let scopeActive  = false;
 
 // ─── Lights ──────────────────────────────────────────────────
-scene.add(new THREE.AmbientLight(0x303050, 0.7));
+scene.add(new THREE.AmbientLight(0x1a2040, 0.5));
 
-const sun = new THREE.DirectionalLight(0xffeedd, 0.85);
+const sun = new THREE.DirectionalLight(0xfff0dd, 1.3);
 sun.position.set(8, 20, 10);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
@@ -100,20 +123,20 @@ function mkPt(col, i, r, x, y, z) {
 }
 // Store accent light refs so applyTheme() can recolour them each level
 const accentLights = [
-  mkPt(0xff2200, 1.8, 30, -15, 4, -15),
-  mkPt(0x0044ff, 1.8, 30,  15, 4,  15),
-  mkPt(0x00ff88, 1.3, 24,  15, 4, -15),
-  mkPt(0xff9900, 1.1, 22, -15, 4,  15),
+  mkPt(0xff2200, 4.0, 44, -15, 4, -15),
+  mkPt(0x0044ff, 4.0, 44,  15, 4,  15),
+  mkPt(0x00ff88, 3.0, 36,  15, 4, -15),
+  mkPt(0xff9900, 3.0, 34, -15, 4,  15),
 ];
 
-// ─── Shared materials ────────────────────────────────────────
-const GLOVE  = new THREE.MeshLambertMaterial({ color:0x1e2814 });
-const M_DARK = new THREE.MeshLambertMaterial({ color:0x181818 });
-const M_MID  = new THREE.MeshLambertMaterial({ color:0x2e2e38 });
-const M_LITE = new THREE.MeshLambertMaterial({ color:0x484858 });
-const M_WOOD = new THREE.MeshLambertMaterial({ color:0x7a4020 });
-const M_ORNG = new THREE.MeshLambertMaterial({ color:0xe06000 });
-const M_YELO = new THREE.MeshBasicMaterial ({ color:0xffdd44 });
+// ─── Shared materials (PBR) ──────────────────────────────────
+const GLOVE  = new THREE.MeshStandardMaterial({ color:0x1e2814, roughness:0.88, metalness:0.05 });
+const M_DARK = new THREE.MeshStandardMaterial({ color:0x181818, roughness:0.38, metalness:0.80 });
+const M_MID  = new THREE.MeshStandardMaterial({ color:0x2e2e38, roughness:0.30, metalness:0.85 });
+const M_LITE = new THREE.MeshStandardMaterial({ color:0x686878, roughness:0.18, metalness:0.92 });
+const M_WOOD = new THREE.MeshStandardMaterial({ color:0x7a4020, roughness:0.94, metalness:0.00 });
+const M_ORNG = new THREE.MeshStandardMaterial({ color:0xe06000, roughness:0.52, metalness:0.28, emissive:new THREE.Color(0x3a1800), emissiveIntensity:0.7 });
+const M_YELO = new THREE.MeshBasicMaterial  ({ color:0xffee44 });
 
 // ============================================================
 //  ARENA
@@ -123,16 +146,31 @@ const AW=22, AD=22, WH=7, WT=0.8;
 function makeFloorTex() {
   const c = document.createElement('canvas'); c.width = c.height = 512;
   const ctx = c.getContext('2d');
-  ctx.fillStyle='#10101e'; ctx.fillRect(0,0,512,512);
-  ctx.strokeStyle='#1e1e3a'; ctx.lineWidth=1;
-  for (let i=0;i<=512;i+=32){
+  // Base: dark metallic blue-grey
+  ctx.fillStyle='#0b0c14'; ctx.fillRect(0,0,512,512);
+  // Fine grid
+  ctx.strokeStyle='#16172a'; ctx.lineWidth=0.8;
+  for(let i=0;i<=512;i+=32){
     ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();
     ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();
   }
-  ctx.strokeStyle='#2c2c5a'; ctx.lineWidth=1.5;
-  for (let i=0;i<=512;i+=128){
+  // Major grid (brighter)
+  ctx.strokeStyle='#1e2850'; ctx.lineWidth=1.8;
+  for(let i=0;i<=512;i+=128){
     ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();
     ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();
+  }
+  // Accent squares at grid intersections
+  for(let x=128;x<512;x+=128) for(let y=128;y<512;y+=128){
+    ctx.fillStyle='#0e0f1e'; ctx.fillRect(x-6,y-6,12,12);
+    ctx.strokeStyle='#2233aa'; ctx.lineWidth=1;
+    ctx.strokeRect(x-6,y-6,12,12);
+  }
+  // Diagonal scratch marks (adds grit)
+  ctx.strokeStyle='#111224'; ctx.lineWidth=0.5;
+  for(let i=0;i<24;i++){
+    const x=Math.random()*512, y=Math.random()*512;
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+18,y+6);ctx.stroke();
   }
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(20,20);
@@ -140,14 +178,14 @@ function makeFloorTex() {
 }
 
 const ARENA_M = {
-  floor  : new THREE.MeshLambertMaterial({ map:makeFloorTex() }),
-  ceil   : new THREE.MeshLambertMaterial({ color:0x060610 }),
-  wall   : new THREE.MeshLambertMaterial({ color:0x18243c }),
-  trim   : new THREE.MeshLambertMaterial({ color:0x3060a0, emissive:new THREE.Color(0x081828) }),
-  pillar : new THREE.MeshLambertMaterial({ color:0x20304a }),
-  cover  : new THREE.MeshLambertMaterial({ color:0x281414 }),
-  ctrim  : new THREE.MeshLambertMaterial({ color:0x602020, emissive:new THREE.Color(0x200808) }),
-  clight : new THREE.MeshBasicMaterial ({ color:0x88aaff }),
+  floor  : new THREE.MeshStandardMaterial({ map:makeFloorTex(), roughness:0.40, metalness:0.40 }),
+  ceil   : new THREE.MeshStandardMaterial({ color:0x030306,  roughness:1.00, metalness:0.00 }),
+  wall   : new THREE.MeshStandardMaterial({ color:0x10182a,  roughness:0.78, metalness:0.22 }),
+  trim   : new THREE.MeshStandardMaterial({ color:0x2050a0,  emissive:new THREE.Color(0x2050e0), emissiveIntensity:2.8, roughness:0.12, metalness:0.88 }),
+  pillar : new THREE.MeshStandardMaterial({ color:0x18243a,  roughness:0.62, metalness:0.38 }),
+  cover  : new THREE.MeshStandardMaterial({ color:0x1a0c0c,  roughness:0.80, metalness:0.18 }),
+  ctrim  : new THREE.MeshStandardMaterial({ color:0x601818,  emissive:new THREE.Color(0xaa1800), emissiveIntensity:2.2, roughness:0.15, metalness:0.78 }),
+  clight : new THREE.MeshBasicMaterial  ({ color:0xccddff }),
 };
 
 function addBox(w,h,d,x,y,z,mat,cast=true,recv=true){
@@ -185,8 +223,15 @@ TRIM_H.forEach(ty => {
 // Ceiling light fixtures + point lights
 [[-8,-8],[8,-8],[-8,8],[8,8],[0,0],[0,-14],[0,14],[-14,0],[14,0]].forEach(([lx,lz])=>{
   addBox(4,.09,.3, lx,WH-.04,lz, ARENA_M.clight,false,false);
-  const pl=new THREE.PointLight(0xaaccff,1.3,18); pl.position.set(lx,WH-.8,lz); scene.add(pl);
+  const pl=new THREE.PointLight(0xaaccff,2.4,22); pl.position.set(lx,WH-.8,lz); scene.add(pl);
 });
+
+// Neon floor-edge strips along all 4 walls (blooms with UnrealBloom)
+const neonEdgeMat = new THREE.MeshBasicMaterial({ color:0x0044ee });
+addBox(AW*2+WT*2,.05,.07, 0,.025,-(AD+WT/2), neonEdgeMat,false,false);
+addBox(AW*2+WT*2,.05,.07, 0,.025,  AD+WT/2,  neonEdgeMat,false,false);
+addBox(.07,.05,AD*2, -(AW+WT/2),.025,0, neonEdgeMat,false,false);
+addBox(.07,.05,AD*2,   AW+WT/2, .025,0, neonEdgeMat,false,false);
 
 // Internal cover walls
 const COVER_DEFS = [
@@ -279,11 +324,14 @@ function buildPistol(root) {
   // Trigger guard
   const tg = new THREE.Mesh(new THREE.BoxGeometry(.005,.036,.078), M_DARK);
   tg.position.set(0,-.034,.002); root.add(tg);
-  // Iron sights
-  const sightR = new THREE.Mesh(new THREE.BoxGeometry(.012,.018,.010), M_LITE);
-  sightR.position.set(0,.060,-.24); root.add(sightR);
-  const sightF = new THREE.Mesh(new THREE.BoxGeometry(.008,.014,.010), M_LITE);
-  sightF.position.set(0,.060,-.14); root.add(sightF);
+  // Red-dot sight
+  const rdHousing = new THREE.Mesh(new THREE.BoxGeometry(.032,.022,.054), M_DARK);
+  rdHousing.position.set(0,.074,-.18); root.add(rdHousing);
+  const rdMount = new THREE.Mesh(new THREE.BoxGeometry(.030,.010,.028), M_MID);
+  rdMount.position.set(0,.063,-.18); root.add(rdMount);
+  // Glowing red dot (blooms)
+  const rdDot = new THREE.Mesh(new THREE.SphereGeometry(.006,6,5), new THREE.MeshBasicMaterial({color:0xff0000}));
+  rdDot.position.set(0,.074,-.18); root.add(rdDot);
 
   // Muzzle flash
   const flash = new THREE.Mesh(new THREE.SphereGeometry(.048,7,6), M_YELO);
@@ -329,9 +377,16 @@ function buildSMG(root) {
   // Charging handle
   const ch = new THREE.Mesh(new THREE.BoxGeometry(.006,.026,.028), M_LITE);
   ch.position.set(.042,.062,.04); root.add(ch);
-  // Sights
-  const sf = new THREE.Mesh(new THREE.BoxGeometry(.010,.020,.010), M_LITE);
-  sf.position.set(0,.100,-.28); root.add(sf);
+  // Holographic sight
+  const holoFrame = new THREE.Mesh(new THREE.BoxGeometry(.044,.044,.010), M_DARK);
+  holoFrame.position.set(0,.104,-.24); root.add(holoFrame);
+  const holoInner = new THREE.Mesh(new THREE.BoxGeometry(.030,.030,.012), M_MID);
+  holoInner.position.set(0,.104,-.245); root.add(holoInner);
+  const holoMount = new THREE.Mesh(new THREE.BoxGeometry(.042,.008,.032), M_MID);
+  holoMount.position.set(0,.092,-.24); root.add(holoMount);
+  // Glowing red targeting dot (blooms)
+  const holoDot = new THREE.Mesh(new THREE.SphereGeometry(.005,6,5), new THREE.MeshBasicMaterial({color:0xff0000}));
+  holoDot.position.set(0,.104,-.252); root.add(holoDot);
 
   const flash = new THREE.Mesh(new THREE.SphereGeometry(.052,7,6), M_YELO);
   flash.position.set(0,.062,-.43); flash.visible=false; root.add(flash);
@@ -391,6 +446,12 @@ function buildMinigun(root) {
   axle.rotation.x = Math.PI/2; axle.position.z=-.14; barrelCluster.add(axle);
   root.add(barrelCluster);
 
+  // Targeting laser sight (green — blooms)
+  const laserHousing = new THREE.Mesh(new THREE.BoxGeometry(.026,.020,.038), M_DARK);
+  laserHousing.position.set(.11,.09,-.06); root.add(laserHousing);
+  const laserDot = new THREE.Mesh(new THREE.SphereGeometry(.010,6,5), new THREE.MeshBasicMaterial({color:0x00ff44}));
+  laserDot.position.set(.11,.09,-.08); root.add(laserDot);
+
   const flash = new THREE.Mesh(new THREE.SphereGeometry(.08,7,6), M_YELO);
   flash.position.set(0,.06,-.38); flash.visible=false; root.add(flash);
   root.userData.flash = flash;
@@ -427,6 +488,9 @@ function buildSniper(root) {
   // Front objective lens
   const scopeObj = new THREE.Mesh(new THREE.BoxGeometry(.040, .040, .016), M_MID);
   scopeObj.position.set(0, .114, -.24); root.add(scopeObj);
+  // Lens optical coating glow (cyan — blooms)
+  const lensGlow = new THREE.Mesh(new THREE.BoxGeometry(.032,.032,.002), new THREE.MeshBasicMaterial({color:0x00eeff}));
+  lensGlow.position.set(0,.114,-.249); root.add(lensGlow);
   // Rear eyepiece
   const scopeEye = new THREE.Mesh(new THREE.BoxGeometry(.036, .036, .014), M_LITE);
   scopeEye.position.set(0, .114, .08); root.add(scopeEye);
@@ -616,17 +680,17 @@ function setupWeapon(id) {
 function buildRobot() {
   const g = new THREE.Group();
 
-  // Per-bot material instances so hit flash is isolated to this bot
-  const BODY   = new THREE.MeshLambertMaterial({color:0x3a3a50});
-  const DARK   = new THREE.MeshLambertMaterial({color:0x1a1a28});
-  const CHROME = new THREE.MeshLambertMaterial({color:0x6a7888});
-  const RED    = new THREE.MeshLambertMaterial({color:0xcc1818});
-  const PANEL  = new THREE.MeshLambertMaterial({color:0x252538});
-  const JOINT  = new THREE.MeshLambertMaterial({color:0x505060});
-  const EYE_L  = new THREE.MeshBasicMaterial({color:0xff2200});
-  const EYE_R  = new THREE.MeshBasicMaterial({color:0xff2200});
+  // Per-bot PBR material instances (hit flash isolated per-bot)
+  const BODY   = new THREE.MeshStandardMaterial({color:0x3a3a50, roughness:0.60, metalness:0.48});
+  const DARK   = new THREE.MeshStandardMaterial({color:0x1a1a28, roughness:0.70, metalness:0.32});
+  const CHROME = new THREE.MeshStandardMaterial({color:0xa0b0c0, roughness:0.06, metalness:0.98});
+  const RED    = new THREE.MeshStandardMaterial({color:0xcc1818, roughness:0.38, metalness:0.52});
+  const PANEL  = new THREE.MeshStandardMaterial({color:0x252538, roughness:0.82, metalness:0.30});
+  const JOINT  = new THREE.MeshStandardMaterial({color:0x505060, roughness:0.22, metalness:0.82});
+  const EYE_L  = new THREE.MeshBasicMaterial({color:0xff3300});
+  const EYE_R  = new THREE.MeshBasicMaterial({color:0xff3300});
   const LED_G  = new THREE.MeshBasicMaterial({color:0x00ff88});
-  const LED_B  = new THREE.MeshBasicMaterial({color:0x44aaff});
+  const LED_B  = new THREE.MeshBasicMaterial({color:0x66ccff});
 
   // Helper: add a box part to the root group
   function bp(w,h,d,x,y,z,mat){
@@ -642,12 +706,18 @@ function buildRobot() {
   // Chest armour plates (two angled side panels)
   bp(.24,.42,.06,  .20,1.32,-.24, PANEL);
   bp(.24,.42,.06, -.20,1.32,-.24, PANEL);
-  // Centre chest display
-  bp(.18,.18,.06,  0,1.40,-.25, DARK);
-  bp(.12,.12,.02,  0,1.40,-.29, PANEL);
-  bp(.04,.04,.02,  .05,1.40,-.29, LED_G);       // green status LED
-  bp(.04,.04,.02, -.05,1.46,-.29, LED_G);
-  bp(.04,.04,.02,  .05,1.34,-.29, new THREE.MeshBasicMaterial({color:0xff4400}));  // orange LED
+  // Centre chest display — glowing energy core
+  bp(.20,.20,.06,  0,1.40,-.25, DARK);          // housing
+  bp(.16,.16,.02,  0,1.40,-.28, PANEL);         // panel frame
+  // Cyan energy core (MeshBasicMaterial — blooms)
+  const coreMat=new THREE.MeshBasicMaterial({color:0x00eeff});
+  const core=new THREE.Mesh(new THREE.BoxGeometry(.10,.10,.02),coreMat);
+  core.position.set(0,1.40,-.30); g.add(core);
+  // Status LEDs around core
+  bp(.03,.03,.02,  .07,1.47,-.29, LED_G);
+  bp(.03,.03,.02, -.07,1.47,-.29, LED_G);
+  bp(.03,.03,.02,  .07,1.33,-.29, new THREE.MeshBasicMaterial({color:0xff4400}));
+  bp(.03,.03,.02, -.07,1.33,-.29, new THREE.MeshBasicMaterial({color:0xff4400}));
   // Torso side hydraulic cylinders
   bp(.04,.38,.04,  .38,1.30,.14, CHROME);
   bp(.04,.38,.04, -.38,1.30,.14, CHROME);
@@ -663,6 +733,10 @@ function buildRobot() {
   bp(.34,.06,.16,  0,1.30,.30, DARK);           // pack vent bottom
   bp(.08,.28,.04,  .10,1.44,.38, CHROME);       // exhaust pipe R
   bp(.08,.28,.04, -.10,1.44,.38, CHROME);       // exhaust pipe L
+  // Spine glow strip (orange — blooms)
+  const spineMat=new THREE.MeshBasicMaterial({color:0xff6600});
+  const spineGlow=new THREE.Mesh(new THREE.BoxGeometry(.04,.62,.015),spineMat);
+  spineGlow.position.set(0,1.32,.245); g.add(spineGlow);
 
   // ── Pelvis ────────────────────────────────────────────────
   bp(.56,.22,.42,  0,.87,0, DARK);
@@ -673,9 +747,11 @@ function buildRobot() {
   bp(.44,.42,.44,  0,1.94,0, BODY);             // main head block
   // Forehead brow ridge
   bp(.46,.06,.08,  0,2.08,-.22, DARK);
-  // Visor slit
-  bp(.40,.12,.06,  0,1.94,-.23, DARK);
-  bp(.42,.02,.04,  0,2.00,-.24, LED_B);         // visor glow line
+  // Visor slit — full glowing red bar (blooms)
+  bp(.40,.14,.06,  0,1.94,-.23, DARK);
+  const visorGlow=new THREE.Mesh(new THREE.BoxGeometry(.36,.08,.015),new THREE.MeshBasicMaterial({color:0xff1800}));
+  visorGlow.position.set(0,1.94,-.265); g.add(visorGlow);
+  bp(.42,.02,.04,  0,2.02,-.24, LED_B);         // brow light strip
   // Side ear modules
   bp(.05,.22,.18,  .24,1.94,0, RED);
   bp(.05,.22,.18, -.24,1.94,0, RED);
@@ -720,6 +796,15 @@ function buildRobot() {
   bp(.20,.18,.42,  .58,1.68,0, RED);
   bp(.22,.06,.44, -.58,1.78,0, DARK);          // pauldron top edge
   bp(.22,.06,.44,  .58,1.78,0, DARK);
+  // Shoulder spikes
+  bp(.04,.22,.08, -.58,1.93,-.06, CHROME);
+  bp(.04,.22,.08,  .58,1.93,-.06, CHROME);
+  // Shoulder emissive strips (red — blooms)
+  const shStripMat=new THREE.MeshBasicMaterial({color:0xff1800});
+  const shStripL=new THREE.Mesh(new THREE.BoxGeometry(.015,.12,.38),shStripMat);
+  shStripL.position.set(-.49,1.68,0); g.add(shStripL);
+  const shStripR=new THREE.Mesh(new THREE.BoxGeometry(.015,.12,.38),shStripMat);
+  shStripR.position.set( .49,1.68,0); g.add(shStripR);
 
   // ── Upper arms ────────────────────────────────────────────
   bp(.20,.46,.20, -.58,1.28,0, BODY);
@@ -741,6 +826,12 @@ function buildRobot() {
   // Forearm armour plates
   bp(.10,.36,.20, -.58,.84,-.06, PANEL);
   bp(.10,.36,.20,  .58,.84,-.06, PANEL);
+  // Forearm energy conduits (blue — blooms)
+  const conduitMat=new THREE.MeshBasicMaterial({color:0x0088ff});
+  const condL=new THREE.Mesh(new THREE.BoxGeometry(.015,.30,.015),conduitMat);
+  condL.position.set(-.67,.84,0); g.add(condL);
+  const condR=new THREE.Mesh(new THREE.BoxGeometry(.015,.30,.015),conduitMat);
+  condR.position.set( .67,.84,0); g.add(condR);
   // Hydraulic tubes on forearms
   bp(.04,.34,.04, -.50,.84,.08, RED);
   bp(.04,.34,.04,  .50,.84,.08, RED);
@@ -786,6 +877,10 @@ function buildRobot() {
     kn.position.y=-.54; lg.add(kn);
     const knb=new THREE.Mesh(new THREE.BoxGeometry(.18,.06,.18),JOINT);
     knb.position.y=-.62; lg.add(knb);
+    // Knee emissive ring (red — blooms)
+    const kneeLedMat=new THREE.MeshBasicMaterial({color:0xff2200});
+    const kneeLed=new THREE.Mesh(new THREE.BoxGeometry(.24,.025,.26),kneeLedMat);
+    kneeLed.position.y=-.575; lg.add(kneeLed);
 
     // Lower leg
     const ll=new THREE.Mesh(new THREE.BoxGeometry(.19,.44,.19),CHROME);
@@ -824,7 +919,7 @@ function buildRobot() {
   // Collect all Lambert materials for hit flash (skip MeshBasicMaterial LEDs/eyes)
   const allMats=[];
   g.traverse(child=>{
-    if(child.isMesh && child.material.isMeshLambertMaterial) allMats.push(child.material);
+    if(child.isMesh && child.material.isMeshStandardMaterial) allMats.push(child.material);
   });
 
   // ── Health bar (world-space billboard above head) ──────────
@@ -922,8 +1017,8 @@ function shoot(){
 
 function damageBot(bot){
   if(gun.def && gun.def.oneShot) bot.hp = 0; else bot.hp -= 1;
-  bot.allMats.forEach(mat=>{ mat.emissive.set(0xffffff); });
-  setTimeout(()=>{ bot.allMats.forEach(mat=>{ if(mat.emissive) mat.emissive.set(0x000000); }); },80);
+  bot.allMats.forEach(mat=>{ mat.emissive.setHex(0xff5500); mat.emissiveIntensity=4.0; });
+  setTimeout(()=>{ bot.allMats.forEach(mat=>{ mat.emissive.setHex(0x000000); mat.emissiveIntensity=0; }); },80);
   if(bot.hp<=0) killBot(bot);
 }
 
@@ -1363,9 +1458,13 @@ function update(dt){
 //  RESIZE
 // ============================================================
 window.addEventListener('resize',()=>{
-  camera.aspect=window.innerWidth/window.innerHeight;
+  const w=window.innerWidth, h=window.innerHeight;
+  camera.aspect=w/h;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth,window.innerHeight);
+  renderer.setSize(w,h);
+  composer.setSize(w,h);
+  const pr=Math.min(window.devicePixelRatio,2);
+  fxaaPass.material.uniforms['resolution'].value.set(1/(w*pr), 1/(h*pr));
 });
 
 // ============================================================
@@ -1377,7 +1476,7 @@ function animate(){
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),.05);
   update(dt);
-  renderer.render(scene,camera);
+  composer.render();
 }
 
 // ============================================================
@@ -1390,16 +1489,16 @@ let levelTransitioning = false;
 
 // Visual themes — one changes every 5 levels, cycling through 10 palettes
 const THEMES = [
-  { bg:0x080810, wall:0x18243c, trim:0x3060a0, trimE:0x081828, lights:[0xff2200,0x0044ff,0x00ff88,0xff9900] },
-  { bg:0x100808, wall:0x3c1a14, trim:0xa03020, trimE:0x280808, lights:[0xff4400,0xffaa00,0xff2200,0xaa4400] },
-  { bg:0x081008, wall:0x183c18, trim:0x28882a, trimE:0x081808, lights:[0x00ff44,0x44ff00,0x00cc22,0x88ff00] },
-  { bg:0x100010, wall:0x2a1838, trim:0x7028a0, trimE:0x180828, lights:[0xaa00ff,0xff00aa,0x6600ff,0xff0066] },
-  { bg:0x000814, wall:0x182838, trim:0x1888c0, trimE:0x081828, lights:[0x00aaff,0x0066ff,0x00ffff,0x0044cc] },
-  { bg:0x10100a, wall:0x38361a, trim:0x887820, trimE:0x282010, lights:[0xffee00,0xff8800,0xffcc00,0xddaa00] },
-  { bg:0x0a0814, wall:0x201834, trim:0x504090, trimE:0x100828, lights:[0x8844ff,0x4488ff,0x44aaff,0x8800ff] },
-  { bg:0x100808, wall:0x3c1820, trim:0xc02840, trimE:0x280810, lights:[0xff0044,0xff4488,0xff0022,0xcc0033] },
-  { bg:0x08100a, wall:0x1a3820, trim:0x30b060, trimE:0x081c10, lights:[0x00ff88,0x00dd44,0x44ff88,0x00bb66] },
-  { bg:0x101010, wall:0x303030, trim:0x888888, trimE:0x202020, lights:[0xffffff,0xccccff,0xffffff,0xccffff] },
+  { bg:0x080810, wall:0x10182a, trim:0x2050a0, trimE:0x2255ee, lights:[0xff2200,0x0044ff,0x00ff88,0xff9900] },
+  { bg:0x0c0404, wall:0x281408, trim:0xa02818, trimE:0xdd2200, lights:[0xff4400,0xffaa00,0xff2200,0xaa4400] },
+  { bg:0x040c04, wall:0x102810, trim:0x22882a, trimE:0x22dd44, lights:[0x00ff44,0x44ff00,0x00cc22,0x88ff00] },
+  { bg:0x0c000c, wall:0x1c0c28, trim:0x7028a0, trimE:0xaa00ff, lights:[0xaa00ff,0xff00aa,0x6600ff,0xff0066] },
+  { bg:0x000608, wall:0x0c1c28, trim:0x1060a0, trimE:0x0088ff, lights:[0x00aaff,0x0066ff,0x00ffff,0x0044cc] },
+  { bg:0x0c0c04, wall:0x282408, trim:0x887820, trimE:0xffcc00, lights:[0xffee00,0xff8800,0xffcc00,0xddaa00] },
+  { bg:0x060410, wall:0x140c24, trim:0x504090, trimE:0x8855ff, lights:[0x8844ff,0x4488ff,0x44aaff,0x8800ff] },
+  { bg:0x0c0204, wall:0x280810, trim:0xc02840, trimE:0xff0044, lights:[0xff0044,0xff4488,0xff0022,0xcc0033] },
+  { bg:0x040c04, wall:0x0c2410, trim:0x28a060, trimE:0x00ff88, lights:[0x00ff88,0x00dd44,0x44ff88,0x00bb66] },
+  { bg:0x080808, wall:0x181818, trim:0x888888, trimE:0xccddff, lights:[0xffffff,0xccccff,0xffffff,0xccffff] },
 ];
 
 function applyTheme(level) {
@@ -1409,6 +1508,7 @@ function applyTheme(level) {
   ARENA_M.wall.color.setHex(t.wall);
   ARENA_M.trim.color.setHex(t.trim);
   ARENA_M.trim.emissive.setHex(t.trimE);
+  ARENA_M.trim.emissiveIntensity = 2.8;
   ARENA_M.pillar.color.setHex(t.wall);
   accentLights.forEach((l,i) => l.color.setHex(t.lights[i % t.lights.length]));
 }
@@ -1617,8 +1717,8 @@ function initSocket() {
       // Someone else was hit — flash their robot
       const rp = remotePlayers.get(data.targetId);
       if (rp) {
-        rp.allMats.forEach(m => { m.emissive.set(0xffffff); });
-        setTimeout(() => rp.allMats.forEach(m => { if(m.emissive) m.emissive.set(0x000000); }), 80);
+        rp.allMats.forEach(m => { m.emissive.setHex(0xff5500); m.emissiveIntensity=4.0; });
+        setTimeout(() => rp.allMats.forEach(m => { m.emissive.setHex(0x000000); m.emissiveIntensity=0; }), 80);
       }
     }
   });
