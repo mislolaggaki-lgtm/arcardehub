@@ -1948,7 +1948,45 @@ function showBanPanel() {
 
 function hideBanPanel() {
   if (banPanel) banPanel.style.display = 'none';
+  const unbanConfirm = document.getElementById('unban-confirm');
+  const unbanInput   = document.getElementById('unban-input');
+  if (unbanConfirm) unbanConfirm.style.display = 'none';
+  if (unbanInput)   unbanInput.value = '';
 }
+
+// ── Unban wiring ──────────────────────────────────────────────
+(function setupUnban() {
+  const unbanBtn     = document.getElementById('unban-btn');
+  const unbanInput   = document.getElementById('unban-input');
+  const unbanConfirm = document.getElementById('unban-confirm');
+  const unbanText    = document.getElementById('unban-confirm-text');
+  const unbanYes     = document.getElementById('unban-yes');
+  const unbanNo      = document.getElementById('unban-no');
+  if (!unbanBtn) return;
+
+  unbanBtn.addEventListener('click', () => {
+    const name = unbanInput.value.trim();
+    if (!name) return;
+    unbanText.textContent = `Unban "${name}"?`;
+    unbanConfirm.style.display = 'block';
+  });
+
+  unbanNo.addEventListener('click', () => {
+    unbanConfirm.style.display = 'none';
+    unbanInput.value = '';
+  });
+
+  unbanYes.addEventListener('click', () => {
+    const name = unbanInput.value.trim();
+    if (!name || !socket) return;
+    socket.emit('unbanPlayer', { targetUsername: name });
+    unbanConfirm.style.display = 'none';
+    unbanInput.value = '';
+    unbanBtn.textContent = 'UNBANNED';
+    unbanBtn.style.opacity = '0.5';
+    setTimeout(() => { unbanBtn.textContent = 'UNBAN'; unbanBtn.style.opacity = ''; }, 2000);
+  });
+})();
 
 // ============================================================
 //  MOBILE TOUCH CONTROLS

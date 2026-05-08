@@ -39,6 +39,59 @@
     }
     .ban-btn:hover { background: rgba(231,76,60,0.26); }
     #ban-panel-empty { font-size: 12px; color: #444466; }
+    #unban-section {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    #unban-title {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: #3b9ee8; margin-bottom: 10px;
+    }
+    #unban-row { display: flex; gap: 8px; }
+    #unban-input {
+      flex: 1; padding: 5px 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px; color: #c0c0ee;
+      font-size: 12px; font-family: inherit; outline: none;
+    }
+    #unban-input::placeholder { color: #333355; }
+    #unban-btn {
+      padding: 5px 12px;
+      background: rgba(59,158,232,0.1);
+      border: 1px solid rgba(59,158,232,0.3);
+      border-radius: 4px; color: #3b9ee8;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; transition: background .15s;
+    }
+    #unban-btn:hover { background: rgba(59,158,232,0.24); }
+    #unban-confirm {
+      display: none; margin-top: 10px;
+      background: rgba(59,158,232,0.07);
+      border: 1px solid rgba(59,158,232,0.2);
+      border-radius: 6px; padding: 10px 12px;
+    }
+    #unban-confirm-text { font-size: 12px; color: #8888bb; display: block; margin-bottom: 8px; }
+    #unban-confirm-btns { display: flex; gap: 8px; }
+    #unban-yes, #unban-no {
+      flex: 1; padding: 5px 0;
+      border-radius: 4px; font-size: 10px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
+      transition: background .15s;
+    }
+    #unban-yes {
+      background: rgba(59,158,232,0.15);
+      border: 1px solid rgba(59,158,232,0.35); color: #3b9ee8;
+    }
+    #unban-yes:hover { background: rgba(59,158,232,0.3); }
+    #unban-no {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1); color: #555577;
+    }
+    #unban-no:hover { background: rgba(255,255,255,0.08); color: #aaaacc; }
   </style>
 </head>
 <body>
@@ -140,6 +193,20 @@
     <div id="ban-panel-title">Admin — Players Online</div>
     <div id="ban-player-list">
       <span id="ban-panel-empty">No other players connected.</span>
+    </div>
+    <div id="unban-section">
+      <div id="unban-title">Unban Player</div>
+      <div id="unban-row">
+        <input id="unban-input" type="text" placeholder="Username...">
+        <button id="unban-btn">UNBAN</button>
+      </div>
+      <div id="unban-confirm">
+        <span id="unban-confirm-text"></span>
+        <div id="unban-confirm-btns">
+          <button id="unban-yes">CONFIRM</button>
+          <button id="unban-no">CANCEL</button>
+        </div>
+      </div>
     </div>
   </div>
 

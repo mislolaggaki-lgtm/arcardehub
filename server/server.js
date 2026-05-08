@@ -54,6 +54,9 @@ async function start() {
       strict: true,
       deprecationErrors: true,
     },
+    tls: true,
+    tlsAllowInvalidCertificates: false,
+    tlsAllowInvalidHostnames: false,
   });
 
   await client.connect();
@@ -166,6 +169,15 @@ async function start() {
           break;
         }
       }
+    });
+
+    socket.on('unbanPlayer', async ({ targetUsername }) => {
+      const requester = players.get(socket.id);
+      if (!requester || !requester.isAdmin) return;
+      const targetName = (targetUsername || '').slice(0, 24).trim();
+      if (!targetName) return;
+      await bannedCol.deleteOne({ username: targetName.toLowerCase() });
+      await usersCol.updateOne({ username: targetName }, { $set: { banned: false } });
     });
 
     socket.on('disconnect', () => {
