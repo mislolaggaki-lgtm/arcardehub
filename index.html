@@ -642,6 +642,11 @@
           localStorage.setItem('ah_token',    data.token);
           localStorage.setItem('ah_username', data.username);
           localStorage.setItem('isAdmin',     data.isAdmin ? 'true' : 'false');
+          localStorage.setItem('ah_terms',    data.termsAccepted ? 'true' : 'false');
+          if (!data.termsAccepted) {
+            window.location.href = '/terms.html';
+            return;
+          }
           setLoggedIn(data.username);
           closeModal();
         }
@@ -657,6 +662,7 @@
       localStorage.removeItem('ah_token');
       localStorage.removeItem('ah_username');
       localStorage.removeItem('isAdmin');
+      localStorage.removeItem('ah_terms');
       setLoggedOut();
     });
 
@@ -675,6 +681,7 @@
           localStorage.removeItem('ah_token');
           localStorage.removeItem('ah_username');
           localStorage.removeItem('isAdmin');
+          localStorage.removeItem('ah_terms');
           setLoggedOut();
         } else {
           alert(data.error || 'Failed to delete account.');
@@ -688,7 +695,12 @@
     (function restoreSession() {
       const token    = localStorage.getItem('ah_token');
       const username = localStorage.getItem('ah_username');
-      if (token && username) setLoggedIn(username);
+      if (!token || !username) return;
+      if (localStorage.getItem('ah_terms') !== 'true') {
+        window.location.href = '/terms.html';
+        return;
+      }
+      setLoggedIn(username);
     })();
 
     // ── Fake online count drift ───────────────────────────────

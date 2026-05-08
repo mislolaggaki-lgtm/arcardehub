@@ -375,6 +375,23 @@
     let pendingUsername = '';
     let pendingPassword = '';
 
+    // ── On load: redirect if already accepted, or skip register for existing users ──
+    (function init() {
+      if (localStorage.getItem('ah_terms') === 'true') {
+        window.location.href = '/';
+        return;
+      }
+      const token    = localStorage.getItem('ah_token');
+      const username = localStorage.getItem('ah_username');
+      if (token && username) {
+        // Existing user who hasn't accepted yet — skip register, show terms
+        document.getElementById('step-register').style.display = 'none';
+        const header = document.querySelector('.terms-header p');
+        header.innerHTML = `Welcome back, <strong style="color:#c0c0ee">${username}</strong>. Please read and accept our Terms of Service to continue.`;
+        document.getElementById('step-terms').style.display = 'block';
+      }
+    })();
+
     // ── Register ─────────────────────────────────────────────
     document.getElementById('reg-form').addEventListener('submit', async e => {
       e.preventDefault();
@@ -436,28 +453,37 @@
       agreeBtn.disabled = !(scrolledToBottom && agreeCheck.checked);
     }
 
-    // ── Agree → auto-login → redirect ────────────────────────
+    // ── Agree → accept terms → redirect ──────────────────────
     agreeBtn.addEventListener('click', async () => {
       agreeBtn.disabled = true;
-      agreeBtn.textContent = 'Signing in…';
+      agreeBtn.textContent = 'Saving…';
 
       try {
-        const res  = await fetch(`${API}/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: pendingUsername, password: pendingPassword }),
-        });
-        const data = await res.json();
+        let token = localStorage.getItem('ah_token');
 
-        if (res.ok) {
-          localStorage.setItem('ah_token',    data.token);
-          localStorage.setItem('ah_username', data.username);
-          localStorage.setItem('isAdmin',     data.isAdmin ? 'true' : 'false');
-          window.location.href = '/';
-        } else {
-          agreeBtn.textContent = 'I Agree';
-          agreeBtn.disabled = false;
+        // New user: auto-login first to get a token
+        if (!token && pendingUsername) {
+          const loginRes  = await fetch(`${API}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: pendingUsername, password: pendingPassword }),
+          });
+          const loginData = await loginRes.json();
+          if (!loginRes.ok) { agreeBtn.textContent = 'I Agree'; agreeBtn.disabled = false; return; }
+          token = loginData.token;
+          localStorage.setItem('ah_token',    loginData.token);
+          localStorage.setItem('ah_username', loginData.username);
+          localStorage.setItem('isAdmin',     loginData.isAdmin ? 'true' : 'false');
         }
+
+        // Mark terms as accepted on the server
+        await fetch(`${API}/terms/accept`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        localStorage.setItem('ah_terms', 'true');
+        window.location.href = '/';
       } catch {
         agreeBtn.textContent = 'I Agree';
         agreeBtn.disabled = false;

@@ -79,11 +79,12 @@ async function start() {
     if (!adminExists) {
       const hashed = await bcrypt.hash(process.env.ADMIN_PASSWORD, SALT_ROUNDS);
       await usersCol.insertOne({
-        username:   'Stotch',
-        password:   hashed,
-        isAdmin:    true,
-        banned:     false,
-        created_at: new Date().toISOString(),
+        username:      'Stotch',
+        password:      hashed,
+        isAdmin:       true,
+        banned:        false,
+        termsAccepted: true,
+        created_at:    new Date().toISOString(),
       });
       console.log('Admin account "Stotch" created');
     }
@@ -206,10 +207,11 @@ async function start() {
       const hashed = await bcrypt.hash(password, SALT_ROUNDS);
       const doc = {
         username,
-        password: hashed,
-        isAdmin:    false,
-        banned:     false,
-        created_at: new Date().toISOString(),
+        password:      hashed,
+        isAdmin:       false,
+        banned:        false,
+        termsAccepted: false,
+        created_at:    new Date().toISOString(),
       };
 
       const result = await usersCol.insertOne(doc);
@@ -245,9 +247,26 @@ async function start() {
         JWT_SECRET,
         { expiresIn: '7d' }
       );
-      res.json({ success: true, token, username: user.username, isAdmin: !!user.isAdmin });
+      res.json({ success: true, token, username: user.username, isAdmin: !!user.isAdmin, termsAccepted: !!user.termsAccepted });
     } catch (err) {
       console.error('/api/login error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── POST /api/terms/accept ──────────────────────────────────
+  app.post('/api/terms/accept', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { ObjectId } = require('mongodb');
+      await usersCol.updateOne(
+        { _id: new ObjectId(payload.userId) },
+        { $set: { termsAccepted: true } }
+      );
+      res.json({ success: true });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      console.error('/api/terms/accept error:', err);
       res.status(500).json({ error: 'Server error.' });
     }
   });
