@@ -516,13 +516,21 @@
     // ── Nav auth state ──────────────────────────────────────
     function setLoggedIn(username) {
       document.getElementById('btn-login').style.display = 'none';
-      document.getElementById('nav-username-text').textContent = username;
+      const nameEl = document.getElementById('nav-username-text');
+      nameEl.textContent = username;
+      if (localStorage.getItem('isAdmin') === 'true') {
+        const badge = document.createElement('span');
+        badge.style.cssText = 'color:#3b9ee8;margin-left:6px;font-size:15px;vertical-align:middle';
+        badge.textContent = '🔨';
+        nameEl.appendChild(badge);
+      }
       document.getElementById('nav-user').style.display = 'flex';
     }
 
     function setLoggedOut() {
       document.getElementById('btn-login').style.display = '';
       document.getElementById('nav-user').style.display = 'none';
+      localStorage.removeItem('isAdmin');
     }
 
     // ── Modal helpers ────────────────────────────────────────
@@ -628,6 +636,7 @@
         } else {
           localStorage.setItem('ah_token',    data.token);
           localStorage.setItem('ah_username', data.username);
+          localStorage.setItem('isAdmin',     data.isAdmin ? 'true' : 'false');
           setLoggedIn(data.username);
           closeModal();
         }
@@ -642,6 +651,7 @@
     document.getElementById('btn-logout').addEventListener('click', () => {
       localStorage.removeItem('ah_token');
       localStorage.removeItem('ah_username');
+      localStorage.removeItem('isAdmin');
       setLoggedOut();
     });
 
@@ -659,6 +669,7 @@
         if (res.ok) {
           localStorage.removeItem('ah_token');
           localStorage.removeItem('ah_username');
+          localStorage.removeItem('isAdmin');
           setLoggedOut();
         } else {
           alert(data.error || 'Failed to delete account.');

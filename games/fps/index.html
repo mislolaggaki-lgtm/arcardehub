@@ -5,6 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ArcadeHub FPS</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    #ban-panel {
+      display: none;
+      position: fixed; top: 80px; right: 24px; z-index: 300;
+      background: rgba(6, 6, 14, 0.94);
+      border: 1px solid rgba(231,76,60,0.28);
+      border-radius: 10px;
+      padding: 18px 20px 16px;
+      min-width: 230px;
+      box-shadow: 0 8px 36px rgba(0,0,0,0.75);
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+    }
+    #ban-panel-title {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: #e74c3c; margin-bottom: 14px;
+    }
+    #ban-player-list { display: flex; flex-direction: column; gap: 8px; }
+    .ban-player-row {
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
+    }
+    .ban-player-name { font-size: 13px; color: #c0c0ee; font-weight: 500; }
+    .ban-btn {
+      padding: 4px 12px; flex-shrink: 0;
+      background: rgba(231,76,60,0.1);
+      border: 1px solid rgba(231,76,60,0.3);
+      border-radius: 4px; color: #e74c3c;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; transition: background .15s;
+    }
+    .ban-btn:hover { background: rgba(231,76,60,0.26); }
+    #ban-panel-empty { font-size: 12px; color: #444466; }
+  </style>
 </head>
 <body>
 
@@ -98,6 +133,14 @@
 
     <button id="play-button">&#9654;&nbsp;&nbsp;PLAY</button>
     <button id="reset-button">&#8635;&nbsp;&nbsp;RESET PROGRESS</button>
+  </div>
+
+  <!-- Admin ban panel (shown when paused + isAdmin) -->
+  <div id="ban-panel">
+    <div id="ban-panel-title">Admin — Players Online</div>
+    <div id="ban-player-list">
+      <span id="ban-panel-empty">No other players connected.</span>
+    </div>
   </div>
 
   <!-- Touch controls (mobile/tablet only — shown via JS on game start) -->

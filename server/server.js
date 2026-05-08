@@ -6,19 +6,14 @@ const cors     = require('cors');
 const bcrypt   = require('bcryptjs');
 const jwt      = require('jsonwebtoken');
 const path     = require('path');
-const low      = require('lowdb');
-const FileSync = require('lowdb/adapters/FileSync');
+const { MongoClient, ServerApiVersion } = require('mongodb');
 const { Server } = require('socket.io');
 
 // ── Config ────────────────────────────────────────────────────
-const PORT        = process.env.PORT || 3001;
-const JWT_SECRET  = process.env.JWT_SECRET || 'arcadehub-dev-secret-change-in-production';
+const PORT        = process.env.PORT        || 3001;
+const JWT_SECRET  = process.env.JWT_SECRET  || 'arcadehub-dev-secret-change-in-production';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/arcadehub';
 const SALT_ROUNDS = 10;
-
-// ── Database ──────────────────────────────────────────────────
-const adapter = new FileSync(path.join(__dirname, 'db.json'));
-const db      = low(adapter);
-db.defaults({ users: [] }).write();
 
 // ── Express + HTTP server ─────────────────────────────────────
 const app        = express();
@@ -26,8 +21,6 @@ const httpServer = http.createServer(app);
 
 app.use(cors());
 app.use(express.json());
-
-// Serve the entire ArcadeHub frontend from the project root
 app.use(express.static(path.join(__dirname, '..')));
 
 // ── Socket.io ─────────────────────────────────────────────────
@@ -40,131 +33,251 @@ const PLAYER_COLORS = [
   '#9b59b6', '#1abc9c', '#e67e22', '#e91e63',
 ];
 
-// In-memory map of connected players: socketId → playerData
 const players = new Map();
 
-io.on('connection', socket => {
-  const color = PLAYER_COLORS[players.size % PLAYER_COLORS.length];
-
-  // ── join ──────────────────────────────────────────────────
-  socket.on('join', ({ username }) => {
-    const player = {
-      id:        socket.id,
-      username:  (username || 'Guest').slice(0, 24),
-      color,
-      x: 0, y: 1.65, z: 2,
-      rotationY: 0,
-      pvpMode:   true,
-      health:    100,
-    };
-    players.set(socket.id, player);
-
-    // Send existing players to the newcomer
-    const existing = [...players.values()].filter(p => p.id !== socket.id);
-    socket.emit('currentPlayers', existing);
-
-    // Tell everyone else about the newcomer
-    socket.broadcast.emit('playerJoined', player);
-  });
-
-  // ── move ──────────────────────────────────────────────────
-  socket.on('move', ({ x, y, z, rotationY, health }) => {
-    const player = players.get(socket.id);
-    if (!player) return;
-    player.x = x; player.y = y; player.z = z; player.rotationY = rotationY;
-    if (health !== undefined) player.health = health;
-    socket.broadcast.emit('playerMoved', { id: socket.id, x, y, z, rotationY, health });
-  });
-
-  // ── pvpMode ───────────────────────────────────────────────
-  socket.on('pvpMode', ({ enabled }) => {
-    const player = players.get(socket.id);
-    if (!player) return;
-    player.pvpMode = !!enabled;
-    io.emit('pvpModeChanged', { id: socket.id, pvpMode: player.pvpMode });
-  });
-
-  // ── shoot ─────────────────────────────────────────────────
-  socket.on('shoot', ({ targetId }) => {
-    const target = players.get(targetId);
-    if (!target) return;
-    if (!target.pvpMode) return;   // target has PVP off — immune to player shots
-    io.emit('playerHit', { shooterId: socket.id, targetId, damage: 25 });
-  });
-
-  // ── disconnect ────────────────────────────────────────────
-  socket.on('disconnect', () => {
-    players.delete(socket.id);
-    io.emit('playerLeft', { id: socket.id });
-  });
-});
-
-// ── POST /api/register ────────────────────────────────────────
-app.post('/api/register', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password)
-    return res.status(400).json({ error: 'Username and password are required.' });
-  if (username.length < 3 || username.length > 24)
-    return res.status(400).json({ error: 'Username must be 3–24 characters.' });
-  if (password.length < 6)
-    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
-
-  if (db.get('users').find({ username }).value())
-    return res.status(409).json({ error: 'Username already taken.' });
-
-  const hashed  = await bcrypt.hash(password, SALT_ROUNDS);
-  const newUser = { id: Date.now(), username, password: hashed, created_at: new Date().toISOString() };
-  db.get('users').push(newUser).write();
-  res.status(201).json({ success: true, userId: newUser.id });
-});
-
-// ── POST /api/login ───────────────────────────────────────────
-app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password)
-    return res.status(400).json({ error: 'Username and password are required.' });
-
-  const user = db.get('users').find({ username }).value();
-  if (!user) return res.status(401).json({ error: 'Invalid username or password.' });
-
-  const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.status(401).json({ error: 'Invalid username or password.' });
-
-  const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
-  res.json({ success: true, token, username: user.username });
-});
-
-// ── DELETE /api/account ───────────────────────────────────────
-app.delete('/api/account', (req, res) => {
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Bearer '))
-    return res.status(401).json({ error: 'No token provided.' });
-
-  let payload;
+// ── Auth helper ───────────────────────────────────────────────
+function verifyToken(authHeader) {
+  if (!authHeader || !authHeader.startsWith('Bearer '))
+    throw Object.assign(new Error('No token provided.'), { status: 401 });
   try {
-    payload = jwt.verify(auth.slice(7), JWT_SECRET);
+    return jwt.verify(authHeader.slice(7), JWT_SECRET);
   } catch {
-    return res.status(401).json({ error: 'Invalid or expired token.' });
+    throw Object.assign(new Error('Invalid or expired token.'), { status: 401 });
+  }
+}
+
+// ── Start (connects to MongoDB, then registers routes) ────────
+async function start() {
+  const client = new MongoClient(MONGODB_URI, {
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: true,
+      deprecationErrors: true,
+    },
+  });
+
+  await client.connect();
+  console.log('Connected to MongoDB');
+
+  // Use the database name from the URI; falls back to "arcadehub"
+  const dbName = new URL(MONGODB_URI).pathname.replace('/', '') || 'arcadehub';
+  const db     = client.db(dbName);
+
+  const usersCol  = db.collection('users');  // { username, password, isAdmin, banned, created_at }
+  const bannedCol = db.collection('banned'); // { username } — quick ban-list lookup
+
+  // Enforce unique usernames
+  await usersCol.createIndex({ username: 1 }, { unique: true });
+  await bannedCol.createIndex({ username: 1 }, { unique: true });
+
+  // ── Seed admin account ──────────────────────────────────────
+  if (process.env.ADMIN_PASSWORD) {
+    const adminExists = await usersCol.findOne({ username: 'Stotch' });
+    if (!adminExists) {
+      const hashed = await bcrypt.hash(process.env.ADMIN_PASSWORD, SALT_ROUNDS);
+      await usersCol.insertOne({
+        username:   'Stotch',
+        password:   hashed,
+        isAdmin:    true,
+        banned:     false,
+        created_at: new Date().toISOString(),
+      });
+      console.log('Admin account "Stotch" created');
+    }
   }
 
-  const user = db.get('users').find({ id: payload.userId }).value();
-  if (!user) return res.status(404).json({ error: 'Account not found.' });
+  // ── Socket.io connection handler ────────────────────────────
+  io.on('connection', socket => {
+    const color = PLAYER_COLORS[players.size % PLAYER_COLORS.length];
 
-  db.get('users').remove({ id: payload.userId }).write();
-  res.json({ success: true });
-});
+    socket.on('join', async ({ username }) => {
+      const cleanName = (username || 'Guest').slice(0, 24);
 
-// ── GET /api/users/online ─────────────────────────────────────
-app.get('/api/users/online', (_req, res) => {
-  res.json({ online: players.size || 3 });
-});
+      // Reject banned players immediately
+      const isBanned = await bannedCol.findOne({ username: cleanName.toLowerCase() });
+      if (isBanned) {
+        socket.emit('banned', { reason: 'You have been banned.' });
+        socket.disconnect(true);
+        return;
+      }
 
-// ── Catch-all: serve index.html for any unmatched route ───────
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'index.html'));
-});
+      // Look up admin status from DB
+      const userDoc = await usersCol.findOne({ username: cleanName });
+      const isAdmin = !!(userDoc && userDoc.isAdmin);
 
-// ── Start ─────────────────────────────────────────────────────
-httpServer.listen(PORT, () => {
-  console.log(`ArcadeHub server running on http://localhost:${PORT}`);
+      const player = {
+        id: socket.id,
+        username: cleanName,
+        color,
+        x: 0, y: 1.65, z: 2,
+        rotationY: 0,
+        pvpMode: true,
+        health: 100,
+        isAdmin,
+      };
+      players.set(socket.id, player);
+      socket.emit('currentPlayers', [...players.values()].filter(p => p.id !== socket.id));
+      socket.broadcast.emit('playerJoined', player);
+    });
+
+    socket.on('move', ({ x, y, z, rotationY, health }) => {
+      const player = players.get(socket.id);
+      if (!player) return;
+      player.x = x; player.y = y; player.z = z; player.rotationY = rotationY;
+      if (health !== undefined) player.health = health;
+      socket.broadcast.emit('playerMoved', { id: socket.id, x, y, z, rotationY, health });
+    });
+
+    socket.on('pvpMode', ({ enabled }) => {
+      const player = players.get(socket.id);
+      if (!player) return;
+      player.pvpMode = !!enabled;
+      io.emit('pvpModeChanged', { id: socket.id, pvpMode: player.pvpMode });
+    });
+
+    socket.on('shoot', ({ targetId }) => {
+      const target = players.get(targetId);
+      if (!target || !target.pvpMode) return;
+      io.emit('playerHit', { shooterId: socket.id, targetId, damage: 25 });
+    });
+
+    socket.on('banPlayer', async ({ targetUsername }) => {
+      const requester = players.get(socket.id);
+      if (!requester || !requester.isAdmin) return;
+
+      const targetName = (targetUsername || '').slice(0, 24).trim();
+      if (!targetName) return;
+
+      try {
+        await bannedCol.insertOne({ username: targetName.toLowerCase() });
+      } catch (err) {
+        if (err.code !== 11000) console.error('banPlayer bannedCol error:', err);
+      }
+      await usersCol.updateOne({ username: targetName }, { $set: { banned: true } });
+
+      // Find and disconnect the target
+      for (const [sid, p] of players.entries()) {
+        if (p.username === targetName) {
+          const targetSocket = io.sockets.sockets.get(sid);
+          if (targetSocket) {
+            targetSocket.emit('banned', { reason: 'You have been banned by an admin.' });
+            targetSocket.disconnect(true);
+          }
+          break;
+        }
+      }
+    });
+
+    socket.on('disconnect', () => {
+      players.delete(socket.id);
+      io.emit('playerLeft', { id: socket.id });
+    });
+  });
+
+  // ── POST /api/register ──────────────────────────────────────
+  app.post('/api/register', async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      if (!username || !password)
+        return res.status(400).json({ error: 'Username and password are required.' });
+      if (username.length < 3 || username.length > 24)
+        return res.status(400).json({ error: 'Username must be 3–24 characters.' });
+      if (password.length < 6)
+        return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+
+      // Check banned list
+      const isBanned = await bannedCol.findOne({ username: username.toLowerCase() });
+      if (isBanned)
+        return res.status(403).json({ error: 'This username is not allowed.' });
+
+      const hashed = await bcrypt.hash(password, SALT_ROUNDS);
+      const doc = {
+        username,
+        password: hashed,
+        isAdmin:    false,
+        banned:     false,
+        created_at: new Date().toISOString(),
+      };
+
+      const result = await usersCol.insertOne(doc);
+      res.status(201).json({ success: true, userId: result.insertedId.toString() });
+    } catch (err) {
+      if (err.code === 11000)
+        return res.status(409).json({ error: 'Username already taken.' });
+      console.error('/api/register error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── POST /api/login ─────────────────────────────────────────
+  app.post('/api/login', async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      if (!username || !password)
+        return res.status(400).json({ error: 'Username and password are required.' });
+
+      const user = await usersCol.findOne({ username });
+      if (!user)
+        return res.status(401).json({ error: 'Invalid username or password.' });
+
+      if (user.banned)
+        return res.status(403).json({ error: 'This account has been banned.' });
+
+      const match = await bcrypt.compare(password, user.password);
+      if (!match)
+        return res.status(401).json({ error: 'Invalid username or password.' });
+
+      const token = jwt.sign(
+        { userId: user._id.toString(), username: user.username, isAdmin: !!user.isAdmin },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      res.json({ success: true, token, username: user.username, isAdmin: !!user.isAdmin });
+    } catch (err) {
+      console.error('/api/login error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── DELETE /api/account ─────────────────────────────────────
+  app.delete('/api/account', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { ObjectId } = require('mongodb');
+      const result = await usersCol.deleteOne({ _id: new ObjectId(payload.userId) });
+      if (result.deletedCount === 0)
+        return res.status(404).json({ error: 'Account not found.' });
+      res.json({ success: true });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      console.error('/api/account DELETE error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── GET /api/users/online ───────────────────────────────────
+  app.get('/api/users/online', (_req, res) => {
+    res.json({ online: players.size || 3 });
+  });
+
+  // ── Catch-all: serve index.html ─────────────────────────────
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'index.html'));
+  });
+
+  // ── Listen ──────────────────────────────────────────────────
+  httpServer.listen(PORT, () => {
+    console.log(`ArcadeHub server running on http://localhost:${PORT}`);
+  });
+
+  // Graceful shutdown
+  process.on('SIGTERM', async () => {
+    await client.close();
+    process.exit(0);
+  });
+}
+
+start().catch(err => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
 });

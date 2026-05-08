@@ -1309,6 +1309,7 @@ document.addEventListener('pointerlockchange',()=>{
     setupWeapon(selectedGunId);   // always re-setup in case gun was switched
     startScreen.style.display='none';
     hudEl.style.display='block';
+    hideBanPanel();
     if(!gameStarted){
       gameStarted=true;
       startLevel(1);
@@ -1318,6 +1319,7 @@ document.addEventListener('pointerlockchange',()=>{
     deactivateScope();
     startScreen.style.display='flex';
     hudEl.style.display='none';
+    showBanPanel();
   }
 });
 
@@ -1887,11 +1889,65 @@ function initSocket() {
     removeRemotePlayer(data.id);
   });
 
+  // Kicked by admin ban
+  socket.on('banned', ({ reason }) => {
+    if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
+    remotePlayers.forEach((_, id) => removeRemotePlayer(id));
+    document.exitPointerLock();
+    const msg = document.createElement('div');
+    msg.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;font-family:sans-serif;color:#e74c3c;font-size:22px;font-weight:700;letter-spacing:2px;text-transform:uppercase';
+    msg.innerHTML = `<div>🔨 BANNED</div><div style="font-size:13px;color:#888;font-weight:400;letter-spacing:1px">${reason || 'You have been banned.'}</div>`;
+    document.body.appendChild(msg);
+  });
+
   // Server went away — clean up all ghosts
   socket.on('disconnect', () => {
     if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
     remotePlayers.forEach((_, id) => removeRemotePlayer(id));
   });
+}
+
+// ── Admin ban panel ───────────────────────────────────────────
+const banPanel = document.getElementById('ban-panel');
+const banList  = document.getElementById('ban-player-list');
+
+function showBanPanel() {
+  if (localStorage.getItem('isAdmin') !== 'true' || !banPanel) return;
+  banList.innerHTML = '';
+  const others = [...remotePlayers.values()];
+  if (others.length === 0) {
+    const empty = document.createElement('span');
+    empty.id = 'ban-panel-empty';
+    empty.style.cssText = 'font-size:12px;color:#444466';
+    empty.textContent = 'No other players connected.';
+    banList.appendChild(empty);
+  } else {
+    others.forEach(rp => {
+      const row = document.createElement('div');
+      row.className = 'ban-player-row';
+      const name = document.createElement('span');
+      name.className = 'ban-player-name';
+      name.textContent = rp.username || 'Player';
+      const btn = document.createElement('button');
+      btn.className = 'ban-btn';
+      btn.textContent = 'BAN';
+      btn.addEventListener('click', () => {
+        if (!socket) return;
+        socket.emit('banPlayer', { targetUsername: rp.username });
+        btn.disabled = true;
+        btn.textContent = 'BANNED';
+        btn.style.opacity = '0.4';
+      });
+      row.appendChild(name);
+      row.appendChild(btn);
+      banList.appendChild(row);
+    });
+  }
+  banPanel.style.display = 'block';
+}
+
+function hideBanPanel() {
+  if (banPanel) banPanel.style.display = 'none';
 }
 
 // ============================================================
