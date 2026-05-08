@@ -61,11 +61,12 @@ let barrelCluster = null;  // the rotating barrel group
 const MG_MAX_SPIN = 28, MG_UP = 10, MG_DOWN = 7;
 
 // ─── Renderer ────────────────────────────────────────────────
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled   = true;
-renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:false, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.setSize(window.innerWidth, window.innerHeight, false);
+renderer.shadowMap.enabled    = true;
+renderer.shadowMap.type       = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;
 renderer.outputEncoding      = THREE.sRGBEncoding;
 renderer.toneMapping         = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.82;
@@ -95,7 +96,7 @@ const bloomPass = new THREE.UnrealBloomPass(
 composer.addPass(bloomPass);
 
 const fxaaPass  = new THREE.ShaderPass(THREE.FXAAShader);
-const _PR = Math.min(window.devicePixelRatio, 2);
+const _PR = Math.min(window.devicePixelRatio, 1.5);
 fxaaPass.material.uniforms['resolution'].value.set(
   1 / (window.innerWidth  * _PR),
   1 / (window.innerHeight * _PR)
@@ -114,7 +115,7 @@ scene.add(new THREE.AmbientLight(0x1a2040, 0.28));
 const sun = new THREE.DirectionalLight(0xfff0dd, 0.80);
 sun.position.set(8, 20, 10);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(512, 512);
 Object.assign(sun.shadow.camera, { near:1, far:130, left:-58, right:58, top:58, bottom:-58 });
 scene.add(sun);
 
@@ -636,6 +637,7 @@ function removeRemotePlayer(id) {
   const rp = remotePlayers.get(id);
   if (!rp) return;
   scene.remove(rp.group);
+  disposeGroup(rp.group);
   remotePlayers.delete(id);
 }
 
@@ -1461,9 +1463,9 @@ window.addEventListener('resize',()=>{
   const w=window.innerWidth, h=window.innerHeight;
   camera.aspect=w/h;
   camera.updateProjectionMatrix();
-  renderer.setSize(w,h);
+  renderer.setSize(w,h,false);
   composer.setSize(w,h);
-  const pr=Math.min(window.devicePixelRatio,2);
+  const pr=Math.min(window.devicePixelRatio,1.5);
   fxaaPass.material.uniforms['resolution'].value.set(1/(w*pr), 1/(h*pr));
 });
 
@@ -1471,10 +1473,15 @@ window.addEventListener('resize',()=>{
 //  RENDER LOOP
 // ============================================================
 const clock=new THREE.Clock();
+let _lastFrameTs = 0;
+const _FRAME_MS  = 1000 / 60;  // ~16.67 ms — hard 60 fps cap
 
-function animate(){
+function animate(ts = 0) {
   requestAnimationFrame(animate);
-  const dt=Math.min(clock.getDelta(),.05);
+  if (ts - _lastFrameTs < _FRAME_MS) return;
+  _lastFrameTs = ts;
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (levelActive) renderer.shadowMap.needsUpdate = true;
   update(dt);
   composer.render();
 }
@@ -1524,10 +1531,22 @@ function getLevelConfig(n) {
   };
 }
 
+function disposeGroup(group) {
+  group.traverse(child => {
+    if (child.isMesh || child.isSprite) {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        mats.forEach(m => { if (m.map) m.map.dispose(); m.dispose(); });
+      }
+    }
+  });
+}
+
 function clearBots() {
-  bots.forEach(b => scene.remove(b.group));
+  bots.forEach(b => { scene.remove(b.group); disposeGroup(b.group); });
   bots.length = 0;
-  ammoPickups.forEach(pk => scene.remove(pk.group));
+  ammoPickups.forEach(pk => { scene.remove(pk.group); disposeGroup(pk.group); });
   ammoPickups.length = 0;
 }
 
