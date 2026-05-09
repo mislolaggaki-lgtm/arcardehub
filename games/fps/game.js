@@ -256,17 +256,44 @@ addBox(.04,.03,AD*2,   AW+WT/2, .015,0, neonEdgeMat,false,false);
 
 // Ground-floor cover walls (scaled for larger arena)
 const COVER_DEFS = [
+  // Original cover ring
   [10,1.2,  -12, -8],[1.2,10,  14,-14],[10,1.2,   6, 10],[1.2, 9, -18, 14],
   [ 8,1.2,   0,-22],[1.2, 8,  22,  2],[ 8,1.2,  -6, 20],[1.2, 8, -26, -6],
   [ 7,1.2,  18,-28],[1.2, 7, -28, 18],[ 6,1.2,  -8,  0],[1.2, 6,   8, -8],
   [12,1.2,   0, -4],[1.2,12, -4,   0],
+  // Outer ring (near mezzanine stairs approach)
+  [ 8,1.2,  26,-20],[1.2, 8,  20, 26],[ 8,1.2, -26, 20],[1.2, 8, -20,-26],
+  [ 5,1.2,  -2,-28],[ 5,1.2,   2, 28],[1.2, 5, -28, -2],[1.2, 5,  28,  2],
+  // Mid-field diagonal flankers
+  [ 6,1.2,  16, -6],[1.2, 6, -6, 16],[ 6,1.2, -16,  6],[1.2, 6,  6,-16],
+  // Low crouching covers (half height)
+  [ 5, .8,  10, -18],[ 5, .8, -10, 18],[1.2, 5,  24,-10],[1.2, 5,-24, 10],
+  // L-shaped corners (two boxes at right angles)
+  [6,1.2,  16, 22],[1.2, 5,  19, 25],
+  [6,1.2, -16,-22],[1.2, 5, -19,-25],
 ];
 const coverBoxes = [];
-COVER_DEFS.forEach(([w,d,cx,cz])=>{
-  const ch=WH*.72;
+COVER_DEFS.forEach(([w,d,cx,cz,customH])=>{
+  const ch = customH !== undefined ? customH : WH*.72;
   addBox(w,ch,d, cx,ch/2,cz, ARENA_M.cover);
   addBox(w+.04,.12,d+.04, cx,ch+.06,cz, ARENA_M.ctrim,false,false);
   coverBoxes.push({cx,cz,hw:w/2,hd:d/2});
+});
+
+// Central raised platform — creates a height-advantage landmark
+addBox(9, .45, 9,  0, .225, 0, ARENA_M.pillar, false, true);
+addBox(9.1,.06,9.1, 0, .47, 0, ARENA_M.ctrim, false, false);
+// Cover walls on top of the platform
+[[9,.9, 0,-4.2],[9,.9, 0, 4.2],[.9,9,-4.2,0],[.9,9, 4.2,0]].forEach(
+  ([w,d,x,z])=>addBox(w,WH*.36,d,x,.225+WH*.18,z,ARENA_M.cover)
+);
+coverBoxes.push({cx:0,cz:0,hw:4.5,hd:4.5});
+
+// Standalone cylindrical pillars as mid-field cover
+[[10,-18],[-10,18],[20,-6],[-20,6],[18,12],[-18,-12]].forEach(([px,pz])=>{
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,WH*.75,10),ARENA_M.pillar);
+  m.position.set(px,WH*.375,pz); m.castShadow=true; scene.add(m);
+  coverBoxes.push({cx:px,cz:pz,hw:.65,hd:.65});
 });
 
 // ── MEZZANINE (second floor) ─────────────────────────────────
@@ -409,12 +436,12 @@ function buildPistol(root) {
   // Ejection port cutout (slightly lighter face)
   const eject = new THREE.Mesh(new THREE.BoxGeometry(.012,.04,.08), M_MID);
   eject.position.set(.034,.02,-.02); root.add(eject);
-  // Barrel
-  const brl = new THREE.Mesh(new THREE.BoxGeometry(.028,.028,.16), M_MID);
-  brl.position.set(0,.02,-.22); root.add(brl);
-  // Muzzle
-  const muz = new THREE.Mesh(new THREE.BoxGeometry(.032,.032,.022), M_LITE);
-  muz.position.set(0,.02,-.30); root.add(muz);
+  // Barrel (round)
+  const brl = new THREE.Mesh(new THREE.CylinderGeometry(.013,.013,.16,10), M_MID);
+  brl.rotation.x=Math.PI/2; brl.position.set(0,.02,-.22); root.add(brl);
+  // Muzzle (slightly flared)
+  const muz = new THREE.Mesh(new THREE.CylinderGeometry(.016,.013,.022,10), M_LITE);
+  muz.rotation.x=Math.PI/2; muz.position.set(0,.02,-.30); root.add(muz);
   // Grip
   const grip = new THREE.Mesh(new THREE.BoxGeometry(.054,.13,.068), M_WOOD);
   grip.position.set(0,-.068,.06); grip.rotation.x=.22; root.add(grip);
@@ -453,12 +480,12 @@ function buildSMG(root) {
   // Top rail
   const rail = new THREE.Mesh(new THREE.BoxGeometry(.066,.018,.44), M_MID);
   rail.position.set(0,.088,-.02); root.add(rail);
-  // Barrel
-  const brl = new THREE.Mesh(new THREE.BoxGeometry(.032,.032,.22), M_MID);
-  brl.position.set(0,.062,-.28); root.add(brl);
-  // Muzzle brake
-  const brake = new THREE.Mesh(new THREE.BoxGeometry(.046,.046,.04), M_LITE);
-  brake.position.set(0,.062,-.40); root.add(brake);
+  // Barrel (round)
+  const brl = new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.22,10), M_MID);
+  brl.rotation.x=Math.PI/2; brl.position.set(0,.062,-.28); root.add(brl);
+  // Muzzle brake (hexagonal)
+  const brake = new THREE.Mesh(new THREE.CylinderGeometry(.022,.022,.04,6), M_LITE);
+  brake.rotation.x=Math.PI/2; brake.position.set(0,.062,-.40); root.add(brake);
   // Magazine (angled slightly)
   const mag = new THREE.Mesh(new THREE.BoxGeometry(.052,.18,.054), M_MID);
   mag.position.set(0,-.05,.04); mag.rotation.x=.08; root.add(mag);
@@ -531,12 +558,17 @@ function buildMinigun(root) {
     const ang = (i/6)*Math.PI*2;
     const bx = Math.cos(ang)*brlRad;
     const by = Math.sin(ang)*brlRad;
-    // Barrel tube
-    const bt = new THREE.Mesh(new THREE.BoxGeometry(.038,.038,.44), brlDark);
-    bt.position.set(bx,by,-.14); barrelCluster.add(bt);
-    // Muzzle ring
-    const mr = new THREE.Mesh(new THREE.BoxGeometry(.048,.048,.018), brlMat);
-    mr.position.set(bx,by,-.36); barrelCluster.add(mr);
+    // Barrel tube (round cylinder)
+    const bt = new THREE.Mesh(new THREE.CylinderGeometry(.016,.016,.44,8), brlDark);
+    bt.rotation.x=Math.PI/2; bt.position.set(bx,by,-.14); barrelCluster.add(bt);
+    // Muzzle ring (slightly flared)
+    const mr = new THREE.Mesh(new THREE.CylinderGeometry(.022,.016,.018,8), brlMat);
+    mr.rotation.x=Math.PI/2; mr.position.set(bx,by,-.36); barrelCluster.add(mr);
+    // Barrel jacket rings (evenly spaced)
+    [-0.06,0.06].forEach(rz=>{
+      const ring=new THREE.Mesh(new THREE.CylinderGeometry(.020,.020,.014,8),brlMat);
+      ring.rotation.x=Math.PI/2; ring.position.set(bx,by,rz-.14); barrelCluster.add(ring);
+    });
   }
   // Centre axle
   const axle = new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.44,8), M_LITE);
@@ -572,25 +604,25 @@ function buildSniper(root) {
   const rail = new THREE.Mesh(new THREE.BoxGeometry(.054, .014, .38), M_MID);
   rail.position.set(0, .068, -.06); root.add(rail);
 
-  // Barrel (long)
-  const brl = new THREE.Mesh(new THREE.BoxGeometry(.024, .024, .80), M_DARK);
-  brl.position.set(0, .020, -.43); root.add(brl);
-  // Muzzle brake
-  const brake = new THREE.Mesh(new THREE.BoxGeometry(.034, .034, .054), M_LITE);
-  brake.position.set(0, .020, -.82); root.add(brake);
+  // Barrel — long round tube
+  const brl = new THREE.Mesh(new THREE.CylinderGeometry(.011,.011,.80,10), M_DARK);
+  brl.rotation.x=Math.PI/2; brl.position.set(0,.020,-.43); root.add(brl);
+  // Muzzle brake (fluted, hexagonal)
+  const brake = new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.054,6), M_LITE);
+  brake.rotation.x=Math.PI/2; brake.position.set(0,.020,-.82); root.add(brake);
 
-  // Scope body
-  const scopeBody = new THREE.Mesh(new THREE.BoxGeometry(.046, .046, .30), M_DARK);
-  scopeBody.position.set(0, .114, -.08); root.add(scopeBody);
-  // Front objective lens
-  const scopeObj = new THREE.Mesh(new THREE.BoxGeometry(.040, .040, .016), M_MID);
-  scopeObj.position.set(0, .114, -.24); root.add(scopeObj);
+  // Scope body (round tube)
+  const scopeBody = new THREE.Mesh(new THREE.CylinderGeometry(.022,.022,.30,12), M_DARK);
+  scopeBody.rotation.x=Math.PI/2; scopeBody.position.set(0,.114,-.08); root.add(scopeBody);
+  // Front objective bell (flared)
+  const scopeObj = new THREE.Mesh(new THREE.CylinderGeometry(.026,.022,.016,12), M_MID);
+  scopeObj.rotation.x=Math.PI/2; scopeObj.position.set(0,.114,-.24); root.add(scopeObj);
   // Lens optical coating glow (cyan — blooms)
-  const lensGlow = new THREE.Mesh(new THREE.BoxGeometry(.032,.032,.002), new THREE.MeshBasicMaterial({color:0x00eeff}));
-  lensGlow.position.set(0,.114,-.249); root.add(lensGlow);
-  // Rear eyepiece
-  const scopeEye = new THREE.Mesh(new THREE.BoxGeometry(.036, .036, .014), M_LITE);
-  scopeEye.position.set(0, .114, .08); root.add(scopeEye);
+  const lensGlow = new THREE.Mesh(new THREE.CylinderGeometry(.020,.020,.004,12), new THREE.MeshBasicMaterial({color:0x00eeff}));
+  lensGlow.rotation.x=Math.PI/2; lensGlow.position.set(0,.114,-.249); root.add(lensGlow);
+  // Rear eyepiece (flared)
+  const scopeEye = new THREE.Mesh(new THREE.CylinderGeometry(.022,.018,.014,12), M_LITE);
+  scopeEye.rotation.x=Math.PI/2; scopeEye.position.set(0,.114,.08); root.add(scopeEye);
   // Elevation turret (top)
   const elev = new THREE.Mesh(new THREE.BoxGeometry(.016, .036, .026), M_MID);
   elev.position.set(0, .140, -.08); root.add(elev);
@@ -811,6 +843,14 @@ function buildRobot() {
     const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
     m.position.set(x,y,z); g.add(m); return m;
   }
+  // Helper: add a cylinder (rotX=0 → vertical, rotX=PI/2 → along Z)
+  function cyl(rt,rb,h,segs,x,y,z,mat,rotX=0,rotZ=0){
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,segs),mat);
+    m.position.set(x,y,z);
+    if(rotX) m.rotation.x=rotX;
+    if(rotZ) m.rotation.z=rotZ;
+    g.add(m); return m;
+  }
 
   // ── Torso ─────────────────────────────────────────────────
   bp(.70,.84,.46,  0,1.32,0,  BODY);           // main block
@@ -832,11 +872,16 @@ function buildRobot() {
   bp(.03,.03,.02, -.07,1.47,-.29, LED_G);
   bp(.03,.03,.02,  .07,1.33,-.29, new THREE.MeshBasicMaterial({color:0xff4400}));
   bp(.03,.03,.02, -.07,1.33,-.29, new THREE.MeshBasicMaterial({color:0xff4400}));
-  // Torso side hydraulic cylinders
-  bp(.04,.38,.04,  .38,1.30,.14, CHROME);
-  bp(.04,.38,.04, -.38,1.30,.14, CHROME);
-  bp(.04,.38,.04,  .38,1.30,-.14, CHROME);
-  bp(.04,.38,.04, -.38,1.30,-.14, CHROME);
+  // Torso side hydraulic cylinders (actual round tubes)
+  cyl(.018,.018,.38,8,  .38,1.30, .14, CHROME);
+  cyl(.018,.018,.38,8, -.38,1.30, .14, CHROME);
+  cyl(.018,.018,.38,8,  .38,1.30,-.14, CHROME);
+  cyl(.018,.018,.38,8, -.38,1.30,-.14, CHROME);
+  // Piston sleeves (slightly wider, shorter — sliding over the tubes)
+  cyl(.028,.028,.14,8,  .38,1.44, .14, BODY);
+  cyl(.028,.028,.14,8, -.38,1.44, .14, BODY);
+  cyl(.028,.028,.14,8,  .38,1.44,-.14, BODY);
+  cyl(.028,.028,.14,8, -.38,1.44,-.14, BODY);
   // Waist reinforcement band
   bp(.68,.08,.44,  0,1.04,0, RED);
   // Back armour plate
@@ -845,8 +890,10 @@ function buildRobot() {
   bp(.32,.32,.14,  0,1.44,.30, BODY);
   bp(.34,.06,.16,  0,1.58,.30, DARK);           // pack vent top
   bp(.34,.06,.16,  0,1.30,.30, DARK);           // pack vent bottom
-  bp(.08,.28,.04,  .10,1.44,.38, CHROME);       // exhaust pipe R
-  bp(.08,.28,.04, -.10,1.44,.38, CHROME);       // exhaust pipe L
+  cyl(.032,.026,.28,7,  .10,1.44,.38, CHROME);  // exhaust pipe R (tapered)
+  cyl(.032,.026,.28,7, -.10,1.44,.38, CHROME);  // exhaust pipe L (tapered)
+  cyl(.018,.018,.06,6,  .10,1.58,.38, new THREE.MeshBasicMaterial({color:0xff4400})); // exhaust glow R
+  cyl(.018,.018,.06,6, -.10,1.58,.38, new THREE.MeshBasicMaterial({color:0xff4400})); // exhaust glow L
   // Spine glow strip (orange — blooms)
   const spineMat=new THREE.MeshBasicMaterial({color:0xff6600});
   const spineGlow=new THREE.Mesh(new THREE.BoxGeometry(.04,.62,.015),spineMat);
@@ -940,15 +987,16 @@ function buildRobot() {
   // Forearm armour plates
   bp(.10,.36,.20, -.58,.84,-.06, PANEL);
   bp(.10,.36,.20,  .58,.84,-.06, PANEL);
-  // Forearm energy conduits (blue — blooms)
+  // Forearm energy conduits (blue — blooms, round tubes)
   const conduitMat=new THREE.MeshBasicMaterial({color:0x0088ff});
-  const condL=new THREE.Mesh(new THREE.BoxGeometry(.015,.30,.015),conduitMat);
-  condL.position.set(-.67,.84,0); g.add(condL);
-  const condR=new THREE.Mesh(new THREE.BoxGeometry(.015,.30,.015),conduitMat);
-  condR.position.set( .67,.84,0); g.add(condR);
-  // Hydraulic tubes on forearms
-  bp(.04,.34,.04, -.50,.84,.08, RED);
-  bp(.04,.34,.04,  .50,.84,.08, RED);
+  cyl(.009,.009,.30,6, -.67,.84,0, conduitMat);
+  cyl(.009,.009,.30,6,  .67,.84,0, conduitMat);
+  // Extra conduit pair (offset)
+  cyl(.007,.007,.30,6, -.64,.84,.04, conduitMat);
+  cyl(.007,.007,.30,6,  .64,.84,.04, conduitMat);
+  // Hydraulic tubes on forearms (round)
+  cyl(.018,.018,.34,8, -.50,.84,.08, RED);
+  cyl(.018,.018,.34,8,  .50,.84,.08, RED);
   // Right arm weapon mount (blaster on right forearm)
   bp(.08,.08,.22,  .58,.76,-.14, DARK);
   bp(.03,.03,.18,  .58,.78,-.22, CHROME);       // weapon barrel
@@ -1005,9 +1053,13 @@ function buildRobot() {
     // Shin LED strip
     const sl=new THREE.Mesh(new THREE.BoxGeometry(.06,.02,.04),EYE_L);
     sl.position.set(0,-.66,-.16); lg.add(sl);
-    // Calf hydraulic
-    const cl=new THREE.Mesh(new THREE.BoxGeometry(.04,.32,.04),RED);
+    // Calf hydraulic (round tube)
+    const clGeo=new THREE.CylinderGeometry(.018,.018,.32,8);
+    const cl=new THREE.Mesh(clGeo,RED);
     cl.position.set(0,-.78,.10); lg.add(cl);
+    // Secondary calf tube
+    const cl2=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,.24,7),CHROME);
+    cl2.position.set(.04,-.80,.10); lg.add(cl2);
 
     // Ankle joint
     const an=new THREE.Mesh(new THREE.BoxGeometry(.20,.10,.22),DARK);
