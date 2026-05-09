@@ -1350,6 +1350,22 @@ playBtn.addEventListener('click', () => {
   else canvas.requestPointerLock();
 });
 
+document.getElementById('main-menu-btn').addEventListener('click', () => {
+  window.location.href = '/';
+});
+
+const touchPauseBtn = document.getElementById('touch-pause-btn');
+if (touchPauseBtn) {
+  touchPauseBtn.addEventListener('click', () => {
+    mobileGameActive = false;
+    const tc = document.getElementById('touch-controls');
+    if (tc) tc.style.display = 'none';
+    hudEl.style.display = 'none';
+    startScreen.style.display = 'flex';
+    hideBanPanel();
+  });
+}
+
 document.getElementById('reset-button').addEventListener('click', () => {
   gameStarted    = false;
   currentLevel   = 1;

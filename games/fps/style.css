@@ -248,6 +248,20 @@ body {
 #reset-button:hover { color:#e74c3c; border-color:#e74c3c; }
 #reset-button:active { transform:scale(0.97); }
 
+#main-menu-btn {
+  margin-top:8px;
+  padding:9px 32px; font-size:12px;
+  font-family:'Courier New',monospace;
+  letter-spacing:4px; background:transparent; color:#4a4a6a;
+  border:1px solid #222238; border-radius:3px; cursor:pointer;
+  transition:color .15s, border-color .15s, background .15s;
+}
+#main-menu-btn:hover {
+  color:#aaaacc; border-color:#555577;
+  background:rgba(255,255,255,0.04);
+}
+#main-menu-btn:active { transform:scale(0.97); }
+
 /* ── Mobile touch controls ──────────────────────────────────── */
 #touch-controls {
   position: fixed; inset: 0;
@@ -339,6 +353,22 @@ body {
   color: #f1c40f;
 }
 #touch-reload-btn:active { background: rgba(241,196,15,0.45); }
+
+#touch-pause-btn {
+  position: absolute;
+  top: 18px; left: 18px;
+  width: 46px; height: 46px;
+  background: rgba(0,0,0,0.52);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 8px;
+  color: rgba(255,255,255,0.7);
+  font-size: 16px;
+  pointer-events: all;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+#touch-pause-btn:active { background: rgba(255,255,255,0.18); }
 
 /* ── Sniper scope overlay ────────────────────────────────────── */
 #scope-overlay {
