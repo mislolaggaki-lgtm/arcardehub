@@ -743,6 +743,63 @@ function refreshPlayerLabel(rp) {
   rp.labelSprite.material.map.needsUpdate = true;
 }
 
+function buildRemoteGun(gunId) {
+  const g = new THREE.Group();
+  const METAL = new THREE.MeshStandardMaterial({color:0x222233, roughness:0.25, metalness:0.92});
+  const DARK  = new THREE.MeshStandardMaterial({color:0x111120, roughness:0.55, metalness:0.75});
+  const GRIP  = new THREE.MeshStandardMaterial({color:0x1a1a1a, roughness:0.85, metalness:0.1});
+
+  function box(w,h,d,x,y,z,mat){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+    m.position.set(x,y,z); g.add(m);
+  }
+  function brl(rt,rb,len,x,y,z){
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,len,8),METAL);
+    m.rotation.x=Math.PI/2; m.position.set(x,y,z); g.add(m);
+  }
+
+  if(gunId==='pistol'){
+    box(.065,.11,.18,  0, 0,-.07, METAL);
+    brl(.018,.018,.14,  0,.02,-.22);
+    box(.040,.09,.06,  0,-.06,.02, GRIP);
+  } else if(gunId==='smg'){
+    box(.075,.12,.28,  0, 0,-.10, METAL);
+    brl(.022,.022,.20,  0,.02,-.28);
+    box(.055,.14,.08,  0,-.07,.04, GRIP);
+    box(.085,.04,.20,  0,.07,-.10, DARK);
+    box(.050,.08,.12,  0,-.05,-.10, DARK);
+  } else if(gunId==='minigun'){
+    box(.15,.13,.30,  0, 0,-.10, METAL);
+    const R=0.045;
+    for(let i=0;i<6;i++){
+      const a=(i/6)*Math.PI*2;
+      const m=new THREE.Mesh(new THREE.CylinderGeometry(.016,.016,.34,6),METAL);
+      m.rotation.x=Math.PI/2;
+      m.position.set(Math.cos(a)*R,Math.sin(a)*R,-.24); g.add(m);
+    }
+    box(.14,.12,.12,  0, 0,-.04, DARK);
+  } else {  // sniper
+    box(.052,.095,.50,  0,.01,-.22, METAL);
+    brl(.013,.013,.30,  0,.01,-.54);
+    box(.042,.042,.18,  0,.07,-.18, DARK);
+    brl(.024,.020,.04,  0,.07,-.08);
+    brl(.020,.024,.04,  0,.07,-.28);
+    box(.035,.09,.07,  0,-.06,.01, GRIP);
+  }
+
+  const muzzleZ = gunId==='pistol'?-.31 : gunId==='smg'?-.40 : gunId==='minigun'?-.43 : -.71;
+  const flashLight = new THREE.PointLight(0xffaa00, 0, 4);
+  flashLight.position.set(0, .01, muzzleZ);
+  g.add(flashLight);
+
+  const flashMat = new THREE.MeshBasicMaterial({color:0xffcc44, transparent:true, opacity:0});
+  const flashMesh = new THREE.Mesh(new THREE.SphereGeometry(.07,6,4), flashMat);
+  flashMesh.position.set(0, .01, muzzleZ);
+  g.add(flashMesh);
+
+  return { group:g, flashLight, flashMat, flashTimer:0 };
+}
+
 function addRemotePlayer(data) {
   if (remotePlayers.has(data.id)) return;
   const rob = buildRobot();
@@ -763,6 +820,10 @@ function addRemotePlayer(data) {
   const labelSprite = makePlayerLabel(username, health, pvpOn, isAdmin, gunId);
   rob.group.add(labelSprite);
 
+  const remoteGun = buildRemoteGun(gunId);
+  remoteGun.group.position.set(0.42, 0.78, -0.20);
+  rob.group.add(remoteGun.group);
+
   remotePlayers.set(data.id, {
     ...rob,
     labelSprite,
@@ -771,6 +832,7 @@ function addRemotePlayer(data) {
     pvpMode:    pvpOn,
     isAdmin,
     gunId,
+    remoteGun,
     targetPos:  new THREE.Vector3(data.x || 0, groundY, data.z || 0),
     targetRotY: data.rotationY || 0,
     walkClock:  0,
@@ -1193,6 +1255,8 @@ function shoot(){
       if(hit && socket) socket.emit('shoot', { targetId: hit[0] });
     }
   }
+
+  if(socket && socket.connected) socket.emit('playerShot', {});
 
   gun.canShoot=false; gun.shootTimer=def.fireRate;
 }
@@ -1643,6 +1707,17 @@ function update(dt){
       rp.legL.rotation.x =  Math.sin(rp.walkClock * 2.5) * 0.32;
       rp.legR.rotation.x = -Math.sin(rp.walkClock * 2.5) * 0.32;
     }
+    // Muzzle flash fade
+    if(rp.remoteGun.flashTimer > 0) {
+      rp.remoteGun.flashTimer -= dt;
+      const t = Math.max(0, rp.remoteGun.flashTimer / 0.10);
+      rp.remoteGun.flashLight.intensity = t * 5;
+      rp.remoteGun.flashMat.opacity = t;
+      if(rp.remoteGun.flashTimer <= 0) {
+        rp.remoteGun.flashLight.intensity = 0;
+        rp.remoteGun.flashMat.opacity = 0;
+      }
+    }
   });
 
   // ── Ammo pickup animation & collection ──────────────────────
@@ -1941,6 +2016,11 @@ function initSocket() {
     }
     if (data.gunId !== undefined && data.gunId !== rp.gunId) {
       rp.gunId = data.gunId;
+      rp.group.remove(rp.remoteGun.group);
+      disposeGroup(rp.remoteGun.group);
+      rp.remoteGun = buildRemoteGun(data.gunId);
+      rp.remoteGun.group.position.set(0.42, 0.78, -0.20);
+      rp.group.add(rp.remoteGun.group);
       needsLabelRefresh = true;
     }
     if (needsLabelRefresh) refreshPlayerLabel(rp);
@@ -1971,6 +2051,12 @@ function initSocket() {
         setTimeout(() => rp.allMats.forEach(m => { m.emissive.setHex(0x000000); m.emissiveIntensity=0; }), 80);
       }
     }
+  });
+
+  // Another player fired
+  socket.on('playerShot', data => {
+    const rp = remotePlayers.get(data.id);
+    if(rp && rp.remoteGun) rp.remoteGun.flashTimer = 0.10;
   });
 
   // A player disconnected

@@ -517,6 +517,7 @@
   <script>
     const isLocal = ['localhost','127.0.0.1'].includes(window.location.hostname);
     const API = (isLocal ? 'http://localhost:3001' : window.location.origin) + '/api';
+    const TERMS_VERSION = '1';
 
     // ── Nav auth state ──────────────────────────────────────
     function setLoggedIn(username) {
@@ -605,15 +606,35 @@
 
         if (!res.ok) {
           showMsg('reg-msg', data.error, 'error');
+          btn.disabled = false;
         } else {
-          showMsg('reg-msg', 'Account created! Redirecting to login…', 'success');
-          document.getElementById('reg-username').value = '';
-          document.getElementById('reg-password').value = '';
-          setTimeout(() => { clearMsg('reg-msg'); switchTab('login'); }, 1500);
+          // Auto-login then go to terms
+          try {
+            const loginRes  = await fetch(`${API}/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username, password }),
+            });
+            const loginData = await loginRes.json();
+            if (loginRes.ok) {
+              localStorage.setItem('ah_token',    loginData.token);
+              localStorage.setItem('ah_username', loginData.username);
+              localStorage.setItem('isAdmin',     loginData.isAdmin ? 'true' : 'false');
+              localStorage.setItem('ah_visited',  'true');
+              window.location.href = '/terms.html';
+            } else {
+              showMsg('reg-msg', 'Account created! Please log in.', 'success');
+              setTimeout(() => { clearMsg('reg-msg'); switchTab('login'); }, 1500);
+              btn.disabled = false;
+            }
+          } catch {
+            showMsg('reg-msg', 'Account created! Please log in.', 'success');
+            setTimeout(() => { clearMsg('reg-msg'); switchTab('login'); }, 1500);
+            btn.disabled = false;
+          }
         }
       } catch {
         showMsg('reg-msg', 'Could not reach server. Is it running on port 3001?', 'error');
-      } finally {
         btn.disabled = false;
       }
     });
@@ -642,7 +663,7 @@
           localStorage.setItem('ah_token',    data.token);
           localStorage.setItem('ah_username', data.username);
           localStorage.setItem('isAdmin',     data.isAdmin ? 'true' : 'false');
-          localStorage.setItem('ah_terms',    data.termsAccepted ? 'true' : 'false');
+          localStorage.setItem('ah_terms',    data.termsAccepted ? TERMS_VERSION : '0');
           if (!data.termsAccepted) {
             window.location.href = '/terms.html';
             return;
@@ -695,8 +716,14 @@
     (function restoreSession() {
       const token    = localStorage.getItem('ah_token');
       const username = localStorage.getItem('ah_username');
-      if (!token || !username) return;
-      if (localStorage.getItem('ah_terms') !== 'true') {
+
+      if (!token || !username) {
+        const hasVisited = localStorage.getItem('ah_visited');
+        openModal(hasVisited ? 'login' : 'register');
+        return;
+      }
+
+      if (localStorage.getItem('ah_terms') !== TERMS_VERSION) {
         window.location.href = '/terms.html';
         return;
       }

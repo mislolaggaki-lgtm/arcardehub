@@ -43,93 +43,8 @@
     }
     .logo em { font-style: normal; color: #e74c3c; text-shadow: 0 0 18px rgba(231,76,60,0.5); }
 
-    /* ── Step wrapper ─────────────────────────────────────── */
-    .step {
-      width: 100%;
-      max-width: 480px;
-    }
-
-    /* ── Register card ────────────────────────────────────── */
-    .reg-card {
-      background: #0d0d1a;
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 14px;
-      padding: 36px 32px 32px;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
-    }
-
-    .reg-card h2 {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 22px;
-      letter-spacing: 3px;
-      color: #fff;
-      margin-bottom: 8px;
-    }
-
-    .reg-card p {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 28px;
-      line-height: 1.55;
-    }
-
-    .reg-form { display: flex; flex-direction: column; gap: 16px; }
-
-    .field { display: flex; flex-direction: column; gap: 7px; }
-    .field label {
-      font-size: 10px; font-weight: 700;
-      letter-spacing: 2.5px; text-transform: uppercase; color: #444466;
-    }
-    .field input {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.09);
-      border-radius: 7px; padding: 11px 14px;
-      color: #e0e0f0; font-family: 'Inter', sans-serif; font-size: 14px;
-      outline: none; transition: border-color .15s, box-shadow .15s;
-    }
-    .field input:focus {
-      border-color: rgba(231,76,60,0.45);
-      box-shadow: 0 0 0 3px rgba(231,76,60,0.07);
-    }
-    .field input::placeholder { color: #2a2a3a; }
-
-    .form-msg {
-      font-size: 13px; line-height: 1.45; min-height: 18px;
-    }
-    .form-msg.error   { color: #e74c3c; }
-    .form-msg.success { color: #22dd66; }
-
-    .btn-primary {
-      padding: 12px 0; margin-top: 4px;
-      background: rgba(231,76,60,0.12);
-      border: 1px solid rgba(231,76,60,0.38);
-      border-radius: 7px; color: #e74c3c;
-      font-family: 'Inter', sans-serif;
-      font-size: 11px; font-weight: 700;
-      letter-spacing: 3px; text-transform: uppercase;
-      cursor: pointer; transition: background .15s, box-shadow .15s;
-    }
-    .btn-primary:hover {
-      background: rgba(231,76,60,0.24);
-      box-shadow: 0 0 22px rgba(231,76,60,0.18);
-    }
-    .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
-
-    .signin-link {
-      text-align: center;
-      margin-top: 20px;
-      font-size: 13px;
-      color: var(--muted);
-    }
-    .signin-link a {
-      color: #6666aa;
-      text-decoration: none;
-      transition: color .15s;
-    }
-    .signin-link a:hover { color: #aaaadd; }
-
-    /* ── Terms step ───────────────────────────────────────── */
-    #step-terms { display: none; width: 100%; max-width: 680px; }
+    /* ── Terms wrapper ────────────────────────────────────── */
+    #step-terms { width: 100%; max-width: 680px; }
 
     .terms-header {
       text-align: center;
@@ -276,34 +191,11 @@
 
   <div class="logo">ARCADE<em>HUB</em></div>
 
-  <!-- ── Step 1: Register ──────────────────────────────────── -->
-  <div id="step-register" class="step">
-    <div class="reg-card">
-      <h2>Create Your Account</h2>
-      <p>Join ArcadeHub to play games with friends. After registering you'll be asked to read and accept our Terms of Service.</p>
-
-      <form class="reg-form" id="reg-form">
-        <div class="field">
-          <label for="reg-username">Username</label>
-          <input id="reg-username" type="text" placeholder="Choose a username (3–24 chars)" autocomplete="username">
-        </div>
-        <div class="field">
-          <label for="reg-password">Password</label>
-          <input id="reg-password" type="password" placeholder="Choose a password (min 6 chars)" autocomplete="new-password">
-        </div>
-        <div class="form-msg" id="reg-msg"></div>
-        <button type="submit" class="btn-primary" id="reg-btn">CREATE ACCOUNT</button>
-      </form>
-
-      <p class="signin-link">Already have an account? <a href="/">Sign in</a></p>
-    </div>
-  </div>
-
-  <!-- ── Step 2: Terms ─────────────────────────────────────── -->
+  <!-- ── Terms ─────────────────────────────────────────────── -->
   <div id="step-terms">
     <div class="terms-header">
       <h1>Terms of Service</h1>
-      <p>Read all the way to the bottom, then check the box and click <strong style="color:#c0c0ee">I Agree</strong> to continue.</p>
+      <p id="terms-subhead">Read all the way to the bottom, then check the box and click <strong style="color:#c0c0ee">I Agree</strong> to continue.</p>
     </div>
 
     <div class="terms-box" id="terms-box">
@@ -371,69 +263,33 @@
   <script>
     const isLocal = ['localhost','127.0.0.1'].includes(window.location.hostname);
     const API = (isLocal ? 'http://localhost:3001' : window.location.origin) + '/api';
+    const TERMS_VERSION = '1';
 
-    let pendingUsername = '';
-    let pendingPassword = '';
-
-    // ── On load: redirect if already accepted, or skip register for existing users ──
+    // ── On load ───────────────────────────────────────────────
     (function init() {
-      if (localStorage.getItem('ah_terms') === 'true') {
+      if (localStorage.getItem('ah_terms') === TERMS_VERSION) {
         window.location.href = '/';
         return;
       }
       const token    = localStorage.getItem('ah_token');
       const username = localStorage.getItem('ah_username');
-      if (token && username) {
-        // Existing user who hasn't accepted yet — skip register, show terms
-        document.getElementById('step-register').style.display = 'none';
-        const header = document.querySelector('.terms-header p');
-        header.innerHTML = `Welcome back, <strong style="color:#c0c0ee">${username}</strong>. Please read and accept our Terms of Service to continue.`;
-        document.getElementById('step-terms').style.display = 'block';
+      if (!token) {
+        // No account yet — send back to register first
+        window.location.href = '/';
+        return;
+      }
+      // Personalise subtitle
+      if (username) {
+        document.getElementById('terms-subhead').innerHTML =
+          `Welcome, <strong style="color:#c0c0ee">${username}</strong>. Read all the way to the bottom, then check the box and click <strong style="color:#c0c0ee">I Agree</strong> to continue.`;
       }
     })();
 
-    // ── Register ─────────────────────────────────────────────
-    document.getElementById('reg-form').addEventListener('submit', async e => {
-      e.preventDefault();
-      const username = document.getElementById('reg-username').value.trim();
-      const password = document.getElementById('reg-password').value;
-      const btn = document.getElementById('reg-btn');
-      const msg = document.getElementById('reg-msg');
-
-      msg.textContent = '';
-      msg.className = 'form-msg';
-      btn.disabled = true;
-
-      try {
-        const res  = await fetch(`${API}/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-          msg.textContent = data.error;
-          msg.className = 'form-msg error';
-          btn.disabled = false;
-        } else {
-          pendingUsername = username;
-          pendingPassword = password;
-          document.getElementById('step-register').style.display = 'none';
-          document.getElementById('step-terms').style.display = 'block';
-        }
-      } catch {
-        msg.textContent = 'Could not reach server. Is it running?';
-        msg.className = 'form-msg error';
-        btn.disabled = false;
-      }
-    });
-
     // ── Terms scroll detection ────────────────────────────────
-    const termsBox     = document.getElementById('terms-box');
+    const termsBox      = document.getElementById('terms-box');
     const acceptSection = document.getElementById('accept-section');
-    const agreeCheck   = document.getElementById('agree-check');
-    const agreeBtn     = document.getElementById('agree-btn');
+    const agreeCheck    = document.getElementById('agree-check');
+    const agreeBtn      = document.getElementById('agree-btn');
     let scrolledToBottom = false;
 
     termsBox.addEventListener('scroll', () => {
@@ -459,30 +315,14 @@
       agreeBtn.textContent = 'Saving…';
 
       try {
-        let token = localStorage.getItem('ah_token');
+        const token = localStorage.getItem('ah_token');
 
-        // New user: auto-login first to get a token
-        if (!token && pendingUsername) {
-          const loginRes  = await fetch(`${API}/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: pendingUsername, password: pendingPassword }),
-          });
-          const loginData = await loginRes.json();
-          if (!loginRes.ok) { agreeBtn.textContent = 'I Agree'; agreeBtn.disabled = false; return; }
-          token = loginData.token;
-          localStorage.setItem('ah_token',    loginData.token);
-          localStorage.setItem('ah_username', loginData.username);
-          localStorage.setItem('isAdmin',     loginData.isAdmin ? 'true' : 'false');
-        }
-
-        // Mark terms as accepted on the server
         await fetch(`${API}/terms/accept`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        localStorage.setItem('ah_terms', 'true');
+        localStorage.setItem('ah_terms', TERMS_VERSION);
         window.location.href = '/';
       } catch {
         agreeBtn.textContent = 'I Agree';

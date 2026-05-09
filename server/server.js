@@ -13,7 +13,8 @@ const { Server } = require('socket.io');
 const PORT        = process.env.PORT        || 3001;
 const JWT_SECRET  = process.env.JWT_SECRET  || 'arcadehub-dev-secret-change-in-production';
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/arcadehub';
-const SALT_ROUNDS = 10;
+const SALT_ROUNDS    = 10;
+const TERMS_VERSION  = 1;
 
 // ── Express + HTTP server ─────────────────────────────────────
 const app        = express();
@@ -84,6 +85,7 @@ async function start() {
         isAdmin:       true,
         banned:        false,
         termsAccepted: true,
+        termsVersion:  TERMS_VERSION,
         created_at:    new Date().toISOString(),
       });
       console.log('Admin account "Stotch" created');
@@ -138,6 +140,10 @@ async function start() {
       if (!player) return;
       player.pvpMode = !!enabled;
       io.emit('pvpModeChanged', { id: socket.id, pvpMode: player.pvpMode });
+    });
+
+    socket.on('playerShot', () => {
+      socket.broadcast.emit('playerShot', { id: socket.id });
     });
 
     socket.on('shoot', ({ targetId }) => {
@@ -211,6 +217,7 @@ async function start() {
         isAdmin:       false,
         banned:        false,
         termsAccepted: false,
+        termsVersion:  0,
         created_at:    new Date().toISOString(),
       };
 
@@ -247,7 +254,8 @@ async function start() {
         JWT_SECRET,
         { expiresIn: '7d' }
       );
-      res.json({ success: true, token, username: user.username, isAdmin: !!user.isAdmin, termsAccepted: !!user.termsAccepted });
+      const termsAccepted = user.termsAccepted && user.termsVersion === TERMS_VERSION;
+      res.json({ success: true, token, username: user.username, isAdmin: !!user.isAdmin, termsAccepted: !!termsAccepted });
     } catch (err) {
       console.error('/api/login error:', err);
       res.status(500).json({ error: 'Server error.' });
@@ -261,7 +269,7 @@ async function start() {
       const { ObjectId } = require('mongodb');
       await usersCol.updateOne(
         { _id: new ObjectId(payload.userId) },
-        { $set: { termsAccepted: true } }
+        { $set: { termsAccepted: true, termsVersion: TERMS_VERSION } }
       );
       res.json({ success: true });
     } catch (err) {
