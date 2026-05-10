@@ -820,8 +820,14 @@ function addRemotePlayer(data) {
   const labelSprite = makePlayerLabel(username, health, pvpOn, isAdmin, gunId);
   rob.group.add(labelSprite);
 
+  // Raise both arms to chest-level gun-hold pose
+  rob.armGroupR.rotation.x = -1.10;
+  rob.armGroupL.rotation.x = -1.10;
+  rob.armGroupR.rotation.z = -0.32;  // angle right arm inward
+  rob.armGroupL.rotation.z =  0.32;  // angle left arm inward
+
   const remoteGun = buildRemoteGun(gunId);
-  remoteGun.group.position.set(0.30, 1.20, -0.28);
+  remoteGun.group.position.set(0, 1.22, -0.62);
   rob.group.add(remoteGun.group);
 
   remotePlayers.set(data.id, {
@@ -1029,54 +1035,53 @@ function buildRobot() {
   const shStripR=new THREE.Mesh(new THREE.BoxGeometry(.015,.12,.38),shStripMat);
   shStripR.position.set( .49,1.68,0); g.add(shStripR);
 
-  // ── Upper arms ────────────────────────────────────────────
-  bp(.20,.46,.20, -.58,1.28,0, BODY);
-  bp(.20,.46,.20,  .58,1.28,0, BODY);
-  // Arm detail strips
-  bp(.06,.40,.22, -.58,1.28,-.02, PANEL);
-  bp(.06,.40,.22,  .58,1.28,-.02, PANEL);
-  // Elbow ball joints
-  const ejGeo=new THREE.SphereGeometry(.10,8,6);
-  const ejL=new THREE.Mesh(ejGeo,JOINT); ejL.position.set(-.58,1.02,0); g.add(ejL);
-  const ejR=new THREE.Mesh(ejGeo,JOINT); ejR.position.set( .58,1.02,0); g.add(ejR);
-  // Elbow guards
-  bp(.18,.12,.20, -.58,1.02,-.08, RED);
-  bp(.18,.12,.20,  .58,1.02,-.08, RED);
+  // ── Arms (pivoting groups — shoulder is the rotation origin) ──
+  function makeArmGroup(side) {
+    const ag = new THREE.Group();
+    ag.position.set(side*0.46, 1.68, 0);
+    const sx = side*0.12;
 
-  // ── Forearms ──────────────────────────────────────────────
-  bp(.18,.40,.18, -.58,.84,0, CHROME);
-  bp(.18,.40,.18,  .58,.84,0, CHROME);
-  // Forearm armour plates
-  bp(.10,.36,.20, -.58,.84,-.06, PANEL);
-  bp(.10,.36,.20,  .58,.84,-.06, PANEL);
-  // Forearm energy conduits (blue — blooms, round tubes)
-  const conduitMat=new THREE.MeshBasicMaterial({color:0x0088ff});
-  cyl(.009,.009,.30,6, -.67,.84,0, conduitMat);
-  cyl(.009,.009,.30,6,  .67,.84,0, conduitMat);
-  // Extra conduit pair (offset)
-  cyl(.007,.007,.30,6, -.64,.84,.04, conduitMat);
-  cyl(.007,.007,.30,6,  .64,.84,.04, conduitMat);
-  // Hydraulic tubes on forearms (round)
-  cyl(.018,.018,.34,8, -.50,.84,.08, RED);
-  cyl(.018,.018,.34,8,  .50,.84,.08, RED);
-  // Right arm weapon mount (blaster on right forearm)
-  bp(.08,.08,.22,  .58,.76,-.14, DARK);
-  bp(.03,.03,.18,  .58,.78,-.22, CHROME);       // weapon barrel
+    function abp(w,h,d,x,y,z,mat){
+      const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+      m.position.set(x,y,z); ag.add(m);
+    }
+    function acyl(rt,rb,h,segs,x,y,z,mat,rotX=0){
+      const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,segs),mat);
+      m.position.set(x,y,z); if(rotX) m.rotation.x=rotX; ag.add(m);
+    }
 
-  // ── Hands / Claws ─────────────────────────────────────────
-  bp(.22,.14,.22, -.58,.59,0, DARK);
-  bp(.22,.14,.22,  .58,.59,0, DARK);
-  // Knuckle ridge
-  bp(.20,.05,.06, -.58,.54,-.10, RED);
-  bp(.20,.05,.06,  .58,.54,-.10, RED);
-  // Three claw fingers per hand (longer, more menacing)
-  for(let f=-1;f<=1;f++){
-    bp(.04,.04,.16, -.54+f*.06,.56,-.14, DARK);
-    bp(.04,.04,.16,  .54+f*.06,.56,-.14, DARK);
-    // Claw tips
-    bp(.03,.03,.04, -.54+f*.06,.56,-.23, CHROME);
-    bp(.03,.03,.04,  .54+f*.06,.56,-.23, CHROME);
+    // Upper arm (coords relative to shoulder pivot)
+    abp(.20,.46,.20,  sx,-.40,0,  BODY);
+    abp(.06,.40,.22,  sx,-.40,-.02, PANEL);
+    // Elbow
+    const ej=new THREE.Mesh(new THREE.SphereGeometry(.10,8,6),JOINT);
+    ej.position.set(sx,-.66,0); ag.add(ej);
+    abp(.18,.12,.20,  sx,-.66,-.08, RED);
+    // Forearm
+    abp(.18,.40,.18,  sx,-.84,0,  CHROME);
+    abp(.10,.36,.20,  sx,-.84,-.06, PANEL);
+    const cMat=new THREE.MeshBasicMaterial({color:0x0088ff});
+    acyl(.009,.009,.30,6, sx+side*.09,-.84,0, cMat);
+    acyl(.007,.007,.30,6, sx+side*.06,-.84,.04, cMat);
+    acyl(.018,.018,.34,8, sx-side*.08,-.84,.08, RED);
+    if(side>0){
+      abp(.08,.08,.22,  sx,-.92,-.14, DARK);
+      abp(.03,.03,.18,  sx,-.90,-.22, CHROME);
+    }
+    // Hand / claws
+    abp(.22,.14,.22,  sx,-1.09,0,  DARK);
+    abp(.20,.05,.06,  sx,-1.14,-.10, RED);
+    for(let f=-1;f<=1;f++){
+      abp(.04,.04,.16, sx+side*(0.02+f*.06),-1.12,-.14, DARK);
+      abp(.03,.03,.04, sx+side*(0.02+f*.06),-1.12,-.23, CHROME);
+    }
+
+    g.add(ag);
+    return ag;
   }
+
+  const armGroupL = makeArmGroup(-1);
+  const armGroupR = makeArmGroup( 1);
 
   // ── Legs (groups pivoted at hip for walk animation) ────────
   function makeLeg(side) {
@@ -1184,7 +1189,7 @@ function buildRobot() {
 
   g.add(hpBarGroup);
 
-  return { group:g, legL, legR, eyeMatL:EYE_L, eyeMatR:EYE_R, allMats, hpBarGroup, hpFill, hpFillMat };
+  return { group:g, legL, legR, armGroupL, armGroupR, eyeMatL:EYE_L, eyeMatR:EYE_R, allMats, hpBarGroup, hpFill, hpFillMat };
 }
 
 // ─── Bot pool (populated per-level) ──────────────────────────
@@ -2019,7 +2024,7 @@ function initSocket() {
       rp.group.remove(rp.remoteGun.group);
       disposeGroup(rp.remoteGun.group);
       rp.remoteGun = buildRemoteGun(data.gunId);
-      rp.remoteGun.group.position.set(0.42, 0.78, -0.20);
+      rp.remoteGun.group.position.set(0, 1.22, -0.62);
       rp.group.add(rp.remoteGun.group);
       needsLabelRefresh = true;
     }
