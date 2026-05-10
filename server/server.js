@@ -34,7 +34,8 @@ const PLAYER_COLORS = [
   '#9b59b6', '#1abc9c', '#e67e22', '#e91e63',
 ];
 
-const players = new Map();
+const players    = new Map();
+const coopGroups = new Map(); // hostSocketId → Set<guestSocketId>
 
 // ── Auth helper ───────────────────────────────────────────────
 function verifyToken(authHeader) {
@@ -188,9 +189,65 @@ async function start() {
       await usersCol.updateOne({ username: targetName }, { $set: { banned: false } });
     });
 
+    // ── Co-op ─────────────────────────────────────────────────
+    socket.on('coopInvite', ({ targetId }) => {
+      const sender = players.get(socket.id);
+      if (!sender) return;
+      const ts = io.sockets.sockets.get(targetId);
+      if (ts) ts.emit('coopInviteReceived', { fromId: socket.id, fromUsername: sender.username });
+    });
+
+    socket.on('coopAccept', ({ hostId }) => {
+      const hs    = io.sockets.sockets.get(hostId);
+      const guest = players.get(socket.id);
+      const host  = players.get(hostId);
+      if (!hs || !host || !guest) return;
+      if (!coopGroups.has(hostId)) coopGroups.set(hostId, new Set());
+      coopGroups.get(hostId).add(socket.id);
+      hs.emit('coopAccepted', { guestId: socket.id, guestUsername: guest.username });
+      socket.emit('coopStart', { hostId, hostUsername: host.username, level: host.level || 1 });
+    });
+
+    socket.on('coopDeny', ({ hostId }) => {
+      const hs     = io.sockets.sockets.get(hostId);
+      const denier = players.get(socket.id);
+      if (hs) hs.emit('coopDenied', { denierUsername: denier ? denier.username : 'Player' });
+    });
+
+    socket.on('coopBots', (botData) => {
+      const guests = coopGroups.get(socket.id);
+      if (!guests) return;
+      guests.forEach(gid => {
+        const gs = io.sockets.sockets.get(gid);
+        if (gs) gs.emit('coopBots', { bots: botData });
+      });
+    });
+
+    socket.on('coopBotHit', ({ botIndex }) => {
+      for (const [hid, guests] of coopGroups) {
+        if (guests.has(socket.id)) {
+          const hs = io.sockets.sockets.get(hid);
+          if (hs) hs.emit('coopBotHit', { botIndex });
+          break;
+        }
+      }
+    });
+
+    socket.on('coopLevelUp', ({ level }) => {
+      const p = players.get(socket.id); if (p) p.level = level;
+      const guests = coopGroups.get(socket.id);
+      if (!guests) return;
+      guests.forEach(gid => {
+        const gs = io.sockets.sockets.get(gid);
+        if (gs) gs.emit('coopLevelUp', { level });
+      });
+    });
+
     socket.on('disconnect', () => {
       players.delete(socket.id);
       io.emit('playerLeft', { id: socket.id });
+      coopGroups.delete(socket.id);
+      for (const [, guests] of coopGroups) guests.delete(socket.id);
     });
   });
 

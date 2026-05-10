@@ -27,6 +27,14 @@ let moveInterval = null;
 const remotePlayers = new Map();   // socketId → { group, legL, legR, allMats, targetPos, targetRotY, walkClock, ... }
 let pvpMode      = true;
 
+// ── Co-op state ──────────────────────────────────────────────
+let coopMode     = false;
+let coopIsHost   = false;
+let coopHostId   = null;
+const coopGuests     = new Set();
+const coopGhostBots  = [];
+let coopBotTimer     = 0;
+
 // ─── Mobile state ────────────────────────────────────────────
 const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 ||
                  window.matchMedia('(pointer: coarse)').matches;
@@ -678,7 +686,7 @@ function buildSniper(root) {
 
 const GUN_LABELS = { pistol:'PISTOL', smg:'SMG', minigun:'MINIGUN', sniper:'SNIPER' };
 
-function _drawLabelCanvas(ctx, name, hp, pvpOn, isAdmin, gunId) {
+function _drawLabelCanvas(ctx, name, hp, pvpOn, isAdmin, gunId, inCoop=false) {
   const W = 256, H = 100;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = 'rgba(0,0,0,0.65)';
@@ -713,6 +721,14 @@ function _drawLabelCanvas(ctx, name, hp, pvpOn, isAdmin, gunId) {
   ctx.textAlign = 'left';
   ctx.fillText(pvpOn ? 'PVP ON' : 'PVP OFF', 86, 73);
 
+  // Co-op badge
+  if (inCoop) {
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#00ffaa';
+    ctx.fillText('⚡CO-OP', 246, 73);
+  }
+
   // Gun indicator
   const gunLabel = GUN_LABELS[gunId] || '';
   if (gunLabel) {
@@ -723,11 +739,11 @@ function _drawLabelCanvas(ctx, name, hp, pvpOn, isAdmin, gunId) {
   }
 }
 
-function makePlayerLabel(name, hp, pvpOn, isAdmin, gunId) {
+function makePlayerLabel(name, hp, pvpOn, isAdmin, gunId, inCoop=false) {
   const c = document.createElement('canvas');
   c.width = 256; c.height = 100;
   const ctx = c.getContext('2d');
-  _drawLabelCanvas(ctx, name, hp, pvpOn, isAdmin, gunId);
+  _drawLabelCanvas(ctx, name, hp, pvpOn, isAdmin, gunId, inCoop);
   const tex = new THREE.CanvasTexture(c);
   const mat = new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false });
   const sp = new THREE.Sprite(mat);
@@ -739,7 +755,7 @@ function makePlayerLabel(name, hp, pvpOn, isAdmin, gunId) {
 }
 
 function refreshPlayerLabel(rp) {
-  _drawLabelCanvas(rp.labelSprite.userData.ctx, rp.username, rp.health, rp.pvpMode, rp.isAdmin, rp.gunId);
+  _drawLabelCanvas(rp.labelSprite.userData.ctx, rp.username, rp.health, rp.pvpMode, rp.isAdmin, rp.gunId, !!rp.inCoop);
   rp.labelSprite.material.map.needsUpdate = true;
 }
 
@@ -838,6 +854,7 @@ function addRemotePlayer(data) {
     pvpMode:    pvpOn,
     isAdmin,
     gunId,
+    inCoop:     false,
     remoteGun,
     targetPos:  new THREE.Vector3(data.x || 0, groundY, data.z || 0),
     targetRotY: data.rotationY || 0,
@@ -852,6 +869,119 @@ function removeRemotePlayer(id) {
   disposeGroup(rp.group);
   remotePlayers.delete(id);
 }
+
+// ── Ghost bots (co-op guest sees host's bots) ────────────────
+function clearGhostBots() {
+  coopGhostBots.forEach(gb => { if (gb.group.parent) scene.remove(gb.group); disposeGroup(gb.group); });
+  coopGhostBots.length = 0;
+}
+
+function syncGhostBots(botData) {
+  while (coopGhostBots.length < botData.length) {
+    const r = buildRobot();
+    r.allMats.forEach(m => { m.emissive.setHex(0x002233); m.emissiveIntensity = 0.5; });
+    scene.add(r.group);
+    coopGhostBots.push({ ...r, alive: true });
+  }
+  botData.forEach((bd, i) => {
+    const gb = coopGhostBots[i];
+    if (!bd.alive) {
+      if (gb.alive) { gb.alive = false; if (gb.group.parent) scene.remove(gb.group); }
+      return;
+    }
+    if (!gb.alive) { gb.alive = true; scene.add(gb.group); }
+    gb.group.position.set(bd.x, bd.y, bd.z);
+    gb.group.rotation.y = bd.ry;
+  });
+}
+
+function findGhostBot(obj) {
+  for (let i = 0; i < coopGhostBots.length; i++) {
+    let cur = obj;
+    while (cur) { if (cur === coopGhostBots[i].group) return i; cur = cur.parent; }
+  }
+  return null;
+}
+
+// ── Co-op panel ───────────────────────────────────────────────
+const coopPanel  = document.getElementById('coop-panel');
+const coopList   = document.getElementById('coop-player-list');
+const coopStatus = document.getElementById('coop-status');
+
+function showCoopPanel() {
+  if (!coopPanel || !socket) return;
+  coopList.innerHTML = '';
+  const others = [...remotePlayers.values()];
+  if (others.length === 0) {
+    const empty = document.createElement('span');
+    empty.style.cssText = 'font-size:12px;color:#444466';
+    empty.textContent = 'No other players connected.';
+    coopList.appendChild(empty);
+  } else {
+    others.forEach(rp => {
+      const row = document.createElement('div');
+      row.className = 'coop-player-row';
+      const nameEl = document.createElement('span');
+      nameEl.className = 'coop-player-name';
+      nameEl.textContent = rp.username || 'Player';
+      const btn = document.createElement('button');
+      btn.className = 'coop-invite-btn';
+      if (rp.inCoop || coopMode) {
+        btn.textContent = rp.inCoop ? 'CO-OP' : 'IN CO-OP';
+        btn.disabled = true;
+      } else {
+        btn.textContent = 'INVITE';
+        btn.addEventListener('click', () => {
+          socket.emit('coopInvite', { targetId: rp.id });
+          btn.textContent = 'SENT';
+          btn.disabled = true;
+        });
+      }
+      row.appendChild(nameEl);
+      row.appendChild(btn);
+      coopList.appendChild(row);
+    });
+  }
+  coopStatus.style.display = coopMode ? 'block' : 'none';
+  if (coopMode) coopStatus.textContent = coopIsHost ? '⚡ You are the Co-op Host' : '⚡ You are a Co-op Guest';
+  coopPanel.style.display = 'block';
+}
+
+function hideCoopPanel() {
+  if (coopPanel) coopPanel.style.display = 'none';
+}
+
+// ── Co-op invite dialog ───────────────────────────────────────
+let pendingInviteHostId = null;
+
+function showCoopInviteDialog(fromId, fromUsername) {
+  pendingInviteHostId = fromId;
+  const dialog = document.getElementById('coop-invite-dialog');
+  const text   = document.getElementById('coop-invite-text');
+  if (dialog && text) {
+    text.textContent = `${fromUsername} wants to co-op with you!`;
+    dialog.style.display = 'block';
+  }
+}
+
+(function setupCoopInviteDialog() {
+  const dialog    = document.getElementById('coop-invite-dialog');
+  const acceptBtn = document.getElementById('coop-accept-btn');
+  const denyBtn   = document.getElementById('coop-deny-btn');
+  if (!acceptBtn || !denyBtn) return;
+  acceptBtn.addEventListener('click', () => {
+    if (!pendingInviteHostId || !socket) return;
+    socket.emit('coopAccept', { hostId: pendingInviteHostId });
+    pendingInviteHostId = null;
+    dialog.style.display = 'none';
+  });
+  denyBtn.addEventListener('click', () => {
+    if (!pendingInviteHostId || !socket) return;
+    socket.emit('coopDeny', { hostId: pendingInviteHostId });
+    pendingInviteHostId = null;
+    dialog.style.display = 'none';
+  });
+})();
 
 // Walk up parent chain to find which remote player entry contains obj
 function findRemotePlayer(obj) {
@@ -1250,7 +1380,8 @@ function shoot(){
 
   const livingGroups  = bots.filter(b=>b.alive).map(b=>b.group);
   const remoteGroups  = [...remotePlayers.values()].map(rp=>rp.group);
-  const hits = raycaster.intersectObjects([...livingGroups, ...remoteGroups], true);
+  const ghostGroups   = (coopMode && !coopIsHost) ? coopGhostBots.filter(gb=>gb.alive).map(gb=>gb.group) : [];
+  const hits = raycaster.intersectObjects([...livingGroups, ...remoteGroups, ...ghostGroups], true);
   if(hits.length>0){
     const bot = findBot(hits[0].object);
     if(bot){
@@ -1258,6 +1389,10 @@ function shoot(){
     } else {
       const hit = findRemotePlayer(hits[0].object);
       if(hit && socket) socket.emit('shoot', { targetId: hit[0] });
+      else {
+        const ghostIdx = findGhostBot(hits[0].object);
+        if(ghostIdx !== null && socket) socket.emit('coopBotHit', { botIndex: ghostIdx });
+      }
     }
   }
 
@@ -1286,6 +1421,7 @@ function killBot(bot){
   pushKillFeed('Robot destroyed');
   updateEnemyCountHUD();
   checkLevelComplete();
+  if(coopIsHost && socket) socket.emit('coopBotKill', { botIndex: bots.indexOf(bot) });
 }
 
 function spawnSparks(pos){
@@ -1432,6 +1568,7 @@ if (touchPauseBtn) {
     hudEl.style.display = 'none';
     startScreen.style.display = 'flex';
     hideBanPanel();
+    showCoopPanel();
   });
 }
 
@@ -1463,6 +1600,7 @@ document.addEventListener('pointerlockchange',()=>{
     startScreen.style.display='none';
     hudEl.style.display='block';
     hideBanPanel();
+    hideCoopPanel();
     if(!gameStarted){
       gameStarted=true;
       startLevel(1);
@@ -1473,6 +1611,7 @@ document.addEventListener('pointerlockchange',()=>{
     startScreen.style.display='flex';
     hudEl.style.display='none';
     showBanPanel();
+    showCoopPanel();
   }
 });
 
@@ -1725,6 +1864,19 @@ function update(dt){
     }
   });
 
+  // ── Co-op: host broadcasts bot states to guests ─────────────
+  if (coopIsHost && coopGuests.size > 0 && socket) {
+    coopBotTimer += dt;
+    if (coopBotTimer > 0.12) {
+      coopBotTimer = 0;
+      socket.emit('coopBots', bots.map(b => ({
+        alive: b.alive,
+        x: b.group.position.x, y: b.group.position.y, z: b.group.position.z,
+        ry: b.group.rotation.y,
+      })));
+    }
+  }
+
   // ── Ammo pickup animation & collection ──────────────────────
   for (let i = ammoPickups.length - 1; i >= 0; i--) {
     const pk = ammoPickups[i];
@@ -1889,14 +2041,16 @@ function transShow(html, dur, then) {
 function startLevel(n) {
   currentLevel = n;
   levelActive  = false;
+  if (coopMode && !coopIsHost) clearGhostBots();
   clearBots();
   applyTheme(n);
   const cfg = getLevelConfig(n);
-  spawnBots(cfg);
+  if (!coopMode || coopIsHost) spawnBots(cfg);  // guests see host's ghost bots instead
   levelActive        = true;
   levelTransitioning = false;
   updateLevelHUD();
   updateEnemyCountHUD();
+  if (coopIsHost && socket) socket.emit('coopLevelUp', { level: n });
 }
 
 function checkLevelComplete() {
@@ -2058,6 +2212,65 @@ function initSocket() {
     }
   });
 
+  // ── Co-op socket handlers ─────────────────────────────────
+  socket.on('coopInviteReceived', ({ fromId, fromUsername }) => {
+    showCoopInviteDialog(fromId, fromUsername);
+  });
+
+  socket.on('coopAccepted', ({ guestId, guestUsername }) => {
+    coopGuests.add(guestId);
+    coopMode   = true;
+    coopIsHost = true;
+    const rp = remotePlayers.get(guestId);
+    if (rp) { rp.inCoop = true; refreshPlayerLabel(rp); }
+    pushKillFeed(`${guestUsername} accepted the request`);
+    // Send current level immediately
+    if (socket) socket.emit('coopLevelUp', { level: currentLevel });
+  });
+
+  socket.on('coopDenied', ({ denierUsername }) => {
+    pushKillFeed(`${denierUsername} has denied the request`);
+  });
+
+  socket.on('coopStart', ({ hostId, hostUsername, level }) => {
+    coopMode   = true;
+    coopIsHost = false;
+    coopHostId = hostId;
+    const rp = remotePlayers.get(hostId);
+    if (rp) { rp.inCoop = true; refreshPlayerLabel(rp); }
+    startLevel(level);
+    pushKillFeed(`Now co-oping with ${hostUsername}`);
+  });
+
+  socket.on('coopBots', ({ bots: bd }) => {
+    if (!coopMode || coopIsHost) return;
+    syncGhostBots(bd);
+  });
+
+  socket.on('coopBotKill', ({ botIndex }) => {
+    const gb = coopGhostBots[botIndex];
+    if (gb && gb.alive) {
+      gb.alive = false;
+      spawnSparks(gb.group.position.clone().setY(1.2));
+      setTimeout(() => { if (gb.group.parent) scene.remove(gb.group); }, 180);
+      player.kills++;
+      updateKillHUD();
+      pushKillFeed('Robot destroyed');
+    }
+  });
+
+  socket.on('coopBotHit', ({ botIndex }) => {
+    if (!coopIsHost) return;
+    const bot = bots[botIndex];
+    if (bot && bot.alive) damageBot(bot);
+  });
+
+  socket.on('coopLevelUp', ({ level }) => {
+    if (!coopMode || coopIsHost) return;
+    startLevel(level);
+    pushKillFeed(`Level ${level} — synced with co-op host`);
+  });
+
   // Another player fired
   socket.on('playerShot', data => {
     const rp = remotePlayers.get(data.id);
@@ -2068,6 +2281,16 @@ function initSocket() {
   socket.on('playerLeft', data => {
     const rp = remotePlayers.get(data.id);
     if (rp) pushKillFeed(`${rp.username || 'Player'} left`);
+    // Co-op cleanup
+    if (coopHostId === data.id) {
+      coopMode = false; coopIsHost = false; coopHostId = null;
+      clearGhostBots();
+      spawnBots(getLevelConfig(currentLevel));
+      pushKillFeed('Co-op host left — returning to solo');
+    }
+    if (coopGuests.delete(data.id) && coopGuests.size === 0) {
+      coopMode = false; coopIsHost = false;
+    }
     removeRemotePlayer(data.id);
   });
 

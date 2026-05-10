@@ -6,6 +6,83 @@
   <title>ArcadeHub FPS</title>
   <link rel="stylesheet" href="style.css">
   <style>
+    #coop-panel {
+      display: none;
+      position: fixed; top: 80px; left: 24px; z-index: 300;
+      background: rgba(6,6,14,0.94);
+      border: 1px solid rgba(0,255,170,0.28);
+      border-radius: 10px;
+      padding: 18px 20px 16px;
+      min-width: 230px;
+      box-shadow: 0 8px 36px rgba(0,0,0,0.75);
+      font-family: 'Inter','Segoe UI',sans-serif;
+    }
+    #coop-panel-title {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: #00ffaa; margin-bottom: 14px;
+    }
+    #coop-player-list { display: flex; flex-direction: column; gap: 8px; }
+    .coop-player-row {
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
+    }
+    .coop-player-name { font-size: 13px; color: #c0c0ee; font-weight: 500; }
+    .coop-invite-btn {
+      padding: 4px 12px; flex-shrink: 0;
+      background: rgba(0,255,170,0.08);
+      border: 1px solid rgba(0,255,170,0.3);
+      border-radius: 4px; color: #00ffaa;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; transition: background .15s;
+    }
+    .coop-invite-btn:hover { background: rgba(0,255,170,0.22); }
+    .coop-invite-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #coop-panel-empty { font-size: 12px; color: #444466; }
+    #coop-status {
+      display: none; margin-top: 12px; padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 11px; color: #00ffaa; letter-spacing: 1px;
+    }
+    #coop-invite-dialog {
+      display: none;
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      z-index: 500;
+      background: rgba(6,6,14,0.97);
+      border: 1px solid rgba(0,255,170,0.38);
+      border-radius: 12px;
+      padding: 26px 30px 22px;
+      min-width: 290px;
+      box-shadow: 0 18px 64px rgba(0,0,0,0.9);
+      font-family: 'Inter','Segoe UI',sans-serif;
+      text-align: center;
+    }
+    #coop-invite-title {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: #00ffaa; margin-bottom: 12px;
+    }
+    #coop-invite-text { font-size: 14px; color: #c0c0ee; margin-bottom: 20px; line-height: 1.5; }
+    #coop-invite-btns { display: flex; gap: 10px; }
+    #coop-accept-btn, #coop-deny-btn {
+      flex: 1; padding: 8px 0; border-radius: 5px;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; transition: background .15s;
+    }
+    #coop-accept-btn {
+      background: rgba(0,255,170,0.12);
+      border: 1px solid rgba(0,255,170,0.4); color: #00ffaa;
+    }
+    #coop-accept-btn:hover { background: rgba(0,255,170,0.28); }
+    #coop-deny-btn {
+      background: rgba(231,76,60,0.08);
+      border: 1px solid rgba(231,76,60,0.3); color: #e74c3c;
+    }
+    #coop-deny-btn:hover { background: rgba(231,76,60,0.22); }
+
     #ban-panel {
       display: none;
       position: fixed; top: 80px; right: 24px; z-index: 300;
@@ -187,6 +264,25 @@
     <button id="play-button">&#9654;&nbsp;&nbsp;PLAY</button>
     <button id="reset-button">&#8635;&nbsp;&nbsp;RESET PROGRESS</button>
     <button id="main-menu-btn">&#8962;&nbsp;&nbsp;MAIN MENU</button>
+  </div>
+
+  <!-- Co-op panel (shown when paused, in multiplayer) -->
+  <div id="coop-panel">
+    <div id="coop-panel-title">&#9889; Co-op</div>
+    <div id="coop-player-list">
+      <span id="coop-panel-empty">No other players connected.</span>
+    </div>
+    <div id="coop-status"></div>
+  </div>
+
+  <!-- Co-op invite dialog (shown when receiving an invite) -->
+  <div id="coop-invite-dialog">
+    <div id="coop-invite-title">CO-OP REQUEST</div>
+    <div id="coop-invite-text"></div>
+    <div id="coop-invite-btns">
+      <button id="coop-accept-btn">ACCEPT</button>
+      <button id="coop-deny-btn">DENY</button>
+    </div>
   </div>
 
   <!-- Admin ban panel (shown when paused + isAdmin) -->
