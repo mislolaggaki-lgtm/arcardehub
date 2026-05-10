@@ -821,7 +821,7 @@ function addRemotePlayer(data) {
   rob.group.add(labelSprite);
 
   const remoteGun = buildRemoteGun(gunId);
-  remoteGun.group.position.set(0.42, 0.78, -0.20);
+  remoteGun.group.position.set(0.30, 1.20, -0.28);
   rob.group.add(remoteGun.group);
 
   remotePlayers.set(data.id, {
