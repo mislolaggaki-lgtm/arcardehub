@@ -329,6 +329,49 @@
     }
     .auth-submit:disabled { opacity: 0.35; cursor: not-allowed; }
 
+    /* ── Badges / Achievements ────────────────────────────── */
+    .badges-section {
+      border-top: 1px solid var(--border);
+      padding: 54px 40px 70px;
+    }
+    .badges-section .section-label { text-align: center; margin-bottom: 36px; }
+    .badges-row {
+      max-width: 880px; margin: 0 auto;
+      display: flex; justify-content: center;
+      gap: 36px; flex-wrap: wrap;
+    }
+    .badge-card {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 11px; width: 148px;
+    }
+    .badge-icon-wrap {
+      position: relative; width: 88px; height: 88px;
+      transition: transform .22s ease;
+    }
+    .badge-card:hover .badge-icon-wrap { transform: translateY(-5px); }
+    .badge-icon-wrap svg { width: 88px; height: 88px; display: block; }
+    .badge-icon-wrap.locked {
+      opacity: 0.18;
+      filter: grayscale(1) brightness(0.6);
+    }
+    .badge-lock {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 26px; line-height: 1;
+      pointer-events: none;
+    }
+    .badge-name {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      text-align: center; color: #c0c0ee; line-height: 1.35;
+    }
+    .badge-name.locked { color: #252538; }
+    .badge-desc { font-size: 11px; color: #3a3a58; text-align: center; line-height: 1.55; }
+    .badge-unlocked-label {
+      font-size: 9px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase; color: #22dd66;
+    }
+
     /* ── Responsive ───────────────────────────────────────── */
     @media (max-width: 920px) {
       .cards-grid { grid-template-columns: repeat(2, 1fr); }
@@ -342,6 +385,11 @@
       .games-section { padding: 10px 16px 80px; }
       .cards-grid { grid-template-columns: 1fr; gap: 14px; }
       .auth-modal { padding: 28px 20px 24px; }
+      .badges-section { padding: 40px 16px 56px; }
+      .badges-row { gap: 22px; }
+      .badge-card { width: 118px; }
+      .badge-icon-wrap { width: 72px; height: 72px; }
+      .badge-icon-wrap svg { width: 72px; height: 72px; }
     }
   </style>
 </head>
@@ -510,6 +558,12 @@
 
   </main>
 
+  <!-- ── Achievements ──────────────────────────────────────── -->
+  <section class="badges-section" id="badges-section" style="display:none">
+    <p class="section-label">Achievements</p>
+    <div class="badges-row" id="badges-row"></div>
+  </section>
+
   <footer>
     ArcadeHub &copy; 2026 &nbsp;—&nbsp; <span>Built with Claude Code</span>
   </footer>
@@ -670,6 +724,7 @@
           }
           setLoggedIn(data.username);
           closeModal();
+          loadBadges();
         }
       } catch {
         showMsg('login-msg', 'Could not reach server. Is it running on port 3001?', 'error');
@@ -728,7 +783,122 @@
         return;
       }
       setLoggedIn(username);
+      loadBadges();
     })();
+
+    // ── Badges ───────────────────────────────────────────────
+    const BADGE_DEFS = [
+      {
+        id: 'besto_frendo', name: 'MY BESTO FRENDO',
+        desc: 'Initiated a co-op game', color: '#00ffaa',
+        svg: `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="40" r="38" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.35"/>
+          <circle cx="40" cy="40" r="34" fill="currentColor" opacity="0.08"/>
+          <circle cx="25" cy="22" r="7" fill="currentColor"/>
+          <path d="M13,48 Q13,33 25,33 Q37,33 37,48Z" fill="currentColor"/>
+          <circle cx="55" cy="22" r="7" fill="currentColor"/>
+          <path d="M43,48 Q43,33 55,33 Q67,33 67,48Z" fill="currentColor"/>
+          <path d="M40,65 C40,65 29,58 29,52 C29,47 33,45 36,46.5 C38,47.5 39,49.5 40,52 C41,49.5 42,47.5 44,46.5 C47,45 51,47 51,52 C51,58 40,65 40,65Z" fill="currentColor"/>
+        </svg>`,
+      },
+      {
+        id: 'pro_gamer', name: 'PRO GAMER',
+        desc: 'Reached level 25', color: '#3b9ee8',
+        svg: `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="40" r="38" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.35"/>
+          <circle cx="40" cy="40" r="34" fill="currentColor" opacity="0.08"/>
+          <ellipse cx="40" cy="36" rx="22" ry="13" fill="currentColor"/>
+          <rect x="15" y="42" width="15" height="17" rx="7" fill="currentColor"/>
+          <rect x="50" y="42" width="15" height="17" rx="7" fill="currentColor"/>
+          <rect x="15" y="41" width="50" height="9" fill="currentColor"/>
+          <rect x="21" y="33" width="10" height="3.5" rx="1.5" fill="white" opacity="0.28"/>
+          <rect x="24.5" y="27.5" width="3.5" height="10" rx="1.5" fill="white" opacity="0.28"/>
+          <circle cx="49" cy="31" r="2.8" fill="white" opacity="0.28"/>
+          <circle cx="55" cy="36" r="2.8" fill="white" opacity="0.28"/>
+          <circle cx="49" cy="41" r="2.8" fill="white" opacity="0.28"/>
+          <circle cx="43" cy="36" r="2.8" fill="white" opacity="0.28"/>
+        </svg>`,
+      },
+      {
+        id: 'unstoppable', name: 'UNSTOPPABLE',
+        desc: 'Reached level 50', color: '#f39c12',
+        svg: `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="40" r="38" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.35"/>
+          <circle cx="40" cy="40" r="34" fill="currentColor" opacity="0.08"/>
+          <path d="M48,8 L19,45 L35,45 L27,72 L61,35 L45,35 Z" fill="currentColor"/>
+        </svg>`,
+      },
+      {
+        id: 'veteran', name: 'VETERAN',
+        desc: 'Reached level 100', color: '#e74c3c',
+        svg: `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="40" r="38" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.35"/>
+          <circle cx="40" cy="40" r="34" fill="currentColor" opacity="0.08"/>
+          <path d="M40,6 L48.8,28.8 L74,29.8 L54,45.5 L61,70 L40,56 L19,70 L26,45.5 L6,29.8 L31.2,28.8 Z" fill="currentColor"/>
+          <circle cx="40" cy="42" r="10" fill="white" opacity="0.14"/>
+        </svg>`,
+      },
+    ];
+
+    async function loadBadges() {
+      const token = localStorage.getItem('ah_token');
+      if (!token) return;
+      document.getElementById('badges-section').style.display = 'block';
+      let unlocked = JSON.parse(localStorage.getItem('ah_badges') || '[]');
+      renderBadges(unlocked); // render from cache first
+      try {
+        const res = await fetch(`${API}/badges`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          unlocked = data.badges || [];
+          localStorage.setItem('ah_badges', JSON.stringify(unlocked));
+          renderBadges(unlocked);
+        }
+      } catch { /* use cached */ }
+    }
+
+    function renderBadges(unlocked) {
+      const row = document.getElementById('badges-row');
+      row.innerHTML = '';
+      BADGE_DEFS.forEach(def => {
+        const isUnlocked = unlocked.includes(def.id);
+
+        const card = document.createElement('div');
+        card.className = 'badge-card';
+
+        const wrap = document.createElement('div');
+        wrap.className = 'badge-icon-wrap' + (isUnlocked ? '' : ' locked');
+        wrap.innerHTML = def.svg;
+        if (isUnlocked) wrap.querySelector('svg').style.color = def.color;
+        if (!isUnlocked) {
+          const lock = document.createElement('span');
+          lock.className = 'badge-lock';
+          lock.textContent = '🔒';
+          wrap.appendChild(lock);
+        }
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'badge-name' + (isUnlocked ? '' : ' locked');
+        nameEl.textContent = def.name;
+
+        const descEl = document.createElement('div');
+        descEl.className = 'badge-desc';
+        descEl.textContent = def.desc;
+
+        card.appendChild(wrap);
+        card.appendChild(nameEl);
+        card.appendChild(descEl);
+        if (isUnlocked) {
+          const lbl = document.createElement('div');
+          lbl.className = 'badge-unlocked-label';
+          lbl.textContent = '✓ UNLOCKED';
+          card.appendChild(lbl);
+        }
+        row.appendChild(card);
+      });
+    }
 
     // ── Fake online count drift ───────────────────────────────
     const countEl = document.getElementById('online-count');

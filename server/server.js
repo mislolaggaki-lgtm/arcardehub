@@ -233,6 +233,15 @@ async function start() {
       }
     });
 
+    socket.on('coopBotKill', ({ botIndex }) => {
+      const guests = coopGroups.get(socket.id);
+      if (!guests) return;
+      guests.forEach(gid => {
+        const gs = io.sockets.sockets.get(gid);
+        if (gs) gs.emit('coopBotKill', { botIndex });
+      });
+    });
+
     socket.on('coopLevelUp', ({ level }) => {
       const p = players.get(socket.id); if (p) p.level = level;
       const guests = coopGroups.get(socket.id);
@@ -348,6 +357,45 @@ async function start() {
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
       console.error('/api/account DELETE error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── GET /api/badges ────────────────────────────────────────
+  app.get('/api/badges', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { ObjectId } = require('mongodb');
+      const user = await usersCol.findOne(
+        { _id: new ObjectId(payload.userId) },
+        { projection: { badges: 1 } }
+      );
+      if (!user) return res.status(404).json({ error: 'User not found.' });
+      res.json({ badges: user.badges || [] });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      console.error('/api/badges GET error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── POST /api/badges/unlock ─────────────────────────────────
+  app.post('/api/badges/unlock', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { badgeId } = req.body;
+      const VALID = ['besto_frendo', 'pro_gamer', 'unstoppable', 'veteran'];
+      if (!VALID.includes(badgeId))
+        return res.status(400).json({ error: 'Invalid badge.' });
+      const { ObjectId } = require('mongodb');
+      await usersCol.updateOne(
+        { _id: new ObjectId(payload.userId) },
+        { $addToSet: { badges: badgeId } }
+      );
+      res.json({ success: true });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      console.error('/api/badges/unlock error:', err);
       res.status(500).json({ error: 'Server error.' });
     }
   });

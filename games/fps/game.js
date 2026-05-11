@@ -35,6 +35,25 @@ const coopGuests     = new Set();
 const coopGhostBots  = [];
 let coopBotTimer     = 0;
 
+// ── Badge unlock helper ──────────────────────────────────────
+const _earnedBadges = new Set(JSON.parse(localStorage.getItem('ah_badges') || '[]'));
+const _BADGE_NAMES  = { besto_frendo:'MY BESTO FRENDO', pro_gamer:'PRO GAMER', unstoppable:'UNSTOPPABLE', veteran:'VETERAN' };
+function unlockBadge(badgeId) {
+  if (_earnedBadges.has(badgeId)) return;
+  _earnedBadges.add(badgeId);
+  localStorage.setItem('ah_badges', JSON.stringify([..._earnedBadges]));
+  const token = localStorage.getItem('ah_token');
+  if (token) {
+    const _isLocal = ['localhost','127.0.0.1'].includes(window.location.hostname);
+    fetch((_isLocal ? 'http://localhost:3001' : window.location.origin) + '/api/badges/unlock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ badgeId }),
+    }).catch(() => {});
+  }
+  pushKillFeed(`🏅 Badge unlocked: ${_BADGE_NAMES[badgeId] || badgeId}`);
+}
+
 // ─── Mobile state ────────────────────────────────────────────
 const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 ||
                  window.matchMedia('(pointer: coarse)').matches;
@@ -911,14 +930,14 @@ const coopStatus = document.getElementById('coop-status');
 function showCoopPanel() {
   if (!coopPanel || !socket) return;
   coopList.innerHTML = '';
-  const others = [...remotePlayers.values()];
+  const others = [...remotePlayers.entries()];
   if (others.length === 0) {
     const empty = document.createElement('span');
     empty.style.cssText = 'font-size:12px;color:#444466';
     empty.textContent = 'No other players connected.';
     coopList.appendChild(empty);
   } else {
-    others.forEach(rp => {
+    others.forEach(([rpId, rp]) => {
       const row = document.createElement('div');
       row.className = 'coop-player-row';
       const nameEl = document.createElement('span');
@@ -932,7 +951,7 @@ function showCoopPanel() {
       } else {
         btn.textContent = 'INVITE';
         btn.addEventListener('click', () => {
-          socket.emit('coopInvite', { targetId: rp.id });
+          socket.emit('coopInvite', { targetId: rpId });
           btn.textContent = 'SENT';
           btn.disabled = true;
         });
@@ -2051,9 +2070,13 @@ function startLevel(n) {
   updateLevelHUD();
   updateEnemyCountHUD();
   if (coopIsHost && socket) socket.emit('coopLevelUp', { level: n });
+  if (n >= 25)  unlockBadge('pro_gamer');
+  if (n >= 50)  unlockBadge('unstoppable');
+  if (n >= 100) unlockBadge('veteran');
 }
 
 function checkLevelComplete() {
+  if(coopMode && !coopIsHost) return;   // guests follow host's level progression
   if(!levelActive || levelTransitioning) return;
   if(bots.some(b => b.alive)) return;   // still enemies alive
   levelTransitioning = true;
@@ -2214,6 +2237,7 @@ function initSocket() {
 
   // ── Co-op socket handlers ─────────────────────────────────
   socket.on('coopInviteReceived', ({ fromId, fromUsername }) => {
+    if (pointerLocked()) document.exitPointerLock();
     showCoopInviteDialog(fromId, fromUsername);
   });
 
@@ -2224,6 +2248,7 @@ function initSocket() {
     const rp = remotePlayers.get(guestId);
     if (rp) { rp.inCoop = true; refreshPlayerLabel(rp); }
     pushKillFeed(`${guestUsername} accepted the request`);
+    unlockBadge('besto_frendo');
     // Send current level immediately
     if (socket) socket.emit('coopLevelUp', { level: currentLevel });
   });
@@ -2255,6 +2280,7 @@ function initSocket() {
       setTimeout(() => { if (gb.group.parent) scene.remove(gb.group); }, 180);
       player.kills++;
       updateKillHUD();
+      updateEnemyCountHUD();
       pushKillFeed('Robot destroyed');
     }
   });
@@ -2402,6 +2428,8 @@ function startMobileGame() {
   setupWeapon(selectedGunId);
   startScreen.style.display = 'none';
   hudEl.style.display = 'block';
+  hideBanPanel();
+  hideCoopPanel();
   const tc = document.getElementById('touch-controls');
   if (tc) tc.style.display = 'block';
   if (!gameStarted) {
