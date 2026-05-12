@@ -60,10 +60,21 @@ function awardBucks(n) {
   }
 }
 
-// Initialise HUD bucks from localStorage on load
+// Initialise HUD bucks — show cached value immediately, then sync from server
 (function() {
   const el = document.getElementById('hud-bucks-val');
   if (el) el.textContent = localStorage.getItem('ah_bucks') || '0';
+  const token = localStorage.getItem('ah_token');
+  if (!token) return;
+  fetch(_API_BASE + '/api/shop/profile', {
+    headers: { Authorization: `Bearer ${token}` },
+  }).then(r => r.ok ? r.json() : null).then(d => {
+    if (!d) return;
+    localStorage.setItem('ah_bucks',   String(d.bucks));
+    localStorage.setItem('ah_owned',   JSON.stringify(d.ownedItems   || []));
+    localStorage.setItem('ah_equipped',JSON.stringify(d.equippedItems|| []));
+    if (el) el.textContent = d.bucks;
+  }).catch(() => {});
 })();
 
 // ── Badge unlock helper ──────────────────────────────────────

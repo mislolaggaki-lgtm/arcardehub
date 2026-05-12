@@ -1062,6 +1062,12 @@
           localStorage.setItem('ah_username', data.username);
           localStorage.setItem('isAdmin',     data.isAdmin ? 'true' : 'false');
           localStorage.setItem('ah_terms',    data.termsAccepted ? TERMS_VERSION : '0');
+          // Sync account-linked bucks immediately from login response
+          _bucks = data.bucks || 0;
+          _ownedItems    = new Set(data.ownedItems    || []);
+          _equippedItems = new Set(data.equippedItems || []);
+          _saveBucksLocal();
+          updateBucksDisplay();
           if (!data.termsAccepted) {
             window.location.href = '/terms.html';
             return;

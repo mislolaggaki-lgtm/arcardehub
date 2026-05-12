@@ -286,6 +286,9 @@ async function start() {
         banned:        false,
         termsAccepted: false,
         termsVersion:  0,
+        bucks:         0,
+        ownedItems:    [],
+        equippedItems: [],
         created_at:    new Date().toISOString(),
       };
 
@@ -323,7 +326,13 @@ async function start() {
         { expiresIn: '7d' }
       );
       const termsAccepted = user.termsAccepted && user.termsVersion === TERMS_VERSION;
-      res.json({ success: true, token, username: user.username, isAdmin: !!user.isAdmin, termsAccepted: !!termsAccepted });
+      res.json({
+        success: true, token, username: user.username,
+        isAdmin: !!user.isAdmin, termsAccepted: !!termsAccepted,
+        bucks: user.bucks || 0,
+        ownedItems: user.ownedItems || [],
+        equippedItems: user.equippedItems || [],
+      });
     } catch (err) {
       console.error('/api/login error:', err);
       res.status(500).json({ error: 'Server error.' });
