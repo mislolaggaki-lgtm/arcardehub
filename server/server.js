@@ -452,22 +452,20 @@ async function start() {
     try {
       const payload = verifyToken(req.headers.authorization);
       const { itemId } = req.body;
-      const PRICES = {
-        cowboy_hat:200, top_hat:150, cap:80, crown:500,
-        sunglasses:120, cyber_goggles:180, vr_headset:350,
-        gold_chain:200, dog_tags:130, watch:150, power_band:220,
-      };
-      if (!PRICES[itemId]) return res.status(400).json({ error: 'Invalid item.' });
+      const RARITY_PRICES = { common:50, rare:100, epic:200, legendary:500 };
+      const rarity = itemId.split('_').pop();
+      const price = RARITY_PRICES[rarity];
+      if (!price || !/^[a-z0-9_]+$/.test(itemId)) return res.status(400).json({ error: 'Invalid item.' });
       const { ObjectId } = require('mongodb');
       const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { bucks:1, ownedItems:1 } });
       if (!user) return res.status(404).json({ error: 'User not found.' });
       if ((user.ownedItems || []).includes(itemId)) return res.status(409).json({ error: 'Already owned.' });
-      if ((user.bucks || 0) < PRICES[itemId]) return res.status(402).json({ error: 'Not enough bucks.' });
+      if ((user.bucks || 0) < price) return res.status(402).json({ error: 'Not enough bucks.' });
       await usersCol.updateOne(
         { _id: new ObjectId(payload.userId) },
-        { $inc: { bucks: -PRICES[itemId] }, $addToSet: { ownedItems: itemId } }
+        { $inc: { bucks: -price }, $addToSet: { ownedItems: itemId } }
       );
-      res.json({ success: true, bucks: (user.bucks || 0) - PRICES[itemId] });
+      res.json({ success: true, bucks: (user.bucks || 0) - price });
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
       res.status(500).json({ error: 'Server error.' });

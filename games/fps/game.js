@@ -879,6 +879,362 @@ function buildRemoteGun(gunId) {
 
 // ── Robot accessory attachment ────────────────────────────────
 function addRobotAccessory(rob, accessoryId) {
+  const rg = rob.group;
+  // type = first underscore-segment of the ID (e.g. 'cowboy' from 'cowboy_brown_common')
+  const type = accessoryId.split('_')[0];
+  const St = (c,r=0.55,m=0.55) => new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
+  const Bm = c => new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0.85});
+  const B  = (w,h,d)    => new THREE.BoxGeometry(w,h,d);
+  const Cy = (rt,rb,h,s=16) => new THREE.CylinderGeometry(rt,rb,h,s);
+  const Sp = (r,s=10)   => new THREE.SphereGeometry(r,s,s);
+  const To = (r,t,rs=8,ts=16) => new THREE.TorusGeometry(r,t,rs,ts);
+  function mk(geo,mat,px=0,py=0,pz=0,rx=0,ry=0,rz=0){
+    const m=new THREE.Mesh(geo,mat); m.position.set(px,py,pz); m.rotation.set(rx,ry,rz); return m;
+  }
+  function grp(px,py,pz,parent){const g=new THREE.Group();g.position.set(px,py,pz);parent.add(g);return g;}
+
+  switch (type) {
+    /* ── HATS ─────────────────────────────────────────────── */
+    case 'cowboy': {
+      const g=grp(0,2.42,0,rg);
+      g.add(mk(Cy(0.38,0.40,0.04,20),St(0x5a3010)));
+      g.add(mk(Cy(0.22,0.28,0.26,18),St(0x7a4e2d),0,0.15,0));
+      g.add(mk(Cy(0.23,0.23,0.04,18),St(0x3a1a08),0,0.03,0));
+      break;
+    }
+    case 'tophat': {
+      const g=grp(0,2.42,0,rg);
+      g.add(mk(Cy(0.26,0.26,0.38,20),St(0x111111),0,0.19,0));
+      g.add(mk(Cy(0.32,0.34,0.04,20),St(0x0d0d0d)));
+      g.add(mk(Cy(0.235,0.235,0.04,20),St(0xcc1111),0,0.04,0));
+      break;
+    }
+    case 'cap': {
+      const g=grp(0,2.38,0,rg);
+      g.add(mk(Sp(0.24,12),St(0x1a3a6e),0,0,0));
+      g.add(mk(B(0.36,0.025,0.18),St(0x122a55),0,-0.06,-0.20));
+      break;
+    }
+    case 'crown': {
+      const g=grp(0,2.42,0,rg);
+      g.add(mk(Cy(0.27,0.27,0.08,20),St(0xffd700,0.1,0.98)));
+      [[-0.20,0.10],[-0.10,0.24],[0,0.10],[0.10,0.24],[0.20,0.10]].forEach(([x,yo])=>{
+        g.add(mk(Cy(0.015,0.035,0.18,8),St(0xffcc00,0.08,0.99),x,0.04+yo*0.5+0.09,0));
+        g.add(mk(Sp(0.028,8),St(0xff2222,0.05,0.4),x,0.04+yo*0.5+0.20,0));
+      });
+      break;
+    }
+    case 'helmet': {
+      const g=grp(0,2.35,0,rg);
+      g.add(mk(Sp(0.28,14),St(0xaabbcc),0,0.10,0));
+      g.add(mk(B(0.32,0.10,0.06),St(0x8899aa,0.2,0.85),0,0.05,-0.24));
+      g.add(mk(Cy(0.29,0.30,0.06,20),St(0x8899aa),0,-0.04,0));
+      break;
+    }
+    case 'wizard': {
+      const g=grp(0,2.40,0,rg);
+      g.add(mk(Cy(0.01,0.26,0.48,18),St(0x4a1a8a),0,0.24,0));
+      g.add(mk(Cy(0.30,0.32,0.04,18),St(0x3a1278)));
+      g.add(mk(Sp(0.03,8),St(0xffd700,0.1,0.9),0,0.50,0));
+      break;
+    }
+    case 'beanie': {
+      const g=grp(0,2.38,0,rg);
+      g.add(mk(Sp(0.24,14),St(0xcc2222),0,0.05,0));
+      g.add(mk(Cy(0.245,0.245,0.06,20),St(0xaa1a1a),0,-0.12,0));
+      g.add(mk(Sp(0.055,8),St(0xee4444),0,0.28,0));
+      break;
+    }
+    case 'halo': {
+      const g=grp(0,2.58,0,rg);
+      g.add(mk(To(0.22,0.025,10,24),Bm(0xffd700)));
+      break;
+    }
+    case 'party': {
+      const g=grp(0,2.38,0,rg);
+      g.add(mk(Cy(0.02,0.24,0.42,16),St(0xff44aa),0,0.21,0));
+      g.add(mk(Cy(0.25,0.26,0.04,16),St(0xdd3388)));
+      g.add(mk(Sp(0.038,8),St(0xffdd00,0.1,0.9),0,0.44,0));
+      break;
+    }
+    case 'pirate': {
+      const g=grp(0,2.36,0,rg);
+      g.add(mk(Cy(0.25,0.27,0.18,18),St(0x111111),0,0.09,0));
+      g.add(mk(B(0.54,0.06,0.36),St(0x0d0d0d),0,0.12,0));
+      g.add(mk(B(0.18,0.10,0.08),St(0xdddddd),0,0.16,-0.18));
+      break;
+    }
+    /* ── EYEWEAR ───────────────────────────────────────────── */
+    case 'rounds': {
+      const g=grp(0,1.982,-0.27,rg);
+      const lm=St(0x111111,0.05,0.9);
+      g.add(mk(Cy(0.075,0.075,0.022,14),lm,-0.095,0,0,Math.PI/2));
+      g.add(mk(Cy(0.075,0.075,0.022,14),lm, 0.095,0,0,Math.PI/2));
+      g.add(mk(B(0.044,0.014,0.014),St(0xc8a215)));
+      break;
+    }
+    case 'squares': {
+      const g=grp(0,1.982,-0.27,rg);
+      const lm=St(0x111111,0.05,0.9);
+      g.add(mk(B(0.10,0.072,0.022),lm,-0.075,0));
+      g.add(mk(B(0.10,0.072,0.022),lm, 0.075,0));
+      g.add(mk(B(0.044,0.012,0.014),St(0xc8a215)));
+      break;
+    }
+    case 'cgoggles': {
+      const g=grp(0,1.982,-0.27,rg);
+      g.add(mk(B(0.28,0.10,0.040),St(0x222222,0.4,0.7)));
+      g.add(mk(B(0.095,0.072,0.012),Bm(0x00ccff),-0.075,0,-0.026));
+      g.add(mk(B(0.095,0.072,0.012),Bm(0x00ccff), 0.075,0,-0.026));
+      break;
+    }
+    case 'vr': {
+      const g=grp(0,1.982,-0.29,rg);
+      g.add(mk(B(0.36,0.18,0.10),St(0x1a1a1a,0.35,0.65)));
+      g.add(mk(B(0.28,0.13,0.004),Bm(0x2255ff),0,0,-0.052));
+      g.add(mk(Sp(0.012,6),Bm(0x00ff44),0.15,0.07,-0.052));
+      break;
+    }
+    case 'monocle': {
+      const g=grp(0,1.982,-0.27,rg);
+      g.add(mk(To(0.07,0.010,8,16),St(0xc8a215,0.15,0.95),-0.05,0,0));
+      g.add(mk(B(0.004,0.14,0.004),St(0x888888),0.06,-0.06,0));
+      break;
+    }
+    case 'skigoggles': {
+      const g=grp(0,1.982,-0.27,rg);
+      g.add(mk(B(0.32,0.11,0.048),St(0x222222,0.5,0.5)));
+      g.add(mk(B(0.10,0.075,0.014),Bm(0xdd6600),-0.075,0,-0.028));
+      g.add(mk(B(0.10,0.075,0.014),Bm(0xdd6600), 0.075,0,-0.028));
+      break;
+    }
+    case 'cateye': {
+      const g=grp(0,1.982,-0.27,rg);
+      const lm=St(0x111111,0.05,0.9);
+      g.add(mk(B(0.10,0.060,0.022),lm,-0.075, 0.010,0, 0,0,-0.20));
+      g.add(mk(B(0.10,0.060,0.022),lm, 0.075, 0.010,0, 0,0, 0.20));
+      g.add(mk(B(0.044,0.012,0.014),St(0xc8a215)));
+      break;
+    }
+    /* ── NECK ──────────────────────────────────────────────── */
+    case 'chain': {
+      const g=grp(0,1.815,0,rg);
+      for(let i=0;i<=12;i++){
+        const a=Math.PI+(i/12)*Math.PI;
+        const lk=mk(To(0.018,0.005,6,8),St(0xffd700,0.12,0.97));
+        lk.position.set(Math.cos(a)*0.18,Math.sin(a)*0.06-0.04,-Math.abs(Math.sin(a))*0.10);
+        lk.rotation.y=a; g.add(lk);
+      }
+      break;
+    }
+    case 'pendant': {
+      const g=grp(0,1.815,0,rg);
+      for(let i=0;i<=8;i++){const a=Math.PI+(i/8)*Math.PI;const lk=mk(To(0.016,0.004,6,8),St(0xffd700,0.12,0.97));lk.position.set(Math.cos(a)*0.16,Math.sin(a)*0.05-0.03,-Math.abs(Math.sin(a))*0.08);g.add(lk);}
+      g.add(mk(Sp(0.032,10),St(0xff2222,0.05,0.4),0,-0.12,-0.14));
+      break;
+    }
+    case 'dogtags': {
+      const g=grp(0,1.815,0,rg);
+      g.add(mk(B(0.055,0.075,0.005),St(0x9ba9b8,0.25,0.92),-0.020,-0.09,-0.12));
+      g.add(mk(B(0.055,0.075,0.005),St(0xaabbcc,0.25,0.92), 0.020,-0.11,-0.13));
+      g.add(mk(To(0.15,0.004,6,20),St(0x90a0b0,0.3,0.88),0,0,-0.08,0.3));
+      break;
+    }
+    case 'bowtie': {
+      const g=grp(0,1.76,-0.24,rg);
+      g.add(mk(B(0.10,0.064,0.030),St(0x111111),-0.065,0,0, 0,0, 0.18));
+      g.add(mk(B(0.10,0.064,0.030),St(0x111111), 0.065,0,0, 0,0,-0.18));
+      g.add(mk(Sp(0.024,8),St(0x333333,0.3,0.6)));
+      break;
+    }
+    case 'tie': {
+      const g=grp(0,1.72,-0.24,rg);
+      g.add(mk(B(0.055,0.22,0.018),St(0x111111),0,-0.06,0));
+      g.add(mk(B(0.072,0.058,0.018),St(0x0d0d0d),0, 0.05,0));
+      break;
+    }
+    case 'scarf': {
+      const g=grp(0,1.790,-0.15,rg);
+      g.add(mk(To(0.18,0.046,10,20),St(0xcc2222,0.8,0.1),0,0,0, Math.PI*0.12));
+      g.add(mk(B(0.048,0.22,0.040),St(0xaa1a1a,0.8,0.1),0.12,-0.14,-0.02, 0,0,0.15));
+      break;
+    }
+    /* ── WRIST ─────────────────────────────────────────────── */
+    case 'rwatch': {
+      const target = rob.armGroupL || rg;
+      const g=grp(-0.090,-1.096,0,target);
+      g.add(mk(Cy(0.048,0.048,0.055,14),St(0x1a1a1a,0.85,0.1),0,0,0, Math.PI/2));
+      g.add(mk(B(0.064,0.064,0.020),St(0x111122,0.3,0.7),0,0,-0.036));
+      g.add(mk(B(0.050,0.050,0.004),Bm(0x00ff88),0,0,-0.047));
+      break;
+    }
+    case 'swatch': {
+      const target = rob.armGroupL || rg;
+      const g=grp(-0.090,-1.096,0,target);
+      g.add(mk(Cy(0.048,0.048,0.055,14),St(0x1a1a1a,0.85,0.1),0,0,0, Math.PI/2));
+      g.add(mk(B(0.072,0.072,0.020),St(0x111111,0.3,0.7),0,0,-0.036));
+      g.add(mk(B(0.055,0.055,0.004),Bm(0x00ccff),0,0,-0.047));
+      break;
+    }
+    case 'bracelet': {
+      const target = rob.armGroupL || rg;
+      const g=grp(-0.090,-1.096,0,target);
+      g.add(mk(To(0.052,0.016,10,20),St(0xffd700,0.12,0.97),0,0,0, Math.PI/2));
+      break;
+    }
+    case 'pband': {
+      const target = rob.armGroupL || rg;
+      const g=grp(-0.090,-1.096,0,target);
+      g.add(mk(To(0.052,0.012,10,20),St(0x0a0a1a,0.5,0.7),0,0,0, Math.PI/2));
+      [0xffaa00,0x22aaff,0xff2222].forEach((c,i)=>{
+        const a=(i/3)*Math.PI*2;
+        g.add(mk(Sp(0.008,6),Bm(c),Math.cos(a)*0.052,0,Math.sin(a)*0.052));
+      });
+      break;
+    }
+    case 'cbracelet': {
+      const target = rob.armGroupL || rg;
+      const g=grp(-0.090,-1.096,0,target);
+      for(let i=0;i<12;i++){const a=(i/12)*Math.PI*2;const lk=mk(To(0.012,0.005,6,8),St(0xffd700,0.12,0.97));lk.position.set(Math.cos(a)*0.052,0,Math.sin(a)*0.052);lk.rotation.y=a;g.add(lk);}
+      break;
+    }
+    /* ── BACK ──────────────────────────────────────────────── */
+    case 'cape': {
+      const g=grp(0,1.70,0.22,rg);
+      g.add(mk(B(0.44,0.72,0.018),St(0x111111,0.85,0.05),0,-0.10,0));
+      g.add(mk(B(0.44,0.06,0.022),St(0x222222,0.7,0.2),0, 0.26,0));
+      break;
+    }
+    case 'wings': {
+      const g=grp(0,1.72,0.18,rg);
+      [-1,1].forEach(s=>{
+        const w=new THREE.Group(); w.position.x=s*0.10;
+        w.add(mk(B(0.38,0.58,0.018),St(0xf0f0f0,0.9,0.05),s*0.26,-0.05,0));
+        w.add(mk(B(0.22,0.44,0.014),St(0xdddddd,0.9,0.05),s*0.42, 0.05,0));
+        g.add(w);
+      });
+      break;
+    }
+    case 'jetpack': {
+      const g=grp(0,1.68,0.22,rg);
+      g.add(mk(B(0.24,0.30,0.12),St(0x888888,0.7,0.5)));
+      g.add(mk(Cy(0.044,0.050,0.12,10),St(0x555555,0.5,0.7),-0.072,-0.22,0));
+      g.add(mk(Cy(0.044,0.050,0.12,10),St(0x555555,0.5,0.7), 0.072,-0.22,0));
+      g.add(mk(Cy(0.020,0.028,0.06,10),Bm(0xff5500),-0.072,-0.30,0));
+      g.add(mk(Cy(0.020,0.028,0.06,10),Bm(0xff5500), 0.072,-0.30,0));
+      break;
+    }
+    case 'backpack': {
+      const g=grp(0,1.68,0.22,rg);
+      g.add(mk(B(0.28,0.34,0.14),St(0x111111,0.8,0.1)));
+      g.add(mk(B(0.20,0.20,0.04),St(0x0d0d0d,0.7,0.15),0, 0.04,-0.02));
+      g.add(mk(B(0.04,0.30,0.02),St(0x0a0a0a,0.7,0.2),-0.16,0.04, 0.08));
+      g.add(mk(B(0.04,0.30,0.02),St(0x0a0a0a,0.7,0.2), 0.16,0.04, 0.08));
+      break;
+    }
+    case 'quiver': {
+      const g=grp(0.18,1.70,0.18,rg);
+      g.add(mk(Cy(0.050,0.055,0.38,12),St(0x7a4e2d,0.8,0.1),0,0,0));
+      [-0.02,0,0.02].forEach(ox=>g.add(mk(Cy(0.005,0.005,0.30,6),St(0x888888),ox,0.24,0)));
+      break;
+    }
+    /* ── SHOULDERS ─────────────────────────────────────────── */
+    case 'spad': {
+      [-1,1].forEach(s=>{
+        const g=grp(s*0.62,2.0,0,rg);
+        g.add(mk(B(0.18,0.22,0.08),St(0xaabbcc,0.4,0.7)));
+        g.add(mk(B(0.14,0.04,0.10),St(0x8899aa,0.3,0.8),0,-0.13,0));
+      });
+      break;
+    }
+    case 'epaul': {
+      [-1,1].forEach(s=>{
+        const g=grp(s*0.62,2.02,0,rg);
+        g.add(mk(B(0.20,0.06,0.10),St(0xc8a215,0.15,0.92)));
+        g.add(mk(B(0.18,0.06,0.08),St(0xb89000,0.2,0.88),0,-0.07,0));
+        for(let j=0;j<5;j++) g.add(mk(Cy(0.006,0.004,0.10,6),St(0xaa8800,0.3,0.8),(j-2)*0.028,-0.14,0));
+      });
+      break;
+    }
+    case 'xshoulder': {
+      [-1,1].forEach(s=>{
+        const g=grp(s*0.62,2.04,0,rg);
+        g.add(mk(B(0.10,0.28,0.06),St(0xccddff,0.1,0.5)));
+        g.add(mk(B(0.06,0.18,0.04),St(0xaaddff,0.05,0.6),0, 0.05,-0.04));
+        g.add(mk(Sp(0.032,8),Bm(0x88ccff),0, 0.16,-0.02));
+      });
+      break;
+    }
+    /* ── FACE ──────────────────────────────────────────────── */
+    case 'fmask': {
+      const g=grp(0,1.982,-0.30,rg);
+      g.add(mk(B(0.26,0.20,0.028),St(0xdddddd,0.4,0.3)));
+      g.add(mk(B(0.06,0.04,0.010),St(0x888888,0.2,0.5),-0.072, 0.030,-0.015));
+      g.add(mk(B(0.06,0.04,0.010),St(0x888888,0.2,0.5), 0.072, 0.030,-0.015));
+      break;
+    }
+    case 'fpaint': {
+      const g=grp(0,1.982,-0.26,rg);
+      g.add(mk(B(0.08,0.016,0.008),Bm(0xcc2222),-0.10, 0.03));
+      g.add(mk(B(0.08,0.016,0.008),Bm(0xcc2222), 0.10, 0.03));
+      g.add(mk(B(0.04,0.04,0.008),Bm(0xffd700),0,-0.04));
+      break;
+    }
+    case 'nosering': {
+      const g=grp(0,1.946,-0.29,rg);
+      g.add(mk(To(0.016,0.005,8,16),St(0xffd700,0.12,0.96)));
+      break;
+    }
+    case 'fgem': {
+      const g=grp(0,2.020,-0.295,rg);
+      g.add(mk(Sp(0.020,10),St(0xcc1111,0.05,0.5)));
+      break;
+    }
+    /* ── FEET ──────────────────────────────────────────────── */
+    case 'boots': {
+      [rob.legL, rob.legR].forEach(leg=>{
+        if(!leg) return;
+        const g=grp(0,-1.40,0,leg);
+        g.add(mk(B(0.22,0.16,0.28),St(0x111111,0.8,0.1),0,0,0.02));
+        g.add(mk(B(0.22,0.04,0.30),St(0x0d0d0d,0.7,0.15),0,-0.10,0.03));
+      });
+      break;
+    }
+    case 'heels': {
+      [rob.legL, rob.legR].forEach(leg=>{
+        if(!leg) return;
+        const g=grp(0,-1.40,0,leg);
+        g.add(mk(B(0.18,0.22,0.18),St(0xcc2222,0.4,0.3),0,0.04,0.02));
+        g.add(mk(Cy(0.022,0.018,0.14,8),St(0xaa1111,0.3,0.5),0,-0.12,0.08));
+      });
+      break;
+    }
+    case 'rboots': {
+      [rob.legL, rob.legR].forEach(leg=>{
+        if(!leg) return;
+        const g=grp(0,-1.40,0,leg);
+        g.add(mk(B(0.22,0.18,0.28),St(0x888888,0.5,0.7),0,0,0.02));
+        g.add(mk(Cy(0.028,0.036,0.10,10),St(0x555555,0.4,0.8),-0.055,-0.15,0.04));
+        g.add(mk(Cy(0.028,0.036,0.10,10),St(0x555555,0.4,0.8), 0.055,-0.15,0.04));
+        g.add(mk(Cy(0.014,0.020,0.06,8),Bm(0xff5500),-0.055,-0.22,0.04));
+        g.add(mk(Cy(0.014,0.020,0.06,8),Bm(0xff5500), 0.055,-0.22,0.04));
+      });
+      break;
+    }
+    case 'hboots': {
+      [rob.legL, rob.legR].forEach(leg=>{
+        if(!leg) return;
+        const g=grp(0,-1.40,0,leg);
+        g.add(mk(B(0.22,0.18,0.28),St(0xdddddd,0.3,0.6),0,0,0.02));
+        g.add(mk(To(0.115,0.018,8,18),Bm(0x88ddff),0,-0.14,0, Math.PI/2));
+      });
+      break;
+    }
+  }
+}
+
+// ── (legacy cases kept for backward compat – now handled by type dispatch above) ──
+function _addRobotAccessory_OLD(rob, accessoryId) {
   const g = rob.group;
   const M = THREE.MeshStandardMaterial;
   const BM = THREE.MeshBasicMaterial;
@@ -2488,6 +2844,7 @@ function checkLevelComplete() {
 }
 
 function showVictory() {
+  awardBucks(50);
   transScreen.innerHTML = `
     <div style="font-size:56px;color:#f1c40f;letter-spacing:6px;text-shadow:0 0 24px #f1c40f">
       YOU WIN
@@ -2497,6 +2854,9 @@ function showVictory() {
     </div>
     <div style="font-size:14px;margin-top:10px;color:#888;letter-spacing:3px">
       TOTAL KILLS: ${player.kills}
+    </div>
+    <div style="font-size:13px;margin-top:14px;color:#ffd700;letter-spacing:3px;text-shadow:0 0 10px #ffd700">
+      +50 BUCKS AWARDED
     </div>`;
   transScreen.style.display='flex';
   // Keep showing indefinitely — player can ESC to menu

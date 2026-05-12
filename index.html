@@ -399,137 +399,62 @@
       border-bottom: 1px solid rgba(255,255,255,0.05);
     }
     .shop-earn-note span { color: #ffd700; }
-    .bucks-packages {
-      display: flex; gap: 16px; padding: 28px 32px;
-      justify-content: center; flex-wrap: wrap;
+    /* ── Shop: rarity badges ────────────────────────────── */
+    .rarity-badge {
+      display: inline-block; font-size: 9px; font-weight: 700;
+      letter-spacing: 2px; padding: 2px 7px; border-radius: 30px;
+      text-transform: uppercase; margin-bottom: 2px;
     }
-    .bucks-pkg {
-      flex: 1; min-width: 160px; max-width: 200px;
-      background: rgba(255,215,0,0.04);
-      border: 1px solid rgba(255,215,0,0.18);
-      border-radius: 12px; padding: 22px 16px 18px;
-      text-align: center; cursor: pointer;
-      transition: border-color .18s, background .18s, transform .12s;
+    .rarity-common    { background: rgba(140,140,140,0.12); color: #888; border: 1px solid #555; }
+    .rarity-rare      { background: rgba(59,158,232,0.14);  color: #3b9ee8; border: 1px solid rgba(59,158,232,0.5); }
+    .rarity-epic      { background: rgba(168,85,247,0.14);  color: #c084fc; border: 1px solid rgba(168,85,247,0.5); }
+    .rarity-legendary { background: rgba(255,170,0,0.16);   color: #ffaa00; border: 1px solid rgba(255,170,0,0.55); }
+    /* ── Shop: search ────────────────────────────────────── */
+    .shop-search-wrap {
+      padding: 10px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      background: rgba(0,0,0,0.18);
     }
-    .bucks-pkg:hover { border-color: #ffd700; background: rgba(255,215,0,0.10); transform: translateY(-2px); }
-    .bucks-pkg-amount {
-      font-size: 34px; font-weight: 900; color: #ffd700;
-      letter-spacing: 2px; line-height: 1;
-    }
-    .bucks-pkg-label { font-size: 11px; color: #888; letter-spacing: 3px; margin: 4px 0 14px; }
-    .bucks-pkg-price {
-      display: inline-block;
-      background: #ffd700; color: #1a1200;
-      font-weight: 800; font-size: 15px; letter-spacing: 1px;
-      border-radius: 6px; padding: 7px 18px;
-    }
-    .bucks-pkg-per { font-size: 10px; color: #666; margin-top: 8px; letter-spacing: 2px; }
-    .bucks-buy-note {
-      text-align: center; padding: 0 32px 24px;
-      font-size: 11px; color: #445; letter-spacing: 1px; line-height: 1.7;
-    }
-    /* ── Payment modal ─────────────────────────────────── */
-    .pay-overlay {
-      position: fixed; inset: 0; z-index: 3000;
-      background: rgba(0,0,0,0.82); backdrop-filter: blur(6px);
-      display: flex; align-items: center; justify-content: center;
-      opacity: 0; pointer-events: none; transition: opacity .18s;
-    }
-    .pay-overlay.open { opacity: 1; pointer-events: all; }
-    .pay-modal {
-      background: #12151c; border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 18px; width: 100%; max-width: 420px;
-      overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.7);
-    }
-    .pay-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 20px 24px 16px;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
-    }
-    .pay-header-title { font-size: 13px; font-weight: 700; letter-spacing: 3px; color: #ccc; }
-    .pay-close {
-      width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.12);
-      background: transparent; color: #666; font-size: 15px; cursor: pointer;
-      transition: background .15s, color .15s;
-    }
-    .pay-close:hover { background: rgba(255,255,255,0.08); color: #fff; }
-    .pay-summary {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 24px; background: rgba(255,215,0,0.05);
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-    }
-    .pay-summary-bucks { display: flex; align-items: baseline; gap: 6px; }
-    .pay-summary-num { font-size: 28px; font-weight: 900; color: #ffd700; }
-    .pay-summary-label { font-size: 11px; color: #888; letter-spacing: 3px; }
-    .pay-summary-price { font-size: 22px; font-weight: 800; color: #fff; }
-    .pay-methods { padding: 20px 24px 8px; }
-    .pay-methods-label { font-size: 10px; color: #556; letter-spacing: 3px; margin-bottom: 12px; }
-    .pay-method-btn {
-      display: flex; align-items: center; gap: 14px;
-      width: 100%; padding: 13px 16px; margin-bottom: 10px;
-      border-radius: 10px; border: 1px solid rgba(255,255,255,0.10);
-      background: rgba(255,255,255,0.03); cursor: pointer;
-      transition: border-color .15s, background .15s;
-      font-family: 'Inter', sans-serif;
-    }
-    .pay-method-btn:hover { border-color: rgba(255,255,255,0.28); background: rgba(255,255,255,0.07); }
-    .pay-method-btn.gpay  { border-color: rgba(66,133,244,0.3); }
-    .pay-method-btn.gpay:hover { border-color: #4285f4; background: rgba(66,133,244,0.08); }
-    .pay-method-btn.apay  { border-color: rgba(255,255,255,0.15); background: #000; }
-    .pay-method-btn.apay:hover { background: #1a1a1a; border-color: rgba(255,255,255,0.35); }
-    .pay-method-btn.mc    { border-color: rgba(235,100,0,0.3); }
-    .pay-method-btn.mc:hover { border-color: #eb6400; background: rgba(235,100,0,0.06); }
-    .pay-method-btn.amex  { border-color: rgba(0,114,206,0.3); }
-    .pay-method-btn.amex:hover { border-color: #0072ce; background: rgba(0,114,206,0.08); }
-    .pay-method-name { font-size: 13px; font-weight: 600; color: #ddd; }
-    .pay-method-sub  { font-size: 10px; color: #556; margin-top: 1px; letter-spacing: 1px; }
-    /* Card form */
-    .pay-card-form { padding: 8px 24px 24px; display: none; }
-    .pay-card-form.visible { display: block; }
-    .pay-card-back {
-      background: none; border: none; color: #667; font-size: 11px;
-      letter-spacing: 2px; cursor: pointer; padding: 0 0 14px;
-      font-family: 'Inter', sans-serif;
-    }
-    .pay-card-back:hover { color: #aaa; }
-    .pay-card-heading { font-size: 12px; color: #888; letter-spacing: 2px; margin-bottom: 14px; }
-    .pay-field { margin-bottom: 12px; }
-    .pay-field label { display: block; font-size: 10px; color: #556; letter-spacing: 2px; margin-bottom: 5px; }
-    .pay-field input {
+    .shop-search {
       width: 100%; box-sizing: border-box;
-      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px; padding: 11px 13px;
-      color: #ddd; font-size: 14px; font-family: 'Inter', sans-serif;
-      transition: border-color .15s;
-      outline: none;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 7px; padding: 8px 14px;
+      color: #ccc; font-size: 12px; font-family: 'Inter', sans-serif;
+      letter-spacing: 1px; outline: none; transition: border-color .15s;
     }
-    .pay-field input:focus { border-color: rgba(255,215,0,0.5); }
-    .pay-field-row { display: flex; gap: 10px; }
-    .pay-field-row .pay-field { flex: 1; }
-    .pay-submit {
-      width: 100%; padding: 14px; margin-top: 6px;
-      background: #ffd700; color: #111; font-size: 13px; font-weight: 800;
-      letter-spacing: 3px; border: none; border-radius: 10px; cursor: pointer;
-      transition: background .15s, transform .1s;
+    .shop-search:focus { border-color: rgba(255,215,0,0.4); }
+    .shop-search::placeholder { color: #445; }
+    /* ── Shop: pagination ────────────────────────────────── */
+    .shop-pagination {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 14px 24px; border-top: 1px solid rgba(255,255,255,0.05);
     }
-    .pay-submit:hover { background: #ffe033; transform: translateY(-1px); }
-    .pay-submit:active { transform: none; }
-    .pay-secure-note {
-      text-align: center; padding: 12px 24px 20px;
-      font-size: 10px; color: #445; letter-spacing: 1px;
+    .shop-page-btn {
+      min-width: 32px; height: 32px; padding: 0 10px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 6px; color: #888; font-size: 13px; font-weight: 700;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: background .15s, color .15s, border-color .15s;
     }
+    .shop-page-btn:hover:not(:disabled) { background: rgba(255,215,0,0.10); color: #ffd700; border-color: rgba(255,215,0,0.3); }
+    .shop-page-btn.active { background: rgba(255,215,0,0.15); color: #ffd700; border-color: rgba(255,215,0,0.45); }
+    .shop-page-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+    .shop-page-info { font-size: 10px; color: #445; letter-spacing: 2px; }
+    /* ── Shop: tabs (scrollable for 8 categories) ────────── */
     .shop-tabs {
-      display: flex; gap: 0;
+      display: flex; gap: 0; overflow-x: auto;
       border-bottom: 1px solid rgba(255,255,255,0.07);
+      scrollbar-width: none;
     }
+    .shop-tabs::-webkit-scrollbar { display: none; }
     .shop-tab-btn {
-      flex: 1; padding: 14px 0;
+      flex-shrink: 0; padding: 12px 16px;
       background: transparent;
       border: none; border-bottom: 2px solid transparent;
-      color: #446; font-size: 11px; font-weight: 700;
-      letter-spacing: 3px; text-transform: uppercase;
+      color: #446; font-size: 10px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
       cursor: pointer; transition: color .15s, border-color .15s;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Inter', sans-serif; white-space: nowrap;
     }
     .shop-tab-btn:hover { color: #aaa; }
     .shop-tab-btn.active { color: #ffd700; border-bottom-color: #ffd700; }
@@ -834,79 +759,16 @@
         <button class="shop-close" onclick="closeShop()">✕</button>
       </div>
       <div class="shop-earn-note">
-        Bucks are purchased &nbsp;·&nbsp; <span>see the BUY BUCKS tab</span>
+        Complete <span>Level 100</span> in FPS Arena to earn <span>50 Bucks</span>
       </div>
       <div class="shop-tabs" id="shop-tabs"></div>
+      <div class="shop-search-wrap">
+        <input class="shop-search" id="shop-search" placeholder="Search accessories…" oninput="_shopSearchInput(this.value)">
+      </div>
       <div class="shop-grid" id="shop-grid"></div>
     </div>
   </div>
 
-  <!-- ── Payment Modal ───────────────────────────────────────── -->
-  <div class="pay-overlay" id="pay-overlay">
-    <div class="pay-modal">
-      <div class="pay-header">
-        <div class="pay-header-title">CHECKOUT</div>
-        <button class="pay-close" onclick="closePayModal()">✕</button>
-      </div>
-      <div class="pay-summary">
-        <div class="pay-summary-bucks">
-          <svg width="20" height="20" viewBox="0 0 32 32" style="margin-right:6px"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>
-          <span class="pay-summary-num" id="pay-bucks-num">0</span>
-          <span class="pay-summary-label">BUCKS</span>
-        </div>
-        <div class="pay-summary-price" id="pay-price-val">£0.00</div>
-      </div>
-      <!-- Method picker -->
-      <div class="pay-methods" id="pay-methods-panel">
-        <div class="pay-methods-label">PAY WITH</div>
-        <!-- Google Pay -->
-        <button class="pay-method-btn gpay" onclick="_selectPayMethod('gpay')">
-          <svg width="44" height="22" viewBox="0 0 88 44"><rect width="88" height="44" rx="6" fill="#fff"/><text x="6" y="29" font-size="20" font-weight="700" font-family="Arial"><tspan fill="#4285F4">G</tspan><tspan fill="#EA4335">o</tspan><tspan fill="#FBBC04">o</tspan><tspan fill="#4285F4">g</tspan><tspan fill="#34A853">l</tspan><tspan fill="#EA4335">e</tspan></text><text x="50" y="29" font-size="18" font-weight="800" fill="#000" font-family="Arial">Pay</text></svg>
-          <div><div class="pay-method-name">Google Pay</div><div class="pay-method-sub">PAY WITH YOUR GOOGLE ACCOUNT</div></div>
-        </button>
-        <!-- Apple Pay -->
-        <button class="pay-method-btn apay" onclick="_selectPayMethod('apay')">
-          <svg width="44" height="22" viewBox="0 0 88 44"><rect width="88" height="44" rx="6" fill="#000"/><text x="8" y="30" font-size="22" font-family="Arial" fill="#fff">&#xf8ff; Pay</text></svg>
-          <div><div class="pay-method-name" style="color:#fff">Apple Pay</div><div class="pay-method-sub">PAY WITH FACE ID OR TOUCH ID</div></div>
-        </button>
-        <!-- Mastercard -->
-        <button class="pay-method-btn mc" onclick="_selectPayMethod('mastercard')">
-          <svg width="44" height="28" viewBox="0 0 44 28"><circle cx="17" cy="14" r="13" fill="#EB001B"/><circle cx="27" cy="14" r="13" fill="#F79E1B"/><path d="M22 4.8a13 13 0 0 1 0 18.4A13 13 0 0 1 22 4.8z" fill="#FF5F00"/></svg>
-          <div><div class="pay-method-name">Mastercard</div><div class="pay-method-sub">DEBIT OR CREDIT CARD</div></div>
-        </button>
-        <!-- Amex -->
-        <button class="pay-method-btn amex" onclick="_selectPayMethod('amex')">
-          <svg width="44" height="28" viewBox="0 0 88 56"><rect width="88" height="56" rx="6" fill="#0072CE"/><text x="44" y="36" text-anchor="middle" font-size="20" font-weight="900" fill="#fff" font-family="Arial">AMEX</text></svg>
-          <div><div class="pay-method-name">American Express</div><div class="pay-method-sub">AMEX CREDIT CARD</div></div>
-        </button>
-      </div>
-      <!-- Card form (Mastercard / Amex) -->
-      <div class="pay-card-form" id="pay-card-form">
-        <button class="pay-card-back" onclick="_backToMethods()">← BACK</button>
-        <div class="pay-card-heading" id="pay-card-heading">CARD DETAILS</div>
-        <div class="pay-field">
-          <label>CARDHOLDER NAME</label>
-          <input type="text" id="pay-name" placeholder="Name on card" autocomplete="cc-name">
-        </div>
-        <div class="pay-field">
-          <label>CARD NUMBER</label>
-          <input type="text" id="pay-number" placeholder="0000 0000 0000 0000" maxlength="19" autocomplete="cc-number" oninput="_fmtCard(this)">
-        </div>
-        <div class="pay-field-row">
-          <div class="pay-field">
-            <label>EXPIRY</label>
-            <input type="text" id="pay-expiry" placeholder="MM / YY" maxlength="7" autocomplete="cc-exp" oninput="_fmtExpiry(this)">
-          </div>
-          <div class="pay-field">
-            <label id="pay-cvv-label">CVV</label>
-            <input type="text" id="pay-cvv" placeholder="•••" maxlength="4" autocomplete="cc-csc">
-          </div>
-        </div>
-        <button class="pay-submit" id="pay-submit-btn" onclick="_submitCardPayment()">PAY NOW</button>
-      </div>
-      <div class="pay-secure-note">🔒 Payments are encrypted and secure</div>
-    </div>
-  </div>
 
   <footer>
     ArcadeHub &copy; 2026 &nbsp;—&nbsp; <span>Built with Claude Code</span>
@@ -1234,54 +1096,637 @@
     // ══════════════════════════════════════════════════════════
     //  BUCKS & AVATAR SHOP
     // ══════════════════════════════════════════════════════════
+    // ── Rarity prices ────────────────────────────────────────────
+    const R = { common:50, rare:100, epic:200, legendary:500 };
+    const D = {
+      cowboy:'Ride into battle in style', tophat:'For the distinguished android',
+      cap:'Street-style drip', crown:'Conquer the battlefield', beanie:'Keep your circuits warm',
+      beret:'Artistic flair unlocked', fedora:'Smooth operator', hardhat:'Safety first, kills second',
+      snapback:'Fresh from the factory', bucket:'Low-key legend', visor:'Sun? What sun?',
+      propeller:'Spinning into chaos', jester:'Chaos is the plan', ninja:'Silent and deadly',
+      sombrero:'Fiesta mode activated', pirate:'Yarr, matey', viking:'Pillage the scoreboard',
+      wizard:'Magic damage enabled', knight:'Honour and violence', samurai:'Bushido protocol',
+      sunglasses:'Cooler than any dimension', goggles:'Enhanced optical uplink',
+      vrset:'Reality is overrated', monocle:'Sophistication.exe', eyepatch:'Depth perception? Overrated',
+      nerd:'Intelligence +99', pilot:'Cleared for takeoff', ski:'Downhill destroyer',
+      nightvision:'See in the dark', 3d:'Cinematic carnage',
+      chain:'Maximum drip detected', dogtags:'Veteran status symbol',
+      bowtie:'Deadly and dapper', scarf:'Wrapped in mystery', tie:'Corporate assassin',
+      pearls:'Elegance armed', choker:'Edge personified', bandana:'Outlaw aesthetic',
+      locket:'Sentiment weaponised', robe:'Mystical aura',
+      watch:'Track your kills in style', powerband:'Glowing energy bracelet',
+      spikes:'Danger on your wrist', cuffs:'Locked and loaded', bangles:'Jingle all the way',
+      gauntlet:'Armour upgrade', wraps:'Fighter stance', ringstack:'Bling overload',
+      compass:'Always north', holo:'Holographic HUD',
+      jetpack:'Airborne advantage', wings:'Angelic carnage', quiver:'Arrows ready',
+      cape:'Hero aesthetic', spikes2:'Back spikes, why not', shell:'Turtle power',
+      solarpanel:'Eco warrior', rocketpack:'Explosive exit', shroud:'Dark aura',
+      shoulderpads:'Linebacker mode', epaulettes:'Military rank unlocked',
+      spaulders:'Knight shoulders', cannons:'Shoulder artillery', wings2:'Winged warrior',
+      spikes3:'Shoulder spikes', lanterns:'Glow up', crystals:'Crystal power',
+      mask:'Hide your face', paint:'War paint activated', beard:'Facial authority',
+      visor2:'Face visor equipped', moustache:'Distinguished', respirator:'Filtered aggression',
+      tattoo:'Permanent commitment', blush:'Adorably deadly', fangs:'Bite back',
+      boots:'Ground-level power', heels:'Elevated threat level', skates:'Glide to victory',
+      hoverboots:'Hover mode active', claws:'Foot claws engaged', fins:'Aquatic mode',
+      springs:'Bounce into battle', platforms:'Elevated status', hboots:'Holographic soles',
+    };
+    function _si(id,name,cat,type,col,rar){
+      return {id,name,cat,type,col,rar,price:R[rar],desc:D[type]||''};
+    }
     const SHOP_ITEMS = [
-      { id:'cowboy_hat',    name:'Cowboy Hat',    cat:'hats',    price:200, desc:'Ride into battle in style' },
-      { id:'top_hat',       name:'Top Hat',        cat:'hats',    price:150, desc:'For the distinguished android' },
-      { id:'cap',           name:'Cap',            cat:'hats',    price:80,  desc:'Street-style drip' },
-      { id:'crown',         name:'Crown',          cat:'hats',    price:500, desc:'Conquer the battlefield' },
-      { id:'sunglasses',    name:'Sunglasses',     cat:'eyewear', price:120, desc:'Cooler than any dimension' },
-      { id:'cyber_goggles', name:'Cyber Goggles',  cat:'eyewear', price:180, desc:'Enhanced optical uplink' },
-      { id:'vr_headset',    name:'VR Headset',     cat:'eyewear', price:350, desc:'Reality is overrated' },
-      { id:'gold_chain',    name:'Gold Chain',     cat:'neck',    price:200, desc:'Maximum drip detected' },
-      { id:'dog_tags',      name:'Dog Tags',       cat:'neck',    price:130, desc:'Veteran status symbol' },
-      { id:'watch',         name:'Smart Watch',    cat:'wrist',   price:150, desc:'Track your kills in style' },
-      { id:'power_band',    name:'Power Band',     cat:'wrist',   price:220, desc:'Glowing energy bracelet' },
+      // ── HATS (common=50, rare=100, epic=200, legendary=500) ──
+      _si('cowboy_red_common',    'Cowboy (Red)',       'hats','cowboy','#c0392b','common'),
+      _si('cowboy_tan_common',    'Cowboy (Tan)',       'hats','cowboy','#c8a87a','common'),
+      _si('cowboy_black_rare',    'Cowboy (Black)',     'hats','cowboy','#222','rare'),
+      _si('cowboy_gold_epic',     'Cowboy (Gold)',      'hats','cowboy','#ffd700','epic'),
+      _si('cowboy_neon_legendary','Cowboy (Neon)',      'hats','cowboy','#00ffcc','legendary'),
+      _si('tophat_black_common',  'Top Hat (Black)',    'hats','tophat','#111','common'),
+      _si('tophat_white_rare',    'Top Hat (White)',    'hats','tophat','#eee','rare'),
+      _si('tophat_purple_epic',   'Top Hat (Purple)',   'hats','tophat','#8b00ff','epic'),
+      _si('tophat_gold_legendary','Top Hat (Gold)',     'hats','tophat','#ffd700','legendary'),
+      _si('cap_red_common',       'Cap (Red)',          'hats','cap','#e74c3c','common'),
+      _si('cap_blue_common',      'Cap (Blue)',         'hats','cap','#3498db','common'),
+      _si('cap_green_rare',       'Cap (Green)',        'hats','cap','#2ecc71','rare'),
+      _si('cap_black_rare',       'Cap (Black)',        'hats','cap','#111','rare'),
+      _si('cap_camo_epic',        'Cap (Camo)',         'hats','cap','#556b2f','epic'),
+      _si('cap_chrome_legendary', 'Cap (Chrome)',       'hats','cap','#c0c0c0','legendary'),
+      _si('crown_silver_rare',    'Crown (Silver)',     'hats','crown','#c0c0c0','rare'),
+      _si('crown_gold_epic',      'Crown (Gold)',       'hats','crown','#ffd700','epic'),
+      _si('crown_diamond_legendary','Crown (Diamond)',  'hats','crown','#aaeeff','legendary'),
+      _si('beanie_grey_common',   'Beanie (Grey)',      'hats','beanie','#888','common'),
+      _si('beanie_red_common',    'Beanie (Red)',       'hats','beanie','#c0392b','common'),
+      _si('beanie_yellow_rare',   'Beanie (Yellow)',    'hats','beanie','#f1c40f','rare'),
+      _si('beanie_rainbow_epic',  'Beanie (Rainbow)',   'hats','beanie','#ff00cc','epic'),
+      _si('beret_black_common',   'Beret (Black)',      'hats','beret','#111','common'),
+      _si('beret_red_rare',       'Beret (Red)',        'hats','beret','#c0392b','rare'),
+      _si('beret_gold_epic',      'Beret (Gold)',       'hats','beret','#ffd700','epic'),
+      _si('fedora_brown_common',  'Fedora (Brown)',     'hats','fedora','#7a4f1e','common'),
+      _si('fedora_grey_rare',     'Fedora (Grey)',      'hats','fedora','#888','rare'),
+      _si('fedora_black_epic',    'Fedora (Black)',     'hats','fedora','#111','epic'),
+      _si('hardhat_yellow_common','Hard Hat (Yellow)',  'hats','hardhat','#f1c40f','common'),
+      _si('hardhat_white_rare',   'Hard Hat (White)',   'hats','hardhat','#eee','rare'),
+      _si('snapback_white_common','Snapback (White)',   'hats','snapback','#eee','common'),
+      _si('snapback_red_rare',    'Snapback (Red)',     'hats','snapback','#e74c3c','rare'),
+      _si('snapback_neon_epic',   'Snapback (Neon)',    'hats','snapback','#00ff88','epic'),
+      _si('bucket_white_common',  'Bucket Hat (White)', 'hats','bucket','#eee','common'),
+      _si('bucket_blue_rare',     'Bucket Hat (Blue)',  'hats','bucket','#3498db','rare'),
+      _si('visor_clear_common',   'Visor (Clear)',      'hats','visor','#aaddff','common'),
+      _si('visor_tinted_rare',    'Visor (Tinted)',     'hats','visor','#226699','rare'),
+      _si('propeller_red_common', 'Propeller Hat',      'hats','propeller','#e74c3c','common'),
+      _si('propeller_rainbow_epic','Propeller (Rainbow)','hats','propeller','#ff00cc','epic'),
+      _si('jester_red_rare',      'Jester Hat',         'hats','jester','#e74c3c','rare'),
+      _si('jester_gold_epic',     'Jester (Gold)',      'hats','jester','#ffd700','epic'),
+      _si('ninja_black_rare',     'Ninja Hood (Black)', 'hats','ninja','#111','rare'),
+      _si('ninja_red_epic',       'Ninja Hood (Red)',   'hats','ninja','#c0392b','epic'),
+      _si('sombrero_tan_common',  'Sombrero (Tan)',     'hats','sombrero','#c8a87a','common'),
+      _si('sombrero_gold_epic',   'Sombrero (Gold)',    'hats','sombrero','#ffd700','epic'),
+      _si('pirate_black_rare',    'Pirate Hat (Black)', 'hats','pirate','#111','rare'),
+      _si('pirate_red_epic',      'Pirate Hat (Red)',   'hats','pirate','#8b0000','epic'),
+      _si('viking_grey_rare',     'Viking Helm (Grey)', 'hats','viking','#aaa','rare'),
+      _si('viking_gold_epic',     'Viking Helm (Gold)', 'hats','viking','#ffd700','epic'),
+      _si('viking_iron_legendary','Viking Helm (Iron)', 'hats','viking','#c0c0c0','legendary'),
+      _si('wizard_blue_rare',     'Wizard Hat (Blue)',  'hats','wizard','#1a0066','rare'),
+      _si('wizard_purple_epic',   'Wizard Hat (Purple)','hats','wizard','#8b00ff','epic'),
+      _si('wizard_gold_legendary','Wizard Hat (Gold)',  'hats','wizard','#ffd700','legendary'),
+      _si('knight_silver_epic',   'Knight Helm (Silver)','hats','knight','#c0c0c0','epic'),
+      _si('knight_gold_legendary','Knight Helm (Gold)', 'hats','knight','#ffd700','legendary'),
+      _si('samurai_black_epic',   'Samurai Helm (Black)','hats','samurai','#111','epic'),
+      _si('samurai_red_legendary','Samurai Helm (Red)', 'hats','samurai','#c0392b','legendary'),
+      // ── EYEWEAR ──
+      _si('sunglasses_black_common', 'Sunglasses (Black)',   'eyewear','sunglasses','#111','common'),
+      _si('sunglasses_blue_common',  'Sunglasses (Blue)',    'eyewear','sunglasses','#3498db','common'),
+      _si('sunglasses_gold_rare',    'Sunglasses (Gold)',    'eyewear','sunglasses','#ffd700','rare'),
+      _si('sunglasses_red_rare',     'Sunglasses (Red)',     'eyewear','sunglasses','#e74c3c','rare'),
+      _si('sunglasses_neon_epic',    'Sunglasses (Neon)',    'eyewear','sunglasses','#00ffcc','epic'),
+      _si('sunglasses_pink_epic',    'Sunglasses (Pink)',    'eyewear','sunglasses','#ff69b4','epic'),
+      _si('sunglasses_rainbow_legendary','Sunglasses (Rainbow)','eyewear','sunglasses','#ff00cc','legendary'),
+      _si('goggles_blue_common',     'Goggles (Blue)',       'eyewear','goggles','#0044aa','common'),
+      _si('goggles_red_rare',        'Goggles (Red)',        'eyewear','goggles','#c0392b','rare'),
+      _si('goggles_green_rare',      'Goggles (Green)',      'eyewear','goggles','#00aa44','rare'),
+      _si('goggles_orange_epic',     'Goggles (Orange)',     'eyewear','goggles','#e67e22','epic'),
+      _si('goggles_neon_legendary',  'Goggles (Neon)',       'eyewear','goggles','#00ffcc','legendary'),
+      _si('vrset_black_rare',        'VR Headset (Black)',   'eyewear','vrset','#111','rare'),
+      _si('vrset_white_epic',        'VR Headset (White)',   'eyewear','vrset','#eee','epic'),
+      _si('vrset_neon_legendary',    'VR Headset (Neon)',    'eyewear','vrset','#00ffcc','legendary'),
+      _si('monocle_gold_rare',       'Monocle (Gold)',       'eyewear','monocle','#ffd700','rare'),
+      _si('monocle_silver_epic',     'Monocle (Silver)',     'eyewear','monocle','#c0c0c0','epic'),
+      _si('eyepatch_black_common',   'Eye Patch (Black)',    'eyewear','eyepatch','#111','common'),
+      _si('eyepatch_red_rare',       'Eye Patch (Red)',      'eyewear','eyepatch','#c0392b','rare'),
+      _si('eyepatch_gold_epic',      'Eye Patch (Gold)',     'eyewear','eyepatch','#ffd700','epic'),
+      _si('nerd_clear_common',       'Nerd Glasses (Clear)', 'eyewear','nerd','#aaddff','common'),
+      _si('nerd_black_rare',         'Nerd Glasses (Black)', 'eyewear','nerd','#111','rare'),
+      _si('pilot_brown_rare',        'Pilot Goggles (Brown)','eyewear','pilot','#7a4f1e','rare'),
+      _si('pilot_gold_epic',         'Pilot Goggles (Gold)', 'eyewear','pilot','#ffd700','epic'),
+      _si('ski_blue_common',         'Ski Goggles (Blue)',   'eyewear','ski','#3498db','common'),
+      _si('ski_red_rare',            'Ski Goggles (Red)',    'eyewear','ski','#e74c3c','rare'),
+      _si('ski_neon_epic',           'Ski Goggles (Neon)',   'eyewear','ski','#00ffcc','epic'),
+      _si('nightvision_green_epic',  'Night Vision (Green)', 'eyewear','nightvision','#00ff44','epic'),
+      _si('nightvision_red_legendary','Night Vision (Red)',  'eyewear','nightvision','#ff0000','legendary'),
+      _si('3d_red_common',           '3D Glasses (Red)',     'eyewear','3d','#e74c3c','common'),
+      _si('3d_neon_rare',            '3D Glasses (Neon)',    'eyewear','3d','#00ffcc','rare'),
+      // ── NECK ──
+      _si('chain_gold_common',    'Chain (Gold)',         'neck','chain','#ffd700','common'),
+      _si('chain_silver_common',  'Chain (Silver)',       'neck','chain','#c0c0c0','common'),
+      _si('chain_diamond_epic',   'Chain (Diamond)',      'neck','chain','#aaeeff','epic'),
+      _si('chain_ruby_legendary', 'Chain (Ruby)',         'neck','chain','#cc0000','legendary'),
+      _si('dogtags_steel_common', 'Dog Tags (Steel)',     'neck','dogtags','#9ba9b8','common'),
+      _si('dogtags_gold_rare',    'Dog Tags (Gold)',      'neck','dogtags','#ffd700','rare'),
+      _si('dogtags_glow_epic',    'Dog Tags (Glow)',      'neck','dogtags','#00ff88','epic'),
+      _si('bowtie_black_common',  'Bow Tie (Black)',      'neck','bowtie','#111','common'),
+      _si('bowtie_red_rare',      'Bow Tie (Red)',        'neck','bowtie','#e74c3c','rare'),
+      _si('bowtie_gold_epic',     'Bow Tie (Gold)',       'neck','bowtie','#ffd700','epic'),
+      _si('scarf_red_common',     'Scarf (Red)',          'neck','scarf','#e74c3c','common'),
+      _si('scarf_blue_common',    'Scarf (Blue)',         'neck','scarf','#3498db','common'),
+      _si('scarf_rainbow_rare',   'Scarf (Rainbow)',      'neck','scarf','#ff00cc','rare'),
+      _si('scarf_fur_epic',       'Scarf (Fur)',          'neck','scarf','#f5f5f5','epic'),
+      _si('tie_black_common',     'Tie (Black)',          'neck','tie','#111','common'),
+      _si('tie_red_rare',         'Tie (Red)',            'neck','tie','#c0392b','rare'),
+      _si('tie_gold_epic',        'Tie (Gold)',           'neck','tie','#ffd700','epic'),
+      _si('pearls_white_rare',    'Pearls (White)',       'neck','pearls','#f5f5f5','rare'),
+      _si('pearls_pink_epic',     'Pearls (Pink)',        'neck','pearls','#ff69b4','epic'),
+      _si('choker_black_common',  'Choker (Black)',       'neck','choker','#111','common'),
+      _si('choker_red_rare',      'Choker (Red)',         'neck','choker','#c0392b','rare'),
+      _si('choker_neon_epic',     'Choker (Neon)',        'neck','choker','#00ffcc','epic'),
+      _si('bandana_red_common',   'Bandana (Red)',        'neck','bandana','#c0392b','common'),
+      _si('bandana_blue_common',  'Bandana (Blue)',       'neck','bandana','#3498db','common'),
+      _si('bandana_camo_rare',    'Bandana (Camo)',       'neck','bandana','#556b2f','rare'),
+      _si('bandana_neon_epic',    'Bandana (Neon)',       'neck','bandana','#00ffcc','epic'),
+      _si('locket_gold_rare',     'Locket (Gold)',        'neck','locket','#ffd700','rare'),
+      _si('locket_silver_epic',   'Locket (Silver)',      'neck','locket','#c0c0c0','epic'),
+      _si('robe_black_rare',      'Robe Collar (Black)',  'neck','robe','#111','rare'),
+      _si('robe_red_epic',        'Robe Collar (Red)',    'neck','robe','#8b0000','epic'),
+      _si('robe_gold_legendary',  'Robe Collar (Gold)',   'neck','robe','#ffd700','legendary'),
+      // ── WRIST ──
+      _si('watch_black_common',   'Watch (Black)',        'wrist','watch','#111','common'),
+      _si('watch_gold_rare',      'Watch (Gold)',         'wrist','watch','#ffd700','rare'),
+      _si('watch_neon_epic',      'Watch (Neon)',         'wrist','watch','#00ffcc','epic'),
+      _si('watch_diamond_legendary','Watch (Diamond)',    'wrist','watch','#aaeeff','legendary'),
+      _si('powerband_blue_common','Power Band (Blue)',    'wrist','powerband','#0044aa','common'),
+      _si('powerband_red_common', 'Power Band (Red)',     'wrist','powerband','#c0392b','common'),
+      _si('powerband_neon_rare',  'Power Band (Neon)',    'wrist','powerband','#00ffcc','rare'),
+      _si('powerband_gold_epic',  'Power Band (Gold)',    'wrist','powerband','#ffd700','epic'),
+      _si('powerband_plasma_legendary','Power Band (Plasma)','wrist','powerband','#ff00cc','legendary'),
+      _si('spikes_black_common',  'Spike Cuff (Black)',   'wrist','spikes','#222','common'),
+      _si('spikes_chrome_rare',   'Spike Cuff (Chrome)',  'wrist','spikes','#c0c0c0','rare'),
+      _si('spikes_gold_epic',     'Spike Cuff (Gold)',    'wrist','spikes','#ffd700','epic'),
+      _si('cuffs_silver_common',  'Cuffs (Silver)',       'wrist','cuffs','#c0c0c0','common'),
+      _si('cuffs_gold_rare',      'Cuffs (Gold)',         'wrist','cuffs','#ffd700','rare'),
+      _si('cuffs_neon_epic',      'Cuffs (Neon)',         'wrist','cuffs','#00ffcc','epic'),
+      _si('bangles_gold_common',  'Bangles (Gold)',       'wrist','bangles','#ffd700','common'),
+      _si('bangles_silver_rare',  'Bangles (Silver)',     'wrist','bangles','#c0c0c0','rare'),
+      _si('bangles_neon_epic',    'Bangles (Neon)',       'wrist','bangles','#00ffcc','epic'),
+      _si('gauntlet_iron_rare',   'Gauntlet (Iron)',      'wrist','gauntlet','#888','rare'),
+      _si('gauntlet_gold_epic',   'Gauntlet (Gold)',      'wrist','gauntlet','#ffd700','epic'),
+      _si('gauntlet_plasma_legendary','Gauntlet (Plasma)','wrist','gauntlet','#ff00cc','legendary'),
+      _si('wraps_white_common',   'Hand Wraps (White)',   'wrist','wraps','#eee','common'),
+      _si('wraps_black_rare',     'Hand Wraps (Black)',   'wrist','wraps','#111','rare'),
+      _si('wraps_neon_epic',      'Hand Wraps (Neon)',    'wrist','wraps','#00ffcc','epic'),
+      _si('ringstack_gold_rare',  'Ring Stack (Gold)',    'wrist','ringstack','#ffd700','rare'),
+      _si('ringstack_diamond_epic','Ring Stack (Diamond)','wrist','ringstack','#aaeeff','epic'),
+      _si('ringstack_ruby_legendary','Ring Stack (Ruby)', 'wrist','ringstack','#cc0000','legendary'),
+      _si('compass_bronze_rare',  'Compass (Bronze)',     'wrist','compass','#cd7f32','rare'),
+      _si('compass_gold_epic',    'Compass (Gold)',       'wrist','compass','#ffd700','epic'),
+      _si('holo_blue_epic',       'Holo Band (Blue)',     'wrist','holo','#0088ff','epic'),
+      _si('holo_neon_legendary',  'Holo Band (Neon)',     'wrist','holo','#00ffcc','legendary'),
+      // ── BACK ──
+      _si('jetpack_grey_common',  'Jetpack (Grey)',       'back','jetpack','#888','common'),
+      _si('jetpack_red_rare',     'Jetpack (Red)',        'back','jetpack','#c0392b','rare'),
+      _si('jetpack_blue_epic',    'Jetpack (Blue)',       'back','jetpack','#3498db','epic'),
+      _si('jetpack_gold_legendary','Jetpack (Gold)',      'back','jetpack','#ffd700','legendary'),
+      _si('wings_white_rare',     'Wings (White)',        'back','wings','#f5f5f5','rare'),
+      _si('wings_black_epic',     'Wings (Black)',        'back','wings','#111','epic'),
+      _si('wings_gold_legendary', 'Wings (Gold)',         'back','wings','#ffd700','legendary'),
+      _si('wings_neon_legendary', 'Wings (Neon)',         'back','wings','#00ffcc','legendary'),
+      _si('quiver_brown_common',  'Quiver (Brown)',       'back','quiver','#7a4f1e','common'),
+      _si('quiver_black_rare',    'Quiver (Black)',       'back','quiver','#111','rare'),
+      _si('quiver_gold_epic',     'Quiver (Gold)',        'back','quiver','#ffd700','epic'),
+      _si('cape_red_common',      'Cape (Red)',           'back','cape','#c0392b','common'),
+      _si('cape_black_rare',      'Cape (Black)',         'back','cape','#111','rare'),
+      _si('cape_blue_rare',       'Cape (Blue)',          'back','cape','#3498db','rare'),
+      _si('cape_gold_epic',       'Cape (Gold)',          'back','cape','#ffd700','epic'),
+      _si('cape_cosmic_legendary','Cape (Cosmic)',        'back','cape','#8b00ff','legendary'),
+      _si('spikes2_black_common', 'Back Spikes (Black)',  'back','spikes2','#222','common'),
+      _si('spikes2_chrome_rare',  'Back Spikes (Chrome)', 'back','spikes2','#c0c0c0','rare'),
+      _si('spikes2_gold_epic',    'Back Spikes (Gold)',   'back','spikes2','#ffd700','epic'),
+      _si('shell_green_rare',     'Shell (Green)',        'back','shell','#2ecc71','rare'),
+      _si('shell_gold_epic',      'Shell (Gold)',         'back','shell','#ffd700','epic'),
+      _si('solarpanel_grey_common','Solar Panel (Grey)',  'back','solarpanel','#888','common'),
+      _si('solarpanel_blue_rare', 'Solar Panel (Blue)',   'back','solarpanel','#3498db','rare'),
+      _si('rocketpack_red_epic',  'Rocket Pack (Red)',    'back','rocketpack','#c0392b','epic'),
+      _si('rocketpack_gold_legendary','Rocket Pack (Gold)','back','rocketpack','#ffd700','legendary'),
+      _si('shroud_black_rare',    'Shroud (Black)',       'back','shroud','#111','rare'),
+      _si('shroud_purple_epic',   'Shroud (Purple)',      'back','shroud','#8b00ff','epic'),
+      _si('shroud_cosmic_legendary','Shroud (Cosmic)',    'back','shroud','#ff00cc','legendary'),
+      // ── SHOULDERS ──
+      _si('shoulderpads_black_common','Shoulder Pads (Black)','shoulders','shoulderpads','#111','common'),
+      _si('shoulderpads_white_common','Shoulder Pads (White)','shoulders','shoulderpads','#eee','common'),
+      _si('shoulderpads_red_rare',    'Shoulder Pads (Red)',  'shoulders','shoulderpads','#c0392b','rare'),
+      _si('shoulderpads_gold_epic',   'Shoulder Pads (Gold)', 'shoulders','shoulderpads','#ffd700','epic'),
+      _si('shoulderpads_neon_legendary','Shoulder Pads (Neon)','shoulders','shoulderpads','#00ffcc','legendary'),
+      _si('epaulettes_gold_common',  'Epaulettes (Gold)',    'shoulders','epaulettes','#ffd700','common'),
+      _si('epaulettes_silver_rare',  'Epaulettes (Silver)',  'shoulders','epaulettes','#c0c0c0','rare'),
+      _si('epaulettes_blue_epic',    'Epaulettes (Blue)',    'shoulders','epaulettes','#3498db','epic'),
+      _si('spaulders_iron_rare',     'Spaulders (Iron)',     'shoulders','spaulders','#888','rare'),
+      _si('spaulders_gold_epic',     'Spaulders (Gold)',     'shoulders','spaulders','#ffd700','epic'),
+      _si('spaulders_legendary_legendary','Spaulders (Legendary)','shoulders','spaulders','#ff00cc','legendary'),
+      _si('cannons_grey_epic',       'Shoulder Cannons (Grey)','shoulders','cannons','#888','epic'),
+      _si('cannons_gold_legendary',  'Shoulder Cannons (Gold)','shoulders','cannons','#ffd700','legendary'),
+      _si('wings2_white_rare',       'Shoulder Wings (White)','shoulders','wings2','#f5f5f5','rare'),
+      _si('wings2_black_epic',       'Shoulder Wings (Black)','shoulders','wings2','#111','epic'),
+      _si('wings2_neon_legendary',   'Shoulder Wings (Neon)', 'shoulders','wings2','#00ffcc','legendary'),
+      _si('spikes3_black_common',    'Shoulder Spikes (Black)','shoulders','spikes3','#222','common'),
+      _si('spikes3_chrome_rare',     'Shoulder Spikes (Chrome)','shoulders','spikes3','#c0c0c0','rare'),
+      _si('spikes3_gold_epic',       'Shoulder Spikes (Gold)','shoulders','spikes3','#ffd700','epic'),
+      _si('lanterns_red_rare',       'Lanterns (Red)',        'shoulders','lanterns','#c0392b','rare'),
+      _si('lanterns_blue_epic',      'Lanterns (Blue)',       'shoulders','lanterns','#3498db','epic'),
+      _si('lanterns_gold_legendary', 'Lanterns (Gold)',       'shoulders','lanterns','#ffd700','legendary'),
+      _si('crystals_blue_rare',      'Crystals (Blue)',       'shoulders','crystals','#3498db','rare'),
+      _si('crystals_purple_epic',    'Crystals (Purple)',     'shoulders','crystals','#8b00ff','epic'),
+      _si('crystals_rainbow_legendary','Crystals (Rainbow)',  'shoulders','crystals','#ff00cc','legendary'),
+      // ── FACE ──
+      _si('mask_black_common',    'Face Mask (Black)',    'face','mask','#111','common'),
+      _si('mask_white_common',    'Face Mask (White)',    'face','mask','#eee','common'),
+      _si('mask_red_rare',        'Face Mask (Red)',      'face','mask','#c0392b','rare'),
+      _si('mask_gold_epic',       'Face Mask (Gold)',     'face','mask','#ffd700','epic'),
+      _si('mask_neon_legendary',  'Face Mask (Neon)',     'face','mask','#00ffcc','legendary'),
+      _si('paint_red_common',     'War Paint (Red)',      'face','paint','#c0392b','common'),
+      _si('paint_blue_common',    'War Paint (Blue)',     'face','paint','#3498db','common'),
+      _si('paint_gold_rare',      'War Paint (Gold)',     'face','paint','#ffd700','rare'),
+      _si('paint_tribal_epic',    'War Paint (Tribal)',   'face','paint','#8b00ff','epic'),
+      _si('paint_neon_legendary', 'War Paint (Neon)',     'face','paint','#00ffcc','legendary'),
+      _si('beard_brown_common',   'Beard (Brown)',        'face','beard','#7a4f1e','common'),
+      _si('beard_black_rare',     'Beard (Black)',        'face','beard','#111','rare'),
+      _si('beard_gold_epic',      'Beard (Gold)',         'face','beard','#ffd700','epic'),
+      _si('beard_neon_legendary', 'Beard (Neon)',         'face','beard','#00ffcc','legendary'),
+      _si('visor2_clear_common',  'Face Visor (Clear)',   'face','visor2','#aaddff','common'),
+      _si('visor2_tinted_rare',   'Face Visor (Tinted)',  'face','visor2','#226699','rare'),
+      _si('visor2_neon_epic',     'Face Visor (Neon)',    'face','visor2','#00ffcc','epic'),
+      _si('moustache_brown_common','Moustache (Brown)',   'face','moustache','#7a4f1e','common'),
+      _si('moustache_black_rare', 'Moustache (Black)',    'face','moustache','#111','rare'),
+      _si('moustache_gold_epic',  'Moustache (Gold)',     'face','moustache','#ffd700','epic'),
+      _si('respirator_grey_common','Respirator (Grey)',   'face','respirator','#888','common'),
+      _si('respirator_black_rare','Respirator (Black)',   'face','respirator','#111','rare'),
+      _si('respirator_neon_epic', 'Respirator (Neon)',    'face','respirator','#00ffcc','epic'),
+      _si('tattoo_tribal_rare',   'Tattoo (Tribal)',      'face','tattoo','#111','rare'),
+      _si('tattoo_neon_epic',     'Tattoo (Neon)',        'face','tattoo','#00ffcc','epic'),
+      _si('blush_pink_common',    'Blush (Pink)',         'face','blush','#ff69b4','common'),
+      _si('blush_red_rare',       'Blush (Red)',          'face','blush','#e74c3c','rare'),
+      _si('fangs_white_rare',     'Fangs (White)',        'face','fangs','#f5f5f5','rare'),
+      _si('fangs_gold_epic',      'Fangs (Gold)',         'face','fangs','#ffd700','epic'),
+      _si('fangs_neon_legendary', 'Fangs (Neon)',         'face','fangs','#00ffcc','legendary'),
+      // ── FEET ──
+      _si('boots_brown_common',   'Boots (Brown)',        'feet','boots','#7a4f1e','common'),
+      _si('boots_black_common',   'Boots (Black)',        'feet','boots','#111','common'),
+      _si('boots_red_rare',       'Boots (Red)',          'feet','boots','#c0392b','rare'),
+      _si('boots_gold_epic',      'Boots (Gold)',         'feet','boots','#ffd700','epic'),
+      _si('boots_neon_legendary', 'Boots (Neon)',         'feet','boots','#00ffcc','legendary'),
+      _si('heels_red_common',     'Heels (Red)',          'feet','heels','#c0392b','common'),
+      _si('heels_black_rare',     'Heels (Black)',        'feet','heels','#111','rare'),
+      _si('heels_gold_epic',      'Heels (Gold)',         'feet','heels','#ffd700','epic'),
+      _si('heels_neon_legendary', 'Heels (Neon)',         'feet','heels','#00ffcc','legendary'),
+      _si('skates_white_common',  'Skates (White)',       'feet','skates','#eee','common'),
+      _si('skates_black_rare',    'Skates (Black)',       'feet','skates','#111','rare'),
+      _si('skates_neon_epic',     'Skates (Neon)',        'feet','skates','#00ffcc','epic'),
+      _si('hoverboots_blue_rare', 'Hover Boots (Blue)',   'feet','hoverboots','#3498db','rare'),
+      _si('hoverboots_neon_epic', 'Hover Boots (Neon)',   'feet','hoverboots','#00ffcc','epic'),
+      _si('hoverboots_gold_legendary','Hover Boots (Gold)','feet','hoverboots','#ffd700','legendary'),
+      _si('claws_black_common',   'Foot Claws (Black)',   'feet','claws','#111','common'),
+      _si('claws_chrome_rare',    'Foot Claws (Chrome)',  'feet','claws','#c0c0c0','rare'),
+      _si('claws_gold_epic',      'Foot Claws (Gold)',    'feet','claws','#ffd700','epic'),
+      _si('fins_grey_common',     'Fins (Grey)',          'feet','fins','#888','common'),
+      _si('fins_blue_rare',       'Fins (Blue)',          'feet','fins','#3498db','rare'),
+      _si('fins_neon_epic',       'Fins (Neon)',          'feet','fins','#00ffcc','epic'),
+      _si('springs_grey_common',  'Springs (Grey)',       'feet','springs','#888','common'),
+      _si('springs_gold_rare',    'Springs (Gold)',       'feet','springs','#ffd700','rare'),
+      _si('springs_neon_epic',    'Springs (Neon)',       'feet','springs','#00ffcc','epic'),
+      _si('platforms_black_common','Platforms (Black)',   'feet','platforms','#111','common'),
+      _si('platforms_gold_rare',  'Platforms (Gold)',     'feet','platforms','#ffd700','rare'),
+      _si('platforms_neon_epic',  'Platforms (Neon)',     'feet','platforms','#00ffcc','epic'),
+      _si('hboots_white_rare',    'Holo Boots (White)',   'feet','hboots','#f5f5f5','rare'),
+      _si('hboots_neon_epic',     'Holo Boots (Neon)',    'feet','hboots','#00ffcc','epic'),
+      _si('hboots_gold_legendary','Holo Boots (Gold)',    'feet','hboots','#ffd700','legendary'),
+      // ── HATS extra ──
+      _si('cap_orange_common',     'Cap (Orange)',          'hats','cap','#e67e22','common'),
+      _si('cap_purple_rare',       'Cap (Purple)',          'hats','cap','#8b00ff','rare'),
+      _si('cap_gold_epic',         'Cap (Gold)',            'hats','cap','#ffd700','epic'),
+      _si('beanie_blue_common',    'Beanie (Blue)',         'hats','beanie','#3498db','common'),
+      _si('beanie_green_common',   'Beanie (Green)',        'hats','beanie','#2ecc71','common'),
+      _si('beanie_purple_rare',    'Beanie (Purple)',       'hats','beanie','#8b00ff','rare'),
+      _si('beanie_gold_legendary', 'Beanie (Gold)',         'hats','beanie','#ffd700','legendary'),
+      _si('beret_blue_common',     'Beret (Blue)',          'hats','beret','#3498db','common'),
+      _si('beret_green_common',    'Beret (Green)',         'hats','beret','#2ecc71','common'),
+      _si('beret_purple_rare',     'Beret (Purple)',        'hats','beret','#8b00ff','rare'),
+      _si('beret_neon_legendary',  'Beret (Neon)',          'hats','beret','#00ffcc','legendary'),
+      _si('fedora_red_common',     'Fedora (Red)',          'hats','fedora','#c0392b','common'),
+      _si('fedora_white_epic',     'Fedora (White)',        'hats','fedora','#eee','epic'),
+      _si('fedora_neon_legendary', 'Fedora (Neon)',         'hats','fedora','#00ffcc','legendary'),
+      _si('hardhat_orange_common', 'Hard Hat (Orange)',     'hats','hardhat','#e67e22','common'),
+      _si('hardhat_red_rare',      'Hard Hat (Red)',        'hats','hardhat','#e74c3c','rare'),
+      _si('hardhat_neon_epic',     'Hard Hat (Neon)',       'hats','hardhat','#00ffcc','epic'),
+      _si('snapback_blue_common',  'Snapback (Blue)',       'hats','snapback','#3498db','common'),
+      _si('snapback_green_rare',   'Snapback (Green)',      'hats','snapback','#2ecc71','rare'),
+      _si('snapback_gold_legendary','Snapback (Gold)',      'hats','snapback','#ffd700','legendary'),
+      _si('bucket_green_common',   'Bucket Hat (Green)',    'hats','bucket','#2ecc71','common'),
+      _si('bucket_camo_rare',      'Bucket Hat (Camo)',     'hats','bucket','#556b2f','rare'),
+      _si('bucket_neon_epic',      'Bucket Hat (Neon)',     'hats','bucket','#00ffcc','epic'),
+      _si('visor_neon_epic',       'Visor (Neon)',          'hats','visor','#00ffcc','epic'),
+      _si('visor_gold_legendary',  'Visor (Gold)',          'hats','visor','#ffd700','legendary'),
+      _si('ninja_blue_rare',       'Ninja Hood (Blue)',     'hats','ninja','#3498db','rare'),
+      _si('ninja_neon_legendary',  'Ninja Hood (Neon)',     'hats','ninja','#00ffcc','legendary'),
+      _si('sombrero_red_rare',     'Sombrero (Red)',        'hats','sombrero','#c0392b','rare'),
+      _si('sombrero_neon_legendary','Sombrero (Neon)',      'hats','sombrero','#00ffcc','legendary'),
+      _si('pirate_gold_legendary', 'Pirate Hat (Gold)',     'hats','pirate','#ffd700','legendary'),
+      _si('propeller_blue_rare',   'Propeller Hat (Blue)', 'hats','propeller','#3498db','rare'),
+      _si('propeller_gold_legendary','Propeller (Gold)',   'hats','propeller','#ffd700','legendary'),
+      _si('jester_blue_rare',      'Jester Hat (Blue)',    'hats','jester','#3498db','rare'),
+      _si('jester_neon_legendary', 'Jester (Neon)',        'hats','jester','#00ffcc','legendary'),
+      // ── EYEWEAR extra ──
+      _si('sunglasses_green_common', 'Sunglasses (Green)',  'eyewear','sunglasses','#2ecc71','common'),
+      _si('sunglasses_purple_rare',  'Sunglasses (Purple)', 'eyewear','sunglasses','#8b00ff','rare'),
+      _si('sunglasses_orange_rare',  'Sunglasses (Orange)', 'eyewear','sunglasses','#e67e22','rare'),
+      _si('sunglasses_white_epic',   'Sunglasses (White)',  'eyewear','sunglasses','#f5f5f5','epic'),
+      _si('sunglasses_chrome_epic',  'Sunglasses (Chrome)', 'eyewear','sunglasses','#c0c0c0','epic'),
+      _si('goggles_cyan_common',     'Goggles (Cyan)',      'eyewear','goggles','#00ccff','common'),
+      _si('goggles_purple_epic',     'Goggles (Purple)',    'eyewear','goggles','#8b00ff','epic'),
+      _si('goggles_gold_legendary',  'Goggles (Gold)',      'eyewear','goggles','#ffd700','legendary'),
+      _si('monocle_bronze_common',   'Monocle (Bronze)',    'eyewear','monocle','#cd7f32','common'),
+      _si('monocle_neon_legendary',  'Monocle (Neon)',      'eyewear','monocle','#00ffcc','legendary'),
+      _si('eyepatch_blue_rare',      'Eye Patch (Blue)',    'eyewear','eyepatch','#3498db','rare'),
+      _si('eyepatch_neon_legendary', 'Eye Patch (Neon)',    'eyewear','eyepatch','#00ffcc','legendary'),
+      _si('nerd_gold_epic',          'Nerd Glasses (Gold)', 'eyewear','nerd','#ffd700','epic'),
+      _si('nerd_neon_legendary',     'Nerd Glasses (Neon)', 'eyewear','nerd','#00ffcc','legendary'),
+      _si('pilot_black_common',      'Pilot Goggles (Black)','eyewear','pilot','#111','common'),
+      _si('pilot_neon_legendary',    'Pilot Goggles (Neon)','eyewear','pilot','#00ffcc','legendary'),
+      _si('ski_green_common',        'Ski Goggles (Green)', 'eyewear','ski','#2ecc71','common'),
+      _si('ski_gold_legendary',      'Ski Goggles (Gold)',  'eyewear','ski','#ffd700','legendary'),
+      _si('3d_blue_common',          '3D Glasses (Blue)',   'eyewear','3d','#3498db','common'),
+      _si('3d_gold_epic',            '3D Glasses (Gold)',   'eyewear','3d','#ffd700','epic'),
+      _si('3d_legendary_legendary',  '3D Glasses (Holo)',   'eyewear','3d','#00ffcc','legendary'),
+      // ── NECK extra ──
+      _si('chain_platinum_epic',   'Chain (Platinum)',     'neck','chain','#e8e8ff','epic'),
+      _si('chain_neon_epic',       'Chain (Neon)',         'neck','chain','#00ffcc','epic'),
+      _si('dogtags_black_common',  'Dog Tags (Black)',     'neck','dogtags','#111','common'),
+      _si('dogtags_neon_legendary','Dog Tags (Neon)',      'neck','dogtags','#00ffcc','legendary'),
+      _si('bowtie_blue_common',    'Bow Tie (Blue)',       'neck','bowtie','#3498db','common'),
+      _si('bowtie_neon_legendary', 'Bow Tie (Neon)',       'neck','bowtie','#00ffcc','legendary'),
+      _si('scarf_green_common',    'Scarf (Green)',        'neck','scarf','#2ecc71','common'),
+      _si('scarf_yellow_rare',     'Scarf (Yellow)',       'neck','scarf','#f1c40f','rare'),
+      _si('scarf_neon_legendary',  'Scarf (Neon)',         'neck','scarf','#00ffcc','legendary'),
+      _si('tie_blue_common',       'Tie (Blue)',           'neck','tie','#3498db','common'),
+      _si('tie_green_rare',        'Tie (Green)',          'neck','tie','#2ecc71','rare'),
+      _si('tie_neon_legendary',    'Tie (Neon)',           'neck','tie','#00ffcc','legendary'),
+      _si('pearls_gold_rare',      'Pearls (Gold)',        'neck','pearls','#ffd700','rare'),
+      _si('pearls_neon_legendary', 'Pearls (Neon)',        'neck','pearls','#00ffcc','legendary'),
+      _si('choker_gold_rare',      'Choker (Gold)',        'neck','choker','#ffd700','rare'),
+      _si('choker_diamond_legendary','Choker (Diamond)',   'neck','choker','#aaeeff','legendary'),
+      _si('bandana_green_common',  'Bandana (Green)',      'neck','bandana','#2ecc71','common'),
+      _si('bandana_gold_epic',     'Bandana (Gold)',       'neck','bandana','#ffd700','epic'),
+      _si('bandana_legendary_legendary','Bandana (Holo)', 'neck','bandana','#00ffcc','legendary'),
+      _si('locket_bronze_common',  'Locket (Bronze)',      'neck','locket','#cd7f32','common'),
+      _si('locket_neon_legendary', 'Locket (Neon)',        'neck','locket','#00ffcc','legendary'),
+      // ── WRIST extra ──
+      _si('watch_silver_common',   'Watch (Silver)',       'wrist','watch','#c0c0c0','common'),
+      _si('watch_blue_rare',       'Watch (Blue)',         'wrist','watch','#3498db','rare'),
+      _si('watch_red_rare',        'Watch (Red)',          'wrist','watch','#c0392b','rare'),
+      _si('powerband_green_common','Power Band (Green)',   'wrist','powerband','#2ecc71','common'),
+      _si('powerband_yellow_rare', 'Power Band (Yellow)',  'wrist','powerband','#f1c40f','rare'),
+      _si('powerband_purple_epic', 'Power Band (Purple)',  'wrist','powerband','#8b00ff','epic'),
+      _si('spikes_red_common',     'Spike Cuff (Red)',     'wrist','spikes','#c0392b','common'),
+      _si('spikes_blue_rare',      'Spike Cuff (Blue)',    'wrist','spikes','#3498db','rare'),
+      _si('spikes_neon_legendary', 'Spike Cuff (Neon)',    'wrist','spikes','#00ffcc','legendary'),
+      _si('cuffs_red_common',      'Cuffs (Red)',          'wrist','cuffs','#c0392b','common'),
+      _si('cuffs_blue_rare',       'Cuffs (Blue)',         'wrist','cuffs','#3498db','rare'),
+      _si('cuffs_diamond_legendary','Cuffs (Diamond)',     'wrist','cuffs','#aaeeff','legendary'),
+      _si('bangles_red_common',    'Bangles (Red)',        'wrist','bangles','#c0392b','common'),
+      _si('bangles_blue_rare',     'Bangles (Blue)',       'wrist','bangles','#3498db','rare'),
+      _si('bangles_diamond_legendary','Bangles (Diamond)','wrist','bangles','#aaeeff','legendary'),
+      _si('wraps_red_common',      'Hand Wraps (Red)',     'wrist','wraps','#c0392b','common'),
+      _si('wraps_blue_rare',       'Hand Wraps (Blue)',    'wrist','wraps','#3498db','rare'),
+      _si('wraps_gold_epic',       'Hand Wraps (Gold)',    'wrist','wraps','#ffd700','epic'),
+      _si('compass_silver_common', 'Compass (Silver)',     'wrist','compass','#c0c0c0','common'),
+      _si('compass_neon_legendary','Compass (Neon)',       'wrist','compass','#00ffcc','legendary'),
+      _si('holo_green_epic',       'Holo Band (Green)',    'wrist','holo','#00ff88','epic'),
+      _si('holo_gold_legendary',   'Holo Band (Gold)',     'wrist','holo','#ffd700','legendary'),
+      // ── BACK extra ──
+      _si('jetpack_black_common',  'Jetpack (Black)',      'back','jetpack','#111','common'),
+      _si('jetpack_green_rare',    'Jetpack (Green)',      'back','jetpack','#2ecc71','rare'),
+      _si('jetpack_neon_epic',     'Jetpack (Neon)',       'back','jetpack','#00ffcc','epic'),
+      _si('wings_blue_rare',       'Wings (Blue)',         'back','wings','#3498db','rare'),
+      _si('wings_red_epic',        'Wings (Red)',          'back','wings','#c0392b','epic'),
+      _si('wings_rainbow_legendary','Wings (Rainbow)',     'back','wings','#ff00cc','legendary'),
+      _si('quiver_red_rare',       'Quiver (Red)',         'back','quiver','#c0392b','rare'),
+      _si('quiver_neon_legendary', 'Quiver (Neon)',        'back','quiver','#00ffcc','legendary'),
+      _si('cape_green_rare',       'Cape (Green)',         'back','cape','#2ecc71','rare'),
+      _si('cape_white_epic',       'Cape (White)',         'back','cape','#f5f5f5','epic'),
+      _si('cape_neon_legendary',   'Cape (Neon)',          'back','cape','#00ffcc','legendary'),
+      _si('spikes2_red_common',    'Back Spikes (Red)',    'back','spikes2','#c0392b','common'),
+      _si('spikes2_blue_rare',     'Back Spikes (Blue)',   'back','spikes2','#3498db','rare'),
+      _si('spikes2_neon_legendary','Back Spikes (Neon)',   'back','spikes2','#00ffcc','legendary'),
+      _si('shell_blue_rare',       'Shell (Blue)',         'back','shell','#3498db','rare'),
+      _si('shell_neon_legendary',  'Shell (Neon)',         'back','shell','#00ffcc','legendary'),
+      _si('solarpanel_green_rare', 'Solar Panel (Green)',  'back','solarpanel','#2ecc71','rare'),
+      _si('solarpanel_neon_epic',  'Solar Panel (Neon)',   'back','solarpanel','#00ffcc','epic'),
+      _si('rocketpack_blue_epic',  'Rocket Pack (Blue)',   'back','rocketpack','#3498db','epic'),
+      _si('rocketpack_neon_legendary','Rocket Pack (Neon)','back','rocketpack','#00ffcc','legendary'),
+      _si('shroud_red_rare',       'Shroud (Red)',         'back','shroud','#8b0000','rare'),
+      _si('shroud_blue_epic',      'Shroud (Blue)',        'back','shroud','#003399','epic'),
+      _si('shroud_neon_legendary', 'Shroud (Neon)',        'back','shroud','#00ffcc','legendary'),
+      // ── SHOULDERS extra ──
+      _si('shoulderpads_blue_common','Shoulder Pads (Blue)','shoulders','shoulderpads','#3498db','common'),
+      _si('shoulderpads_green_rare', 'Shoulder Pads (Green)','shoulders','shoulderpads','#2ecc71','rare'),
+      _si('shoulderpads_purple_epic','Shoulder Pads (Purple)','shoulders','shoulderpads','#8b00ff','epic'),
+      _si('epaulettes_red_common',   'Epaulettes (Red)',    'shoulders','epaulettes','#c0392b','common'),
+      _si('epaulettes_neon_epic',    'Epaulettes (Neon)',   'shoulders','epaulettes','#00ffcc','epic'),
+      _si('epaulettes_legendary_legendary','Epaulettes (Legendary)','shoulders','epaulettes','#ffd700','legendary'),
+      _si('spaulders_black_common',  'Spaulders (Black)',   'shoulders','spaulders','#111','common'),
+      _si('spaulders_blue_rare',     'Spaulders (Blue)',    'shoulders','spaulders','#3498db','rare'),
+      _si('spaulders_neon_legendary','Spaulders (Neon)',    'shoulders','spaulders','#00ffcc','legendary'),
+      _si('cannons_red_epic',        'Shoulder Cannons (Red)','shoulders','cannons','#c0392b','epic'),
+      _si('cannons_neon_legendary',  'Shoulder Cannons (Neon)','shoulders','cannons','#00ffcc','legendary'),
+      _si('wings2_red_rare',         'Shoulder Wings (Red)','shoulders','wings2','#c0392b','rare'),
+      _si('wings2_gold_epic',        'Shoulder Wings (Gold)','shoulders','wings2','#ffd700','epic'),
+      _si('wings2_rainbow_legendary','Shoulder Wings (Rainbow)','shoulders','wings2','#ff00cc','legendary'),
+      _si('spikes3_red_common',      'Shoulder Spikes (Red)','shoulders','spikes3','#c0392b','common'),
+      _si('spikes3_blue_rare',       'Shoulder Spikes (Blue)','shoulders','spikes3','#3498db','rare'),
+      _si('spikes3_neon_legendary',  'Shoulder Spikes (Neon)','shoulders','spikes3','#00ffcc','legendary'),
+      _si('lanterns_green_rare',     'Lanterns (Green)',    'shoulders','lanterns','#2ecc71','rare'),
+      _si('lanterns_neon_legendary', 'Lanterns (Neon)',     'shoulders','lanterns','#00ffcc','legendary'),
+      _si('crystals_green_rare',     'Crystals (Green)',    'shoulders','crystals','#2ecc71','rare'),
+      _si('crystals_neon_legendary', 'Crystals (Neon)',     'shoulders','crystals','#00ffcc','legendary'),
+      // ── FACE extra ──
+      _si('mask_blue_rare',        'Face Mask (Blue)',     'face','mask','#3498db','rare'),
+      _si('mask_green_rare',       'Face Mask (Green)',    'face','mask','#2ecc71','rare'),
+      _si('mask_purple_epic',      'Face Mask (Purple)',   'face','mask','#8b00ff','epic'),
+      _si('mask_rainbow_legendary','Face Mask (Rainbow)',  'face','mask','#ff00cc','legendary'),
+      _si('paint_green_common',    'War Paint (Green)',    'face','paint','#2ecc71','common'),
+      _si('paint_purple_rare',     'War Paint (Purple)',   'face','paint','#8b00ff','rare'),
+      _si('paint_rainbow_legendary','War Paint (Rainbow)', 'face','paint','#ff00cc','legendary'),
+      _si('beard_red_common',      'Beard (Red)',          'face','beard','#c0392b','common'),
+      _si('beard_grey_rare',       'Beard (Grey)',         'face','beard','#888','rare'),
+      _si('beard_white_epic',      'Beard (White)',        'face','beard','#f5f5f5','epic'),
+      _si('visor2_red_rare',       'Face Visor (Red)',     'face','visor2','#c0392b','rare'),
+      _si('visor2_gold_epic',      'Face Visor (Gold)',    'face','visor2','#ffd700','epic'),
+      _si('visor2_legendary_legendary','Face Visor (Holo)','face','visor2','#00ffcc','legendary'),
+      _si('moustache_white_rare',  'Moustache (White)',    'face','moustache','#f5f5f5','rare'),
+      _si('moustache_neon_legendary','Moustache (Neon)',   'face','moustache','#00ffcc','legendary'),
+      _si('respirator_red_rare',   'Respirator (Red)',     'face','respirator','#c0392b','rare'),
+      _si('respirator_gold_epic',  'Respirator (Gold)',    'face','respirator','#ffd700','epic'),
+      _si('respirator_legendary_legendary','Respirator (Holo)','face','respirator','#00ffcc','legendary'),
+      _si('tattoo_red_rare',       'Tattoo (Red)',         'face','tattoo','#c0392b','rare'),
+      _si('tattoo_gold_epic',      'Tattoo (Gold)',        'face','tattoo','#ffd700','epic'),
+      _si('tattoo_legendary_legendary','Tattoo (Legendary)','face','tattoo','#ff00cc','legendary'),
+      _si('blush_orange_common',   'Blush (Orange)',       'face','blush','#e67e22','common'),
+      _si('blush_gold_epic',       'Blush (Gold)',         'face','blush','#ffd700','epic'),
+      _si('fangs_black_rare',      'Fangs (Black)',        'face','fangs','#111','rare'),
+      _si('fangs_red_epic',        'Fangs (Red)',          'face','fangs','#cc0000','epic'),
+      // ── FEET extra ──
+      _si('boots_blue_common',     'Boots (Blue)',         'feet','boots','#3498db','common'),
+      _si('boots_white_rare',      'Boots (White)',        'feet','boots','#eee','rare'),
+      _si('boots_purple_epic',     'Boots (Purple)',       'feet','boots','#8b00ff','epic'),
+      _si('boots_rainbow_legendary','Boots (Rainbow)',     'feet','boots','#ff00cc','legendary'),
+      _si('heels_blue_common',     'Heels (Blue)',         'feet','heels','#3498db','common'),
+      _si('heels_white_rare',      'Heels (White)',        'feet','heels','#eee','rare'),
+      _si('heels_purple_epic',     'Heels (Purple)',       'feet','heels','#8b00ff','epic'),
+      _si('heels_legendary_legendary','Heels (Holo)',      'feet','heels','#00ffcc','legendary'),
+      _si('skates_red_common',     'Skates (Red)',         'feet','skates','#c0392b','common'),
+      _si('skates_gold_epic',      'Skates (Gold)',        'feet','skates','#ffd700','epic'),
+      _si('skates_legendary_legendary','Skates (Legendary)','feet','skates','#ff00cc','legendary'),
+      _si('hoverboots_red_rare',   'Hover Boots (Red)',    'feet','hoverboots','#c0392b','rare'),
+      _si('hoverboots_green_rare', 'Hover Boots (Green)',  'feet','hoverboots','#2ecc71','rare'),
+      _si('hoverboots_legendary_legendary','Hover Boots (Legendary)','feet','hoverboots','#ff00cc','legendary'),
+      _si('claws_red_common',      'Foot Claws (Red)',     'feet','claws','#c0392b','common'),
+      _si('claws_blue_rare',       'Foot Claws (Blue)',    'feet','claws','#3498db','rare'),
+      _si('claws_neon_legendary',  'Foot Claws (Neon)',    'feet','claws','#00ffcc','legendary'),
+      _si('fins_green_common',     'Fins (Green)',         'feet','fins','#2ecc71','common'),
+      _si('fins_gold_epic',        'Fins (Gold)',          'feet','fins','#ffd700','epic'),
+      _si('fins_legendary_legendary','Fins (Legendary)',   'feet','fins','#ff00cc','legendary'),
+      _si('springs_red_common',    'Springs (Red)',        'feet','springs','#c0392b','common'),
+      _si('springs_blue_rare',     'Springs (Blue)',       'feet','springs','#3498db','rare'),
+      _si('springs_legendary_legendary','Springs (Legendary)','feet','springs','#ff00cc','legendary'),
+      _si('platforms_red_common',  'Platforms (Red)',      'feet','platforms','#c0392b','common'),
+      _si('platforms_blue_rare',   'Platforms (Blue)',     'feet','platforms','#3498db','rare'),
+      _si('platforms_legendary_legendary','Platforms (Legendary)','feet','platforms','#ff00cc','legendary'),
+      _si('hboots_blue_rare',      'Holo Boots (Blue)',    'feet','hboots','#3498db','rare'),
+      _si('hboots_red_epic',       'Holo Boots (Red)',     'feet','hboots','#c0392b','epic'),
+      _si('hboots_legendary_legendary','Holo Boots (Legendary)','feet','hboots','#ff00cc','legendary'),
     ];
 
-    const ITEM_SVGS = {
-      cowboy_hat: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="39" rx="28" ry="7" fill="#7a4f1e"/><rect x="18" y="15" width="28" height="24" rx="3" fill="#8b5e2a"/><rect x="18" y="35" width="28" height="6" fill="#3d2506"/><ellipse cx="32" cy="18" rx="10" ry="2.5" fill="#a06a30" opacity="0.5"/></svg>`,
-      top_hat:    `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="50" rx="26" ry="5" fill="#1a1a1a"/><rect x="19" y="11" width="26" height="39" rx="2" fill="#111"/><rect x="19" y="44" width="26" height="8" fill="#8b0000"/><rect x="21" y="13" width="4" height="30" rx="2" fill="#333" opacity="0.5"/></svg>`,
-      cap:        `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path d="M10,40 Q10,14 32,14 Q54,14 54,40Z" fill="#1a1a1a"/><rect x="6" y="38" width="36" height="9" rx="4" fill="#1a1a1a"/><rect x="10" y="38" width="44" height="5" rx="2" fill="#0d0d0d"/><rect x="27" y="27" width="10" height="8" rx="2" fill="#e74c3c"/></svg>`,
-      crown:      `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="36" width="48" height="18" rx="3" fill="#c8a215"/><polygon points="8,36 18,10 32,26 46,10 56,36" fill="#ffd700"/><circle cx="18" cy="10" r="5" fill="#e74c3c"/><circle cx="46" cy="10" r="5" fill="#e74c3c"/><circle cx="32" cy="26" r="4" fill="#ff8800"/><circle cx="17" cy="46" r="5" fill="#e74c3c"/><circle cx="32" cy="46" r="5" fill="#e74c3c"/><circle cx="47" cy="46" r="5" fill="#e74c3c"/><rect x="8" y="36" width="48" height="5" fill="#ffe040" opacity="0.4"/></svg>`,
-      sunglasses: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="20" cy="32" r="12" fill="none" stroke="#0a0a0a" stroke-width="3"/><circle cx="44" cy="32" r="12" fill="none" stroke="#0a0a0a" stroke-width="3"/><circle cx="20" cy="32" r="9.5" fill="#001a00" opacity="0.9"/><circle cx="44" cy="32" r="9.5" fill="#001a00" opacity="0.9"/><path d="M28,30 Q32,35 36,30" fill="none" stroke="#0a0a0a" stroke-width="2.5"/><line x1="8" y1="28" x2="8" y2="32" stroke="#0a0a0a" stroke-width="3" stroke-linecap="round"/><line x1="56" y1="28" x2="56" y2="32" stroke="#0a0a0a" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="24" r="2.5" fill="#ffd700"/><circle cx="48" cy="24" r="2.5" fill="#ffd700"/></svg>`,
-      cyber_goggles:`<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="22" width="56" height="20" rx="5" fill="#1a1a2e"/><rect x="8" y="26" width="22" height="12" rx="3" fill="#002244"/><rect x="34" y="26" width="22" height="12" rx="3" fill="#002244"/><rect x="9" y="27" width="20" height="10" rx="2" fill="#00aaff" opacity="0.3"/><rect x="35" y="27" width="20" height="10" rx="2" fill="#00aaff" opacity="0.3"/><rect x="9" y="27" width="20" height="3" fill="#00ccff" opacity="0.7"/><rect x="35" y="27" width="20" height="3" fill="#00ccff" opacity="0.7"/><circle cx="57" cy="23" r="2.5" fill="#00ff88"/></svg>`,
-      vr_headset: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="18" width="56" height="32" rx="6" fill="#1a1a1a"/><rect x="8" y="22" width="48" height="24" rx="4" fill="#0d0d0d"/><rect x="10" y="24" width="44" height="20" rx="3" fill="#002266"/><rect x="12" y="26" width="40" height="16" rx="2" fill="#0044cc" opacity="0.7"/><rect x="13" y="27" width="38" height="2" fill="#0099ff"/><rect x="13" y="31" width="38" height="2" fill="#0099ff"/><rect x="13" y="35" width="38" height="2" fill="#0099ff"/><rect x="4" y="16" width="56" height="5" rx="3" fill="#111"/><circle cx="56" cy="20" r="3" fill="#00ff44"/></svg>`,
-      gold_chain: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path d="M10,18 Q10,48 32,52 Q54,48 54,18" fill="none" stroke="#c8a215" stroke-width="5" stroke-linecap="round"/><path d="M10,18 Q10,48 32,52 Q54,48 54,18" fill="none" stroke="#ffd700" stroke-width="3" stroke-linecap="round"/><path d="M10,18 Q10,48 32,52 Q54,48 54,18" fill="none" stroke="#c8a215" stroke-width="1.5" stroke-dasharray="5,4" stroke-linecap="round"/><circle cx="32" cy="52" r="6" fill="#ffd700"/><circle cx="32" cy="52" r="3.5" fill="#ff8800"/></svg>`,
-      dog_tags:   `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><line x1="32" y1="6" x2="32" y2="20" stroke="#9ba9b8" stroke-width="2"/><line x1="32" y1="20" x2="26" y2="24" stroke="#9ba9b8" stroke-width="2"/><line x1="32" y1="20" x2="38" y2="24" stroke="#9ba9b8" stroke-width="2"/><rect x="18" y="24" width="28" height="17" rx="5" fill="#9ba9b8"/><rect x="21" y="28" width="22" height="2" fill="#6a7888"/><rect x="21" y="32" width="16" height="2" fill="#6a7888"/><rect x="21" y="36" width="18" height="2" fill="#6a7888"/><rect x="22" y="43" width="20" height="15" rx="5" fill="#8a9aab"/><rect x="25" y="47" width="14" height="2" fill="#5a6878"/><rect x="25" y="51" width="10" height="2" fill="#5a6878"/></svg>`,
-      watch:      `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect x="24" y="4" width="16" height="10" rx="3" fill="#2a1a0a"/><rect x="24" y="50" width="16" height="10" rx="3" fill="#2a1a0a"/><rect x="14" y="14" width="36" height="36" rx="10" fill="#111122"/><rect x="17" y="17" width="30" height="30" rx="8" fill="#0a1a3a"/><rect x="20" y="26" width="24" height="12" rx="3" fill="#00ff88" opacity="0.75"/><rect x="22" y="27" width="14" height="4" rx="1" fill="#44ffaa"/><rect x="22" y="33" width="10" height="3" rx="1" fill="#44ffaa" opacity="0.6"/></svg>`,
-      power_band: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="32" cy="32" r="26" fill="none" stroke="#0a0a1e" stroke-width="11"/><circle cx="32" cy="32" r="26" fill="none" stroke="#00ffcc" stroke-width="2.5" opacity="0.85"/><circle cx="32" cy="32" r="20" fill="none" stroke="#0a0a1e" stroke-width="5"/><circle cx="32" cy="6" r="5" fill="#00ff88"/><circle cx="53.6" cy="45" r="5" fill="#ffaa00"/><circle cx="10.4" cy="45" r="5" fill="#ff4444"/><circle cx="32" cy="32" r="7" fill="#00ccff" opacity="0.35"/></svg>`,
+    // ── SVG template helpers ─────────────────────────────────────
+    function _dk(h){const r=parseInt(h.slice(1,3)||'00',16),g=parseInt(h.slice(3,5)||'00',16),b=parseInt(h.slice(5,7)||'00',16);return `#${Math.round(r*.55).toString(16).padStart(2,'0')}${Math.round(g*.55).toString(16).padStart(2,'0')}${Math.round(b*.55).toString(16).padStart(2,'0')}`;}
+    function _lt(h){const r=parseInt(h.slice(1,3)||'ff',16),g=parseInt(h.slice(3,5)||'ff',16),b=parseInt(h.slice(5,7)||'ff',16);return `#${Math.min(255,Math.round(r*1.4+40)).toString(16).padStart(2,'0')}${Math.min(255,Math.round(g*1.4+40)).toString(16).padStart(2,'0')}${Math.min(255,Math.round(b*1.4+40)).toString(16).padStart(2,'0')}`;}
+    const _SVGF = {
+      cowboy:      c=>`<svg viewBox="0 0 64 64"><ellipse cx="32" cy="40" rx="28" ry="7" fill="${_dk(c)}"/><rect x="18" y="15" width="28" height="25" rx="3" fill="${c}"/><rect x="18" y="36" width="28" height="5" fill="${_dk(c)}"/></svg>`,
+      tophat:      c=>`<svg viewBox="0 0 64 64"><ellipse cx="32" cy="50" rx="26" ry="5" fill="${_dk(c)}"/><rect x="20" y="10" width="24" height="40" rx="2" fill="${c}"/><rect x="14" y="44" width="36" height="8" fill="${_dk(c)}"/></svg>`,
+      cap:         c=>`<svg viewBox="0 0 64 64"><path d="M10,40 Q10,14 32,14 Q54,14 54,40Z" fill="${c}"/><rect x="6" y="38" width="36" height="9" rx="4" fill="${c}"/><rect x="10" y="38" width="44" height="5" rx="2" fill="${_dk(c)}"/></svg>`,
+      crown:       c=>`<svg viewBox="0 0 64 64"><rect x="8" y="36" width="48" height="18" rx="3" fill="${_dk(c)}"/><polygon points="8,36 18,10 32,26 46,10 56,36" fill="${c}"/><circle cx="18" cy="10" r="5" fill="#e74c3c"/><circle cx="46" cy="10" r="5" fill="#e74c3c"/><circle cx="32" cy="26" r="4" fill="#ff8800"/></svg>`,
+      beanie:      c=>`<svg viewBox="0 0 64 64"><path d="M12,44 Q10,18 32,14 Q54,18 52,44Z" fill="${c}"/><rect x="10" y="42" width="44" height="8" rx="4" fill="${_dk(c)}"/><circle cx="32" cy="14" r="5" fill="${_lt(c)}"/></svg>`,
+      beret:       c=>`<svg viewBox="0 0 64 64"><ellipse cx="32" cy="32" rx="26" ry="20" fill="${c}"/><ellipse cx="32" cy="44" rx="20" ry="4" fill="${_dk(c)}"/><circle cx="44" cy="22" r="4" fill="${_lt(c)}"/></svg>`,
+      fedora:      c=>`<svg viewBox="0 0 64 64"><ellipse cx="32" cy="44" rx="28" ry="6" fill="${_dk(c)}"/><rect x="20" y="14" width="24" height="30" rx="8" fill="${c}"/><rect x="20" y="36" width="24" height="6" fill="${_dk(c)}"/></svg>`,
+      hardhat:     c=>`<svg viewBox="0 0 64 64"><path d="M8,46 Q8,18 32,16 Q56,18 56,46Z" fill="${c}"/><rect x="6" y="43" width="52" height="7" rx="3" fill="${_dk(c)}"/><rect x="28" y="16" width="8" height="12" rx="2" fill="${_lt(c)}"/></svg>`,
+      snapback:    c=>`<svg viewBox="0 0 64 64"><path d="M10,40 Q10,16 32,14 Q54,16 54,40Z" fill="${c}"/><rect x="8" y="38" width="28" height="8" rx="3" fill="${_dk(c)}"/><rect x="36" y="40" width="20" height="4" rx="2" fill="${_dk(c)}" opacity="0.6"/></svg>`,
+      bucket:      c=>`<svg viewBox="0 0 64 64"><path d="M16,44 L12,20 Q32,12 52,20 L48,44Z" fill="${c}"/><ellipse cx="32" cy="44" rx="16" ry="4" fill="${_dk(c)}"/></svg>`,
+      visor:       c=>`<svg viewBox="0 0 64 64"><path d="M8,36 Q8,14 32,12 Q56,14 56,36Z" fill="${c}" opacity="0.7"/><rect x="6" y="34" width="52" height="8" rx="3" fill="${_dk(c)}"/></svg>`,
+      propeller:   c=>`<svg viewBox="0 0 64 64"><rect x="28" y="10" width="8" height="20" rx="3" fill="${_dk(c)}"/><ellipse cx="32" cy="28" rx="8" ry="4" fill="${_dk(c)}"/><ellipse cx="32" cy="28" rx="22" ry="6" fill="${c}" transform="rotate(0,32,28)"/><ellipse cx="32" cy="28" rx="22" ry="6" fill="${_lt(c)}" transform="rotate(90,32,28)" opacity="0.7"/></svg>`,
+      jester:      c=>`<svg viewBox="0 0 64 64"><path d="M14,44 L10,20 Q32,8 54,20 L50,44Z" fill="${c}"/><path d="M14,44 L10,20 Q32,8 54,20 L50,44Z" fill="${_lt(c)}" clip-path="polygon(0 0,50% 0,50% 100%,0 100%)"/><circle cx="10" cy="20" r="7" fill="${_lt(c)}"/><circle cx="54" cy="20" r="7" fill="${c}"/><circle cx="32" cy="10" r="7" fill="${_dk(c)}"/></svg>`,
+      ninja:       c=>`<svg viewBox="0 0 64 64"><rect x="8" y="14" width="48" height="36" rx="6" fill="${c}"/><rect x="8" y="28" width="48" height="10" rx="2" fill="${_dk(c)}" opacity="0.4"/><circle cx="32" cy="33" r="4" fill="${_lt(c)}" opacity="0.6"/></svg>`,
+      sombrero:    c=>`<svg viewBox="0 0 64 64"><ellipse cx="32" cy="40" rx="30" ry="8" fill="${_dk(c)}"/><path d="M14,40 Q12,16 32,12 Q52,16 50,40Z" fill="${c}"/><path d="M14,40 Q12,16 32,12 Q52,16 50,40Z" fill="${_lt(c)}" opacity="0.3" clip-path="polygon(0 50%,100% 50%,100% 100%,0 100%)"/></svg>`,
+      pirate:      c=>`<svg viewBox="0 0 64 64"><path d="M10,44 L12,18 Q32,8 52,18 L54,44Z" fill="${c}"/><path d="M10,24 L54,24" stroke="${_lt(c)}" stroke-width="3"/><rect x="24" y="14" width="16" height="6" rx="2" fill="${_dk(c)}"/><text x="32" y="40" text-anchor="middle" font-size="16" fill="${_lt(c)}">☠</text></svg>`,
+      viking:      c=>`<svg viewBox="0 0 64 64"><path d="M10,46 L10,22 Q32,8 54,22 L54,46Z" fill="${c}"/><rect x="8" y="42" width="48" height="6" rx="3" fill="${_dk(c)}"/><path d="M10,26 L4,46" stroke="${_lt(c)}" stroke-width="4" stroke-linecap="round"/><path d="M54,26 L60,46" stroke="${_lt(c)}" stroke-width="4" stroke-linecap="round"/></svg>`,
+      wizard:      c=>`<svg viewBox="0 0 64 64"><path d="M32,8 L52,50 Q32,44 12,50Z" fill="${c}"/><ellipse cx="32" cy="50" rx="22" ry="5" fill="${_dk(c)}"/><circle cx="22" cy="34" r="3" fill="#ffe040"/><circle cx="42" cy="28" r="2" fill="#ffe040"/></svg>`,
+      knight:      c=>`<svg viewBox="0 0 64 64"><rect x="14" y="10" width="36" height="44" rx="8" fill="${c}"/><rect x="18" y="14" width="28" height="16" rx="4" fill="${_dk(c)}"/><rect x="20" y="18" width="24" height="8" rx="2" fill="${_lt(c)}" opacity="0.25"/><rect x="22" y="34" width="8" height="14" rx="2" fill="${_lt(c)}" opacity="0.3"/><rect x="34" y="34" width="8" height="14" rx="2" fill="${_lt(c)}" opacity="0.3"/></svg>`,
+      samurai:     c=>`<svg viewBox="0 0 64 64"><path d="M10,46 L10,24 Q32,8 54,24 L54,46Z" fill="${c}"/><rect x="8" y="42" width="48" height="6" rx="2" fill="${_dk(c)}"/><rect x="18" y="24" width="28" height="10" rx="2" fill="${_dk(c)}" opacity="0.5"/><path d="M14,24 L6,18" stroke="${_lt(c)}" stroke-width="3"/><path d="M50,24 L58,18" stroke="${_lt(c)}" stroke-width="3"/></svg>`,
+      sunglasses:  c=>`<svg viewBox="0 0 64 64"><circle cx="20" cy="32" r="12" fill="${c}" opacity="0.9"/><circle cx="44" cy="32" r="12" fill="${c}" opacity="0.9"/><path d="M28,30 Q32,35 36,30" fill="none" stroke="${_dk(c)}" stroke-width="2.5"/><line x1="8" y1="30" x2="8" y2="34" stroke="${_dk(c)}" stroke-width="3" stroke-linecap="round"/><line x1="56" y1="30" x2="56" y2="34" stroke="${_dk(c)}" stroke-width="3" stroke-linecap="round"/></svg>`,
+      goggles:     c=>`<svg viewBox="0 0 64 64"><rect x="4" y="22" width="56" height="20" rx="5" fill="${_dk(c)}"/><rect x="8" y="26" width="22" height="12" rx="3" fill="${c}" opacity="0.6"/><rect x="34" y="26" width="22" height="12" rx="3" fill="${c}" opacity="0.6"/><rect x="9" y="27" width="20" height="3" fill="${_lt(c)}" opacity="0.7"/><rect x="35" y="27" width="20" height="3" fill="${_lt(c)}" opacity="0.7"/></svg>`,
+      vrset:       c=>`<svg viewBox="0 0 64 64"><rect x="4" y="18" width="56" height="32" rx="6" fill="${_dk(c)}"/><rect x="10" y="24" width="44" height="20" rx="3" fill="${c}" opacity="0.7"/><rect x="13" y="27" width="38" height="2" fill="${_lt(c)}"/><rect x="13" y="31" width="38" height="2" fill="${_lt(c)}"/><circle cx="56" cy="20" r="3" fill="#00ff44"/></svg>`,
+      monocle:     c=>`<svg viewBox="0 0 64 64"><circle cx="36" cy="32" r="16" fill="none" stroke="${c}" stroke-width="4"/><circle cx="36" cy="32" r="12" fill="${c}" opacity="0.25"/><line x1="36" y1="48" x2="44" y2="56" stroke="${c}" stroke-width="3" stroke-linecap="round"/></svg>`,
+      eyepatch:    c=>`<svg viewBox="0 0 64 64"><ellipse cx="24" cy="30" rx="16" ry="13" fill="${c}"/><line x1="8" y1="30" x2="8" y2="34" stroke="${_dk(c)}" stroke-width="3"/><line x1="56" y1="30" x2="40" y2="30" stroke="${_dk(c)}" stroke-width="3"/><circle cx="24" cy="30" r="5" fill="${_dk(c)}" opacity="0.4"/></svg>`,
+      nerd:        c=>`<svg viewBox="0 0 64 64"><circle cx="20" cy="32" r="13" fill="none" stroke="${c}" stroke-width="3"/><circle cx="44" cy="32" r="13" fill="none" stroke="${c}" stroke-width="3"/><circle cx="20" cy="32" r="10" fill="${c}" opacity="0.2"/><circle cx="44" cy="32" r="10" fill="${c}" opacity="0.2"/><line x1="33" y1="32" x2="31" y2="32" stroke="${c}" stroke-width="3"/><line x1="7" y1="30" x2="7" y2="34" stroke="${c}" stroke-width="3"/><line x1="57" y1="30" x2="57" y2="34" stroke="${c}" stroke-width="3"/></svg>`,
+      pilot:       c=>`<svg viewBox="0 0 64 64"><rect x="4" y="22" width="56" height="20" rx="8" fill="${_dk(c)}"/><ellipse cx="20" cy="32" rx="12" ry="10" fill="${c}" opacity="0.5"/><ellipse cx="44" cy="32" rx="12" ry="10" fill="${c}" opacity="0.5"/><rect x="4" y="20" width="56" height="6" rx="3" fill="${_dk(c)}"/></svg>`,
+      ski:         c=>`<svg viewBox="0 0 64 64"><rect x="4" y="20" width="56" height="24" rx="10" fill="${c}"/><ellipse cx="20" cy="32" rx="12" ry="9" fill="${_lt(c)}" opacity="0.5"/><ellipse cx="44" cy="32" rx="12" ry="9" fill="${_lt(c)}" opacity="0.5"/><rect x="2" y="30" width="60" height="4" rx="2" fill="${_dk(c)}" opacity="0.5"/></svg>`,
+      nightvision: c=>`<svg viewBox="0 0 64 64"><rect x="4" y="20" width="56" height="24" rx="6" fill="#111"/><circle cx="20" cy="32" r="10" fill="${c}" opacity="0.8"/><circle cx="44" cy="32" r="10" fill="${c}" opacity="0.8"/><circle cx="20" cy="32" r="5" fill="${_lt(c)}"/><circle cx="44" cy="32" r="5" fill="${_lt(c)}"/></svg>`,
+      '3d':        c=>`<svg viewBox="0 0 64 64"><circle cx="20" cy="32" r="13" fill="${c}" opacity="0.7"/><circle cx="44" cy="32" r="13" fill="#0044aa" opacity="0.7"/><line x1="33" y1="32" x2="31" y2="32" stroke="#444" stroke-width="3"/><line x1="7" y1="30" x2="7" y2="34" stroke="#444" stroke-width="2"/><line x1="57" y1="30" x2="57" y2="34" stroke="#444" stroke-width="2"/></svg>`,
+      chain:       c=>`<svg viewBox="0 0 64 64"><path d="M10,18 Q10,48 32,52 Q54,48 54,18" fill="none" stroke="${_dk(c)}" stroke-width="5" stroke-linecap="round"/><path d="M10,18 Q10,48 32,52 Q54,48 54,18" fill="none" stroke="${c}" stroke-width="3" stroke-dasharray="5,4"/><circle cx="32" cy="52" r="6" fill="${c}"/><circle cx="32" cy="52" r="3" fill="${_lt(c)}"/></svg>`,
+      dogtags:     c=>`<svg viewBox="0 0 64 64"><line x1="32" y1="6" x2="32" y2="22" stroke="${c}" stroke-width="2"/><rect x="18" y="22" width="28" height="18" rx="5" fill="${c}"/><rect x="21" y="26" width="22" height="2" fill="${_dk(c)}"/><rect x="21" y="30" width="16" height="2" fill="${_dk(c)}"/><rect x="22" y="42" width="20" height="14" rx="5" fill="${_lt(c)}" opacity="0.8"/></svg>`,
+      bowtie:      c=>`<svg viewBox="0 0 64 64"><path d="M8,22 L32,32 L8,42Z" fill="${c}"/><path d="M56,22 L32,32 L56,42Z" fill="${c}"/><circle cx="32" cy="32" r="6" fill="${_dk(c)}"/></svg>`,
+      scarf:       c=>`<svg viewBox="0 0 64 64"><path d="M10,18 Q10,46 32,52 Q54,46 54,18" fill="none" stroke="${c}" stroke-width="10" stroke-linecap="round"/><path d="M32,52 L28,62" stroke="${c}" stroke-width="8" stroke-linecap="round"/></svg>`,
+      tie:         c=>`<svg viewBox="0 0 64 64"><polygon points="32,10 26,28 32,56 38,28" fill="${c}"/><polygon points="24,12 40,12 38,28 26,28" fill="${_dk(c)}"/></svg>`,
+      pearls:      c=>`<svg viewBox="0 0 64 64"><path d="M10,18 Q10,46 32,52 Q54,46 54,18" fill="none" stroke="${_dk(c)}" stroke-width="2"/>${[0,.15,.3,.45,.6,.75,.85,1].map(t=>{const x=10+(54-10)*t,y=18+((52-18)*Math.sin(Math.PI*t));return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="${c}"/>`;}).join('')}</svg>`,
+      choker:      c=>`<svg viewBox="0 0 64 64"><rect x="8" y="24" width="48" height="12" rx="6" fill="${c}"/><rect x="28" y="28" width="8" height="4" rx="2" fill="${_lt(c)}"/></svg>`,
+      bandana:     c=>`<svg viewBox="0 0 64 64"><path d="M8,20 Q32,46 56,20 L48,36 Q32,52 16,36Z" fill="${c}"/><rect x="20" y="32" width="24" height="4" rx="2" fill="${_dk(c)}" opacity="0.5"/></svg>`,
+      locket:      c=>`<svg viewBox="0 0 64 64"><line x1="32" y1="6" x2="32" y2="28" stroke="${_dk(c)}" stroke-width="2"/><rect x="22" y="28" width="20" height="20" rx="4" fill="${c}"/><circle cx="32" cy="38" r="6" fill="${_lt(c)}" opacity="0.6"/></svg>`,
+      robe:        c=>`<svg viewBox="0 0 64 64"><path d="M10,42 L14,14 Q32,8 50,14 L54,42 Q32,52 10,42Z" fill="${c}"/><path d="M10,42 L14,14 Q32,8 50,14 L54,42 Q32,52 10,42Z" fill="${_lt(c)}" opacity="0.15"/><line x1="10" y1="42" x2="54" y2="42" stroke="${_dk(c)}" stroke-width="3"/></svg>`,
+      watch:       c=>`<svg viewBox="0 0 64 64"><rect x="24" y="4" width="16" height="10" rx="3" fill="${_dk(c)}"/><rect x="24" y="50" width="16" height="10" rx="3" fill="${_dk(c)}"/><rect x="14" y="14" width="36" height="36" rx="10" fill="#111"/><rect x="17" y="17" width="30" height="30" rx="8" fill="${c}" opacity="0.3"/><rect x="20" y="26" width="24" height="12" rx="3" fill="${c}" opacity="0.8"/><rect x="22" y="27" width="14" height="4" rx="1" fill="${_lt(c)}"/></svg>`,
+      powerband:   c=>`<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="#111" stroke-width="11"/><circle cx="32" cy="32" r="26" fill="none" stroke="${c}" stroke-width="2.5" opacity="0.85"/><circle cx="32" cy="6" r="5" fill="${c}"/><circle cx="53.6" cy="45" r="5" fill="${_lt(c)}"/><circle cx="10.4" cy="45" r="5" fill="${_dk(c)}"/></svg>`,
+      spikes:      c=>`<svg viewBox="0 0 64 64"><rect x="12" y="28" width="40" height="12" rx="6" fill="${c}"/>${[16,24,32,40,48].map(x=>`<polygon points="${x},28 ${x+4},14 ${x+8},28" fill="${_lt(c)}"/>`).join('')}</svg>`,
+      cuffs:       c=>`<svg viewBox="0 0 64 64"><rect x="8" y="22" width="48" height="10" rx="5" fill="${c}"/><rect x="8" y="36" width="48" height="10" rx="5" fill="${c}"/><rect x="10" y="24" width="44" height="6" rx="3" fill="${_lt(c)}" opacity="0.3"/><rect x="10" y="38" width="44" height="6" rx="3" fill="${_lt(c)}" opacity="0.3"/></svg>`,
+      bangles:     c=>`<svg viewBox="0 0 64 64">${[20,30,40].map((y,i)=>`<circle cx="32" cy="${y}" r="12" fill="none" stroke="${i%2?_lt(c):c}" stroke-width="5"/>`).join('')}</svg>`,
+      gauntlet:    c=>`<svg viewBox="0 0 64 64"><rect x="12" y="16" width="40" height="36" rx="6" fill="${c}"/><rect x="16" y="20" width="32" height="8" rx="3" fill="${_dk(c)}" opacity="0.5"/><rect x="16" y="30" width="32" height="8" rx="3" fill="${_dk(c)}" opacity="0.5"/>${[18,28,38,48].map(x=>`<rect x="${x}" y="10" width="6" height="8" rx="2" fill="${_lt(c)}"/>`).join('')}</svg>`,
+      wraps:       c=>`<svg viewBox="0 0 64 64"><path d="M12,52 Q12,16 32,14 Q52,16 52,52" fill="none" stroke="${c}" stroke-width="8" stroke-linecap="round"/><path d="M12,52 Q12,16 32,14 Q52,16 52,52" fill="none" stroke="${_lt(c)}" stroke-width="2" stroke-dasharray="6,6"/></svg>`,
+      ringstack:   c=>`<svg viewBox="0 0 64 64">${[18,26,34,42].map((y,i)=>`<ellipse cx="32" cy="${y}" rx="18" ry="5" fill="${i%2?_lt(c):c}"/><ellipse cx="32" cy="${y}" rx="14" ry="3" fill="none" stroke="${_dk(c)}" stroke-width="1.5"/>`).join('')}</svg>`,
+      compass:     c=>`<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="${_dk(c)}"/><circle cx="32" cy="32" r="20" fill="${c}" opacity="0.4"/><polygon points="32,12 36,32 32,36 28,32" fill="${_lt(c)}"/><polygon points="32,52 36,32 32,28 28,32" fill="#e74c3c"/><circle cx="32" cy="32" r="4" fill="#fff"/></svg>`,
+      holo:        c=>`<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="none" stroke="${c}" stroke-width="3"/><circle cx="32" cy="32" r="18" fill="${c}" opacity="0.15"/><rect x="24" y="24" width="16" height="16" rx="2" fill="${c}" opacity="0.5"/><circle cx="32" cy="32" r="4" fill="${_lt(c)}"/></svg>`,
+      jetpack:     c=>`<svg viewBox="0 0 64 64"><rect x="14" y="10" width="36" height="40" rx="8" fill="${c}"/><rect x="18" y="14" width="12" height="32" rx="5" fill="${_dk(c)}"/><rect x="34" y="14" width="12" height="32" rx="5" fill="${_dk(c)}"/><ellipse cx="24" cy="50" rx="6" ry="8" fill="#ff8800" opacity="0.7"/><ellipse cx="40" cy="50" rx="6" ry="8" fill="#ff8800" opacity="0.7"/></svg>`,
+      wings:       c=>`<svg viewBox="0 0 64 64"><path d="M32,36 Q6,20 4,8 Q20,12 32,24Z" fill="${c}"/><path d="M32,36 Q58,20 60,8 Q44,12 32,24Z" fill="${c}"/><path d="M32,36 Q6,20 4,8 Q20,12 32,24Z" fill="${_lt(c)}" opacity="0.3"/></svg>`,
+      quiver:      c=>`<svg viewBox="0 0 64 64"><rect x="24" y="8" width="16" height="48" rx="6" fill="${c}"/><rect x="26" y="10" width="4" height="46" rx="2" fill="${_dk(c)}" opacity="0.5"/>${[-2,0,2].map(ox=>`<line x1="${32+ox}" y1="8" x2="${32+ox}" y2="4" stroke="${_lt(c)}" stroke-width="2"/>`).join('')}</svg>`,
+      cape:        c=>`<svg viewBox="0 0 64 64"><path d="M16,8 L8,56 Q32,62 56,56 L48,8Z" fill="${c}"/><path d="M16,8 L8,56 Q32,62 56,56 L48,8Z" fill="${_lt(c)}" opacity="0.15" clip-path="polygon(0 0,50% 0,50% 100%,0 100%)"/><line x1="16" y1="8" x2="48" y2="8" stroke="${_dk(c)}" stroke-width="4"/></svg>`,
+      spikes2:     c=>`<svg viewBox="0 0 64 64"><rect x="22" y="20" width="20" height="36" rx="5" fill="${c}"/>${[24,32,40].map(y=>`<polygon points="22,${y} 8,${y-6} 8,${y+6}" fill="${_lt(c)}"/><polygon points="42,${y} 56,${y-6} 56,${y+6}" fill="${_lt(c)}"/>`).join('')}</svg>`,
+      shell:       c=>`<svg viewBox="0 0 64 64"><ellipse cx="32" cy="36" rx="24" ry="20" fill="${c}"/><path d="M32,16 L32,56" stroke="${_dk(c)}" stroke-width="2"/><path d="M10,28 Q32,16 54,28" stroke="${_dk(c)}" stroke-width="2" fill="none"/><path d="M10,36 Q32,24 54,36" stroke="${_dk(c)}" stroke-width="2" fill="none"/></svg>`,
+      solarpanel:  c=>`<svg viewBox="0 0 64 64"><rect x="8" y="18" width="48" height="30" rx="4" fill="${c}"/>${[0,1,2].map(r=>[0,1,2].map(col=>`<rect x="${12+col*16}" y="${22+r*9}" width="12" height="7" rx="1" fill="${_dk(c)}" opacity="0.7"/>`).join('')).join('')}<line x1="32" y1="48" x2="32" y2="56" stroke="${_dk(c)}" stroke-width="3"/></svg>`,
+      rocketpack:  c=>`<svg viewBox="0 0 64 64"><rect x="16" y="8" width="32" height="40" rx="8" fill="${c}"/><rect x="20" y="12" width="10" height="32" rx="4" fill="${_dk(c)}"/><rect x="34" y="12" width="10" height="32" rx="4" fill="${_dk(c)}"/><ellipse cx="26" cy="48" rx="7" ry="10" fill="#ff6600" opacity="0.8"/><ellipse cx="38" cy="48" rx="7" ry="10" fill="#ffaa00" opacity="0.8"/></svg>`,
+      shroud:      c=>`<svg viewBox="0 0 64 64"><path d="M10,8 Q32,4 54,8 L58,56 Q32,62 6,56Z" fill="${c}" opacity="0.85"/><path d="M10,8 Q32,4 54,8 L58,56 Q32,62 6,56Z" fill="${_lt(c)}" opacity="0.1"/><circle cx="32" cy="28" r="8" fill="${_lt(c)}" opacity="0.3"/></svg>`,
+      shoulderpads:c=>`<svg viewBox="0 0 64 64"><ellipse cx="16" cy="32" rx="14" ry="10" fill="${c}"/><ellipse cx="48" cy="32" rx="14" ry="10" fill="${c}"/><rect x="14" y="30" width="4" height="6" rx="2" fill="${_lt(c)}" opacity="0.5"/><rect x="46" y="30" width="4" height="6" rx="2" fill="${_lt(c)}" opacity="0.5"/></svg>`,
+      epaulettes:  c=>`<svg viewBox="0 0 64 64"><rect x="4" y="24" width="20" height="20" rx="4" fill="${c}"/><rect x="40" y="24" width="20" height="20" rx="4" fill="${c}"/>${[0,1,2].map(i=>`<line x1="${6+i*6}" y1="44" x2="${6+i*6}" y2="54" stroke="${_lt(c)}" stroke-width="3"/><line x1="${42+i*6}" y1="44" x2="${42+i*6}" y2="54" stroke="${_lt(c)}" stroke-width="3"/>`).join('')}</svg>`,
+      spaulders:   c=>`<svg viewBox="0 0 64 64"><path d="M4,18 Q6,36 16,44 Q6,36 4,18Z" fill="${c}"/><path d="M60,18 Q58,36 48,44 Q58,36 60,18Z" fill="${c}"/><ellipse cx="10" cy="30" rx="10" ry="14" fill="${c}"/><ellipse cx="54" cy="30" rx="10" ry="14" fill="${c}"/><ellipse cx="10" cy="30" rx="7" ry="10" fill="${_lt(c)}" opacity="0.3"/><ellipse cx="54" cy="30" rx="7" ry="10" fill="${_lt(c)}" opacity="0.3"/></svg>`,
+      cannons:     c=>`<svg viewBox="0 0 64 64"><ellipse cx="12" cy="36" rx="10" ry="10" fill="${_dk(c)}"/><rect x="4" y="30" width="18" height="12" rx="4" fill="${c}"/><rect x="2" y="32" width="8" height="8" rx="3" fill="${_dk(c)}"/><ellipse cx="52" cy="36" rx="10" ry="10" fill="${_dk(c)}"/><rect x="42" y="30" width="18" height="12" rx="4" fill="${c}"/><rect x="54" y="32" width="8" height="8" rx="3" fill="${_dk(c)}"/></svg>`,
+      wings2:      c=>`<svg viewBox="0 0 64 64"><path d="M16,32 Q4,16 8,8 Q16,14 20,26Z" fill="${c}"/><path d="M48,32 Q60,16 56,8 Q48,14 44,26Z" fill="${c}"/><path d="M16,32 Q4,16 8,8 Q16,14 20,26Z" fill="${_lt(c)}" opacity="0.3"/><path d="M48,32 Q60,16 56,8 Q48,14 44,26Z" fill="${_lt(c)}" opacity="0.3"/></svg>`,
+      spikes3:     c=>`<svg viewBox="0 0 64 64">${[10,22,34,46,58].map((x,i)=>`<polygon points="${x},36 ${x+6},18 ${x+12},36" fill="${i%2?_lt(c):c}"/>`).join('')}<rect x="4" y="34" width="56" height="10" rx="4" fill="${_dk(c)}"/></svg>`,
+      lanterns:    c=>`<svg viewBox="0 0 64 64"><rect x="6" y="18" width="16" height="24" rx="4" fill="${c}"/><rect x="42" y="18" width="16" height="24" rx="4" fill="${c}"/><circle cx="14" cy="30" r="6" fill="${_lt(c)}" opacity="0.7"/><circle cx="50" cy="30" r="6" fill="${_lt(c)}" opacity="0.7"/><line x1="14" y1="18" x2="14" y2="12" stroke="${_dk(c)}" stroke-width="2"/><line x1="50" y1="18" x2="50" y2="12" stroke="${_dk(c)}" stroke-width="2"/></svg>`,
+      crystals:    c=>`<svg viewBox="0 0 64 64"><polygon points="10,44 6,28 14,14 18,28" fill="${c}"/><polygon points="54,44 50,28 58,14 62,28" fill="${c}"/><polygon points="14,44 10,34 16,22 20,34" fill="${_lt(c)}" opacity="0.6"/><polygon points="50,44 46,34 52,22 56,34" fill="${_lt(c)}" opacity="0.6"/></svg>`,
+      mask:        c=>`<svg viewBox="0 0 64 64"><path d="M8,16 Q8,50 32,56 Q56,50 56,16 Q44,8 32,8 Q20,8 8,16Z" fill="${c}"/><ellipse cx="22" cy="28" rx="7" ry="5" fill="${_dk(c)}" opacity="0.5"/><ellipse cx="42" cy="28" rx="7" ry="5" fill="${_dk(c)}" opacity="0.5"/><path d="M22,40 Q32,46 42,40" fill="none" stroke="${_lt(c)}" stroke-width="2"/></svg>`,
+      paint:       c=>`<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="none" stroke="${c}" stroke-width="2" opacity="0.3"/><line x1="14" y1="22" x2="50" y2="22" stroke="${c}" stroke-width="5" stroke-linecap="round"/><line x1="14" y1="32" x2="50" y2="32" stroke="${_lt(c)}" stroke-width="3" stroke-linecap="round"/><line x1="20" y1="42" x2="44" y2="42" stroke="${c}" stroke-width="4" stroke-linecap="round"/></svg>`,
+      beard:       c=>`<svg viewBox="0 0 64 64"><path d="M14,20 Q10,46 32,56 Q54,46 50,20 Q42,28 32,28 Q22,28 14,20Z" fill="${c}"/><path d="M14,20 Q10,46 32,56 Q54,46 50,20 Q42,28 32,28 Q22,28 14,20Z" fill="${_lt(c)}" opacity="0.2"/></svg>`,
+      visor2:      c=>`<svg viewBox="0 0 64 64"><rect x="6" y="20" width="52" height="26" rx="8" fill="${c}" opacity="0.75"/><rect x="8" y="22" width="48" height="5" rx="3" fill="${_lt(c)}" opacity="0.5"/><rect x="6" y="18" width="52" height="6" rx="3" fill="${_dk(c)}"/></svg>`,
+      moustache:   c=>`<svg viewBox="0 0 64 64"><path d="M10,32 Q18,22 32,28 Q46,22 54,32 Q46,38 32,34 Q18,38 10,32Z" fill="${c}"/></svg>`,
+      respirator:  c=>`<svg viewBox="0 0 64 64"><rect x="10" y="24" width="44" height="26" rx="8" fill="${c}"/><circle cx="22" cy="36" r="8" fill="${_dk(c)}"/><circle cx="42" cy="36" r="8" fill="${_dk(c)}"/><circle cx="22" cy="36" r="5" fill="${_lt(c)}" opacity="0.4"/><circle cx="42" cy="36" r="5" fill="${_lt(c)}" opacity="0.4"/><rect x="28" y="32" width="8" height="8" rx="2" fill="${_dk(c)}" opacity="0.6"/></svg>`,
+      tattoo:      c=>`<svg viewBox="0 0 64 64"><path d="M20,10 Q10,32 20,54" fill="none" stroke="${c}" stroke-width="3"/><path d="M44,10 Q54,32 44,54" fill="none" stroke="${c}" stroke-width="3"/><path d="M20,32 Q32,24 44,32" fill="none" stroke="${_lt(c)}" stroke-width="2"/></svg>`,
+      blush:       c=>`<svg viewBox="0 0 64 64"><ellipse cx="18" cy="38" rx="12" ry="7" fill="${c}" opacity="0.7"/><ellipse cx="46" cy="38" rx="12" ry="7" fill="${c}" opacity="0.7"/></svg>`,
+      fangs:       c=>`<svg viewBox="0 0 64 64"><rect x="8" y="20" width="48" height="14" rx="6" fill="${_dk(c)}"/><polygon points="22,34 18,50 26,34" fill="${c}"/><polygon points="32,34 28,54 36,34" fill="${_lt(c)}"/><polygon points="42,34 38,50 46,34" fill="${c}"/></svg>`,
+      boots:       c=>`<svg viewBox="0 0 64 64"><rect x="8" y="8" width="20" height="40" rx="4" fill="${c}"/><rect x="8" y="44" width="26" height="14" rx="4" fill="${_dk(c)}"/><rect x="36" y="8" width="20" height="40" rx="4" fill="${c}"/><rect x="30" y="44" width="26" height="14" rx="4" fill="${_dk(c)}"/></svg>`,
+      heels:       c=>`<svg viewBox="0 0 64 64"><path d="M8,14 L12,48 L28,48 L26,14Z" fill="${c}"/><rect x="8" y="46" width="24" height="6" rx="2" fill="${_dk(c)}"/><line x1="8" y1="52" x2="6" y2="60" stroke="${_dk(c)}" stroke-width="4" stroke-linecap="round"/><path d="M36,14 L40,48 L56,48 L54,14Z" fill="${c}"/><rect x="36" y="46" width="24" height="6" rx="2" fill="${_dk(c)}"/><line x1="36" y1="52" x2="34" y2="60" stroke="${_dk(c)}" stroke-width="4" stroke-linecap="round"/></svg>`,
+      skates:      c=>`<svg viewBox="0 0 64 64"><rect x="8" y="14" width="20" height="32" rx="4" fill="${c}"/><rect x="6" y="44" width="26" height="8" rx="4" fill="${_dk(c)}"/><rect x="4" y="52" width="30" height="4" rx="2" fill="#888"/><rect x="36" y="14" width="20" height="32" rx="4" fill="${c}"/><rect x="34" y="44" width="26" height="8" rx="4" fill="${_dk(c)}"/><rect x="32" y="52" width="30" height="4" rx="2" fill="#888"/></svg>`,
+      hoverboots:  c=>`<svg viewBox="0 0 64 64"><rect x="6" y="10" width="22" height="38" rx="6" fill="${c}"/><ellipse cx="17" cy="52" rx="13" ry="5" fill="${_dk(c)}" opacity="0.6"/><ellipse cx="17" cy="54" rx="10" ry="3" fill="${_lt(c)}" opacity="0.7"/><rect x="36" y="10" width="22" height="38" rx="6" fill="${c}"/><ellipse cx="47" cy="52" rx="13" ry="5" fill="${_dk(c)}" opacity="0.6"/><ellipse cx="47" cy="54" rx="10" ry="3" fill="${_lt(c)}" opacity="0.7"/></svg>`,
+      claws:       c=>`<svg viewBox="0 0 64 64"><rect x="8" y="24" width="20" height="24" rx="4" fill="${_dk(c)}"/><rect x="36" y="24" width="20" height="24" rx="4" fill="${_dk(c)}"/>${[10,16,22].map(x=>`<polygon points="${x},24 ${x+4},8 ${x+8},24" fill="${c}"/>`).join('')}${[38,44,50].map(x=>`<polygon points="${x},24 ${x+4},8 ${x+8},24" fill="${c}"/>`).join('')}</svg>`,
+      fins:        c=>`<svg viewBox="0 0 64 64"><rect x="8" y="28" width="20" height="22" rx="4" fill="${c}"/><path d="M8,28 Q0,16 10,10 Q14,22 8,28Z" fill="${_lt(c)}"/><rect x="36" y="28" width="20" height="22" rx="4" fill="${c}"/><path d="M56,28 Q64,16 54,10 Q50,22 56,28Z" fill="${_lt(c)}"/></svg>`,
+      springs:     c=>`<svg viewBox="0 0 64 64"><rect x="8" y="10" width="20" height="28" rx="4" fill="${_dk(c)}"/><path d="M8,38 Q18,44 28,38 Q18,50 8,50 Q8,44 18,44 Q28,44 28,50" fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round"/><rect x="36" y="10" width="20" height="28" rx="4" fill="${_dk(c)}"/><path d="M36,38 Q46,44 56,38 Q46,50 36,50 Q36,44 46,44 Q56,44 56,50" fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round"/></svg>`,
+      platforms:   c=>`<svg viewBox="0 0 64 64"><rect x="8" y="14" width="20" height="30" rx="3" fill="${c}"/><rect x="6" y="44" width="26" height="12" rx="4" fill="${_dk(c)}"/><rect x="36" y="14" width="20" height="30" rx="3" fill="${c}"/><rect x="34" y="44" width="26" height="12" rx="4" fill="${_dk(c)}"/></svg>`,
+      hboots:      c=>`<svg viewBox="0 0 64 64"><rect x="6" y="10" width="22" height="36" rx="6" fill="${c}" opacity="0.9"/><rect x="6" y="44" width="28" height="12" rx="4" fill="${_dk(c)}"/><rect x="6" y="56" width="28" height="4" rx="2" fill="${_lt(c)}" opacity="0.8"/><rect x="34" y="10" width="22" height="36" rx="6" fill="${c}" opacity="0.9"/><rect x="30" y="44" width="28" height="12" rx="4" fill="${_dk(c)}"/><rect x="30" y="56" width="28" height="4" rx="2" fill="${_lt(c)}" opacity="0.8"/></svg>`,
     };
+    function getItemSvg(it) {
+      const fn = _SVGF[it.type];
+      return fn ? fn(it.col) : '';
+    }
 
     const BUCKS_ICON_SM = `<svg width="13" height="13" viewBox="0 0 32 32" style="vertical-align:middle"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>`;
 
     const SHOP_CATS = [
-      { key:'hats',    label:'HATS' },
-      { key:'eyewear', label:'EYEWEAR' },
-      { key:'neck',    label:'NECK' },
-      { key:'wrist',   label:'WRIST' },
-      { key:'buy',     label:'BUY BUCKS' },
-    ];
-
-    const BUCKS_PACKAGES = [
-      { id:'pkg_20',  bucks: 20,  price:'£0.50', pence: 50,  per:'2.5p per buck' },
-      { id:'pkg_50',  bucks: 50,  price:'£0.80', pence: 80,  per:'1.6p per buck' },
-      { id:'pkg_100', bucks: 100, price:'£1.10', pence: 110, per:'1.1p per buck' },
+      { key:'hats',      label:'HATS' },
+      { key:'eyewear',   label:'EYEWEAR' },
+      { key:'neck',      label:'NECK' },
+      { key:'wrist',     label:'WRIST' },
+      { key:'back',      label:'BACK' },
+      { key:'shoulders', label:'SHOULDERS' },
+      { key:'face',      label:'FACE' },
+      { key:'feet',      label:'FEET' },
     ];
 
     let _bucks        = parseInt(localStorage.getItem('ah_bucks') || '0');
     let _ownedItems   = new Set(JSON.parse(localStorage.getItem('ah_owned')    || '[]'));
     let _equippedItems= new Set(JSON.parse(localStorage.getItem('ah_equipped') || '[]'));
     let _shopTab      = 'hats';
+    let _shopSearch   = '';
+    let _shopPage     = 0;
+    const _PAGE_SIZE  = 24;
 
     function _saveBucksLocal() {
       localStorage.setItem('ah_bucks',    _bucks);
@@ -1331,30 +1776,34 @@
 
     function setShopTab(cat) {
       _shopTab = cat;
+      _shopPage = 0;
+      _shopSearch = '';
+      const si = document.getElementById('shop-search');
+      if (si) si.value = '';
       document.querySelectorAll('.shop-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
       _renderShopGrid();
     }
 
+    function _shopSearchInput(val) {
+      _shopSearch = val.toLowerCase();
+      _shopPage = 0;
+      _renderShopGrid();
+    }
+
+    function _shopPrev() { if (_shopPage > 0) { _shopPage--; _renderShopGrid(); } }
+    function _shopNext(total) { if ((_shopPage+1)*_PAGE_SIZE < total) { _shopPage++; _renderShopGrid(); } }
+
+    function _rarityBadge(rar) {
+      return `<span class="rarity-${rar}">${rar.toUpperCase()}</span>`;
+    }
+
     function _renderShopGrid() {
-      if (_shopTab === 'buy') {
-        document.getElementById('shop-grid').innerHTML = `
-          <div class="bucks-packages">
-            ${BUCKS_PACKAGES.map(pkg => `
-              <div class="bucks-pkg" onclick="buyBucksPackage('${pkg.id}')">
-                <div class="bucks-pkg-amount">${pkg.bucks}</div>
-                <div class="bucks-pkg-label">BUCKS</div>
-                <div class="bucks-pkg-price">${pkg.price}</div>
-                <div class="bucks-pkg-per">${pkg.per}</div>
-              </div>`).join('')}
-          </div>
-          <div class="bucks-buy-note">
-            Pay with Google Pay, Apple Pay, Mastercard, or American Express.<br>
-            Bucks are added to your account instantly and never expire.
-          </div>`;
-        return;
-      }
-      const items = SHOP_ITEMS.filter(it => it.cat === _shopTab);
-      document.getElementById('shop-grid').innerHTML = items.map(it => {
+      let items = SHOP_ITEMS.filter(it => it.cat === _shopTab);
+      if (_shopSearch) items = items.filter(it => it.name.toLowerCase().includes(_shopSearch));
+      const total = items.length;
+      const start = _shopPage * _PAGE_SIZE;
+      const page  = items.slice(start, start + _PAGE_SIZE);
+      const grid  = page.map(it => {
         const owned    = _ownedItems.has(it.id);
         const equipped = _equippedItems.has(it.id);
         let btn = '';
@@ -1364,17 +1813,25 @@
           btn = `<button class="shop-btn owned" onclick="equipItem('${it.id}')">EQUIP</button>`;
         } else {
           const can = _bucks >= it.price;
-          btn = `<button class="shop-btn buy${can?'':' disabled'}" onclick="buyItem('${it.id}')" ${can?'':'disabled'}>
-            ${BUCKS_ICON_SM} ${it.price}
-          </button>`;
+          btn = `<button class="shop-btn buy${can?'':' disabled'}" onclick="buyItem('${it.id}')" ${can?'':'disabled'}>${BUCKS_ICON_SM} ${it.price}</button>`;
         }
         return `<div class="shop-card${equipped?' is-equipped':''}">
-          <div class="shop-card-icon">${ITEM_SVGS[it.id]||''}</div>
+          <div class="shop-card-icon">${getItemSvg(it)}</div>
+          ${_rarityBadge(it.rar)}
           <div class="shop-card-name">${it.name}</div>
           <div class="shop-card-desc">${it.desc}</div>
           ${btn}
         </div>`;
       }).join('');
+      const pages   = Math.ceil(total / _PAGE_SIZE) || 1;
+      const curPage = _shopPage + 1;
+      const pagination = total > _PAGE_SIZE ? `
+        <div class="shop-pagination">
+          <button class="shop-page-btn" onclick="_shopPrev()" ${_shopPage===0?'disabled':''}>‹ PREV</button>
+          <span class="shop-page-info">${curPage} / ${pages}</span>
+          <button class="shop-page-btn" onclick="_shopNext(${total})" ${curPage>=pages?'disabled':''}>NEXT ›</button>
+        </div>` : '';
+      document.getElementById('shop-grid').innerHTML = grid + pagination;
     }
 
     async function buyItem(id) {
@@ -1394,119 +1851,6 @@
       } else { _bucks -= it.price; }
       _ownedItems.add(id);
       _saveBucksLocal(); updateBucksDisplay(); _renderShopGrid();
-    }
-
-    // ── Payment modal state ──────────────────────────────────
-    let _payPkg = null;
-    let _payMethod = null;
-
-    function buyBucksPackage(pkgId) {
-      const token = localStorage.getItem('ah_token');
-      if (!token) { alert('Please log in to purchase bucks.'); return; }
-      _payPkg = BUCKS_PACKAGES.find(p => p.id === pkgId);
-      if (!_payPkg) return;
-      document.getElementById('pay-bucks-num').textContent = _payPkg.bucks;
-      document.getElementById('pay-price-val').textContent = _payPkg.price;
-      _backToMethods();
-      document.getElementById('pay-overlay').classList.add('open');
-    }
-
-    function closePayModal() {
-      document.getElementById('pay-overlay').classList.remove('open');
-      _payPkg = null; _payMethod = null;
-    }
-    document.getElementById('pay-overlay').addEventListener('click', e => {
-      if (e.target === e.currentTarget) closePayModal();
-    });
-
-    function _backToMethods() {
-      document.getElementById('pay-methods-panel').style.display = '';
-      document.getElementById('pay-card-form').classList.remove('visible');
-      _payMethod = null;
-    }
-
-    function _selectPayMethod(method) {
-      _payMethod = method;
-      if (method === 'gpay' || method === 'apay') {
-        // Wallet payments — go straight to confirmation
-        _submitWalletPayment(method);
-      } else {
-        // Card — show form
-        document.getElementById('pay-methods-panel').style.display = 'none';
-        document.getElementById('pay-card-form').classList.add('visible');
-        const isAmex = method === 'amex';
-        document.getElementById('pay-card-heading').textContent = isAmex ? 'AMERICAN EXPRESS DETAILS' : 'MASTERCARD DETAILS';
-        document.getElementById('pay-cvv-label').textContent = isAmex ? 'CID (4 digits)' : 'CVV';
-        document.getElementById('pay-cvv').placeholder = isAmex ? '••••' : '•••';
-        document.getElementById('pay-cvv').maxLength = isAmex ? 4 : 3;
-        document.getElementById('pay-number').value = '';
-        document.getElementById('pay-expiry').value = '';
-        document.getElementById('pay-cvv').value = '';
-        document.getElementById('pay-name').value = '';
-      }
-    }
-
-    function _fmtCard(el) {
-      let v = el.value.replace(/\D/g,'').slice(0,16);
-      el.value = v.replace(/(.{4})/g,'$1 ').trim();
-    }
-    function _fmtExpiry(el) {
-      let v = el.value.replace(/\D/g,'').slice(0,4);
-      if (v.length >= 3) v = v.slice(0,2) + ' / ' + v.slice(2);
-      el.value = v;
-    }
-
-    async function _submitWalletPayment(method) {
-      if (!_payPkg) return;
-      const label = method === 'gpay' ? 'Google Pay' : 'Apple Pay';
-      // In production: trigger the Payment Request API or the provider SDK here.
-      // For now we show a simulated processing screen.
-      await _processPurchase(label);
-    }
-
-    async function _submitCardPayment() {
-      if (!_payPkg) return;
-      const name   = document.getElementById('pay-name').value.trim();
-      const number = document.getElementById('pay-number').value.replace(/\s/g,'');
-      const expiry = document.getElementById('pay-expiry').value.trim();
-      const cvv    = document.getElementById('pay-cvv').value.trim();
-      const isAmex = _payMethod === 'amex';
-      if (!name)                              { alert('Please enter the cardholder name.'); return; }
-      if (number.length < 15)                 { alert('Please enter a valid card number.'); return; }
-      if (!/^\d{2}\s?\/\s?\d{2}$/.test(expiry)) { alert('Please enter a valid expiry (MM / YY).'); return; }
-      if (cvv.length < (isAmex ? 4 : 3))     { alert(`Please enter a valid ${isAmex?'CID':'CVV'}.`); return; }
-      const label = isAmex ? 'American Express' : 'Mastercard';
-      await _processPurchase(label);
-    }
-
-    async function _processPurchase(methodLabel) {
-      const btn = document.getElementById('pay-submit-btn');
-      if (btn) { btn.textContent = 'PROCESSING…'; btn.disabled = true; }
-      try {
-        const token = localStorage.getItem('ah_token');
-        const r = await fetch(`${API}/bucks/add`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ amount: _payPkg.bucks }),
-        });
-        const d = await r.json();
-        if (!r.ok) { alert(d.error || 'Payment failed. Please try again.'); return; }
-        _bucks = d.bucks;
-        _saveBucksLocal();
-        updateBucksDisplay();
-        closePayModal();
-        _renderShopGrid();
-        // Show success toast
-        const toast = document.createElement('div');
-        toast.style.cssText = 'position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#22aa44;color:#fff;padding:14px 28px;border-radius:10px;font-size:13px;font-weight:700;letter-spacing:2px;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.5)';
-        toast.textContent = `✓  ${_payPkg.bucks} BUCKS ADDED VIA ${methodLabel.toUpperCase()}`;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3200);
-      } catch {
-        alert('Network error. Please try again.');
-      } finally {
-        if (btn) { btn.textContent = 'PAY NOW'; btn.disabled = false; }
-      }
     }
 
     async function equipItem(id) {
