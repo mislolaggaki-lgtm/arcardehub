@@ -35,6 +35,37 @@ const coopGuests     = new Set();
 const coopGhostBots  = [];
 let coopBotTimer     = 0;
 
+// ── Bucks helper ─────────────────────────────────────────────
+const _isLocal = ['localhost','127.0.0.1'].includes(window.location.hostname);
+const _API_BASE = _isLocal ? 'http://localhost:3001' : window.location.origin;
+
+function awardBucks(n) {
+  let cur = parseInt(localStorage.getItem('ah_bucks') || '0', 10);
+  cur += n;
+  localStorage.setItem('ah_bucks', String(cur));
+  const el = document.getElementById('hud-bucks-val');
+  if (el) el.textContent = cur;
+  const token = localStorage.getItem('ah_token');
+  if (token) {
+    fetch(_API_BASE + '/api/bucks/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ amount: n }),
+    }).then(r => r.ok ? r.json() : null).then(d => {
+      if (d && d.bucks !== undefined) {
+        localStorage.setItem('ah_bucks', String(d.bucks));
+        if (el) el.textContent = d.bucks;
+      }
+    }).catch(() => {});
+  }
+}
+
+// Initialise HUD bucks from localStorage on load
+(function() {
+  const el = document.getElementById('hud-bucks-val');
+  if (el) el.textContent = localStorage.getItem('ah_bucks') || '0';
+})();
+
 // ── Badge unlock helper ──────────────────────────────────────
 const _earnedBadges = new Set(JSON.parse(localStorage.getItem('ah_badges') || '[]'));
 const _BADGE_NAMES  = { besto_frendo:'MY BESTO FRENDO', pro_gamer:'PRO GAMER', unstoppable:'UNSTOPPABLE', veteran:'VETERAN' };
@@ -44,8 +75,7 @@ function unlockBadge(badgeId) {
   localStorage.setItem('ah_badges', JSON.stringify([..._earnedBadges]));
   const token = localStorage.getItem('ah_token');
   if (token) {
-    const _isLocal = ['localhost','127.0.0.1'].includes(window.location.hostname);
-    fetch((_isLocal ? 'http://localhost:3001' : window.location.origin) + '/api/badges/unlock', {
+    fetch(_API_BASE + '/api/badges/unlock', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ badgeId }),
@@ -63,10 +93,10 @@ let  touchFireHeld    = false;
 
 // ─── Gun definitions ─────────────────────────────────────────
 const GUN_DEFS = {
-  pistol : { name:'PISTOL',  ammo:12,  reserve:84,  fireRate:0.48, damage:34,  spread:0.003, auto:false },
-  smg    : { name:'SMG',     ammo:30,  reserve:150, fireRate:0.082,damage:18,  spread:0.020, auto:true  },
-  minigun: { name:'MINIGUN', ammo:100, reserve:300, fireRate:0.046,damage:20,  spread:0.038, auto:true, spinUp:true },
-  sniper : { name:'SNIPER',  ammo:1,   reserve:20,  fireRate:1.4,  damage:999, spread:0,     auto:false, oneShot:true },
+  pistol : { name:'PISTOL',  ammo:12,  reserve:84,  fireRate:0.48, damage:34,  spread:0.003, auto:false, kick:0.058 },
+  smg    : { name:'SMG',     ammo:30,  reserve:150, fireRate:0.082,damage:18,  spread:0.020, auto:true,  kick:0.022 },
+  minigun: { name:'MINIGUN', ammo:100, reserve:300, fireRate:0.046,damage:20,  spread:0.038, auto:true, spinUp:true, kick:0.010 },
+  sniper : { name:'SNIPER',  ammo:1,   reserve:20,  fireRate:1.4,  damage:999, spread:0,     auto:false, oneShot:true, kick:0.130 },
 };
 let selectedGunId = 'pistol';
 
@@ -80,6 +110,7 @@ document.querySelectorAll('.gun-card').forEach(card => {
 
 // Active gun runtime state
 const gun = { def:null, ammo:0, reserve:0, shootTimer:0, canShoot:true };
+let recoilZ = 0, recoilY = 0;
 
 // Minigun spin state
 let mgSpinSpeed = 0;    // current rad/s
@@ -835,6 +866,232 @@ function buildRemoteGun(gunId) {
   return { group:g, flashLight, flashMat, flashTimer:0 };
 }
 
+// ── Robot accessory attachment ────────────────────────────────
+function addRobotAccessory(rob, accessoryId) {
+  const g = rob.group;
+  const M = THREE.MeshStandardMaterial;
+  const BM = THREE.MeshBasicMaterial;
+
+  switch (accessoryId) {
+
+    case 'cowboy_hat': {
+      const grp = new THREE.Group();
+      grp.position.set(0, 2.42, 0);
+      // brim
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.40, 0.045, 20), new M({color:0x7a4e2d,roughness:0.85,metalness:0.05}));
+      grp.add(brim);
+      // crown
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.28, 20), new M({color:0x5c3317,roughness:0.9,metalness:0.04}));
+      crown.position.y = 0.16;
+      grp.add(crown);
+      // band
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.231, 0.231, 0.042, 20), new M({color:0x3a1a08,roughness:0.7,metalness:0.08}));
+      band.position.y = 0.04;
+      grp.add(band);
+      g.add(grp);
+      break;
+    }
+
+    case 'top_hat': {
+      const grp = new THREE.Group();
+      grp.position.set(0, 2.42, 0);
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.34, 0.04, 20), new M({color:0x111111,roughness:0.6,metalness:0.3}));
+      grp.add(brim);
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.23, 0.38, 20), new M({color:0x0d0d0d,roughness:0.55,metalness:0.35}));
+      crown.position.y = 0.21;
+      grp.add(crown);
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.235, 0.235, 0.038, 20), new M({color:0xcc1111,roughness:0.5,metalness:0.1}));
+      band.position.y = 0.04;
+      grp.add(band);
+      g.add(grp);
+      break;
+    }
+
+    case 'cap': {
+      const grp = new THREE.Group();
+      grp.position.set(0, 2.38, 0);
+      // dome
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 10, 0, Math.PI*2, 0, Math.PI*0.55), new M({color:0x1a3a6e,roughness:0.7,metalness:0.1}));
+      grp.add(dome);
+      // brim (flat half-disk shape approximated with a box)
+      const visor = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.025, 0.18), new M({color:0x122a55,roughness:0.65,metalness:0.12}));
+      visor.position.set(0, -0.06, -0.20);
+      grp.add(visor);
+      g.add(grp);
+      break;
+    }
+
+    case 'crown': {
+      const grp = new THREE.Group();
+      grp.position.set(0, 2.42, 0);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.08, 20), new M({color:0xffd700,roughness:0.1,metalness:0.98}));
+      grp.add(base);
+      const pts = [[-0.20,0.10],[-0.10,0.24],[0,0.10],[0.10,0.24],[0.20,0.10]];
+      pts.forEach(([x,yOff]) => {
+        const spike = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.035, 0.18, 8), new M({color:0xffcc00,roughness:0.08,metalness:0.99}));
+        spike.position.set(x, 0.04 + yOff * 0.5 + 0.09, 0);
+        grp.add(spike);
+        const gem = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 8), new M({color:0xff2222,roughness:0.05,metalness:0.4,emissive:0x880000}));
+        gem.position.set(x, 0.04 + yOff * 0.5 + 0.20, 0);
+        grp.add(gem);
+      });
+      g.add(grp);
+      break;
+    }
+
+    case 'sunglasses': {
+      const grp = new THREE.Group();
+      grp.position.set(0, 1.982, -0.27);
+      const lensMat = new M({color:0x111111,roughness:0.05,metalness:0.9,transparent:true,opacity:0.82});
+      const frameMat = new M({color:0xd4af37,roughness:0.15,metalness:0.92});
+      const lL = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.022, 14), lensMat);
+      lL.rotation.x = Math.PI / 2;
+      lL.position.set(-0.095, 0, 0);
+      grp.add(lL);
+      const lR = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.022, 14), lensMat);
+      lR.rotation.x = Math.PI / 2;
+      lR.position.set(0.095, 0, 0);
+      grp.add(lR);
+      const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.044, 0.014, 0.014), frameMat);
+      grp.add(bridge);
+      const armL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.010, 0.010), frameMat);
+      armL.position.set(-0.155, 0, 0.04);
+      armL.rotation.y = 0.3;
+      grp.add(armL);
+      const armR = armL.clone();
+      armR.position.set(0.155, 0, 0.04);
+      armR.rotation.y = -0.3;
+      grp.add(armR);
+      g.add(grp);
+      break;
+    }
+
+    case 'cyber_goggles': {
+      const grp = new THREE.Group();
+      grp.position.set(0, 1.982, -0.27);
+      const bodyMat = new M({color:0x222222,roughness:0.4,metalness:0.7});
+      const lensMatL = new BM({color:0x00ccff, transparent:true, opacity:0.75});
+      const lensMatR = new BM({color:0x00ccff, transparent:true, opacity:0.75});
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.10, 0.040), bodyMat);
+      grp.add(body);
+      const lL = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.072, 0.012), lensMatL);
+      lL.position.set(-0.075, 0, -0.026);
+      grp.add(lL);
+      const lR = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.072, 0.012), lensMatR);
+      lR.position.set(0.075, 0, -0.026);
+      grp.add(lR);
+      const strap = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.032, 0.012), new M({color:0x333333,roughness:0.8,metalness:0.2}));
+      strap.position.z = 0.028;
+      grp.add(strap);
+      g.add(grp);
+      break;
+    }
+
+    case 'vr_headset': {
+      const grp = new THREE.Group();
+      grp.position.set(0, 1.982, -0.29);
+      const shellMat = new M({color:0x1a1a1a,roughness:0.35,metalness:0.65});
+      const shell = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.18, 0.10), shellMat);
+      grp.add(shell);
+      const screenMat = new BM({color:0x2255ff});
+      const screen = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.13, 0.004), screenMat);
+      screen.position.z = -0.052;
+      grp.add(screen);
+      const scanline = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.006, 0.006), new BM({color:0x55aaff}));
+      scanline.position.set(0, 0.028, -0.054);
+      grp.add(scanline);
+      const scanline2 = scanline.clone();
+      scanline2.position.y = -0.028;
+      grp.add(scanline2);
+      const led = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), new BM({color:0x00ff44}));
+      led.position.set(0.15, 0.07, -0.052);
+      grp.add(led);
+      const strap = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.046, 0.020), new M({color:0x111111,roughness:0.9,metalness:0.1}));
+      strap.position.z = 0.06;
+      grp.add(strap);
+      g.add(grp);
+      break;
+    }
+
+    case 'gold_chain': {
+      const grp = new THREE.Group();
+      grp.position.set(0, 1.815, 0);
+      const chainMat = new M({color:0xffd700,roughness:0.12,metalness:0.97});
+      for (let i = 0; i <= 12; i++) {
+        const a = Math.PI + (i / 12) * Math.PI;
+        const link = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.005, 6, 8), chainMat);
+        link.position.set(Math.cos(a) * 0.18, Math.sin(a) * 0.06 - 0.04, -Math.abs(Math.sin(a)) * 0.10);
+        link.rotation.y = a;
+        grp.add(link);
+      }
+      const pendant = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.016, 0.040, 8), chainMat);
+      pendant.position.set(0, -0.10, -0.14);
+      grp.add(pendant);
+      g.add(grp);
+      break;
+    }
+
+    case 'dog_tags': {
+      const grp = new THREE.Group();
+      grp.position.set(0, 1.815, 0);
+      const tagMat = new M({color:0xaab8c8,roughness:0.25,metalness:0.92});
+      const tag1 = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.075, 0.005), tagMat);
+      tag1.position.set(-0.020, -0.09, -0.12);
+      tag1.rotation.z = 0.12;
+      grp.add(tag1);
+      const tag2 = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.075, 0.005), tagMat);
+      tag2.position.set(0.020, -0.11, -0.13);
+      tag2.rotation.z = -0.10;
+      grp.add(tag2);
+      const chain = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.004, 6, 20, Math.PI), new M({color:0x90a0b0,roughness:0.3,metalness:0.88}));
+      chain.rotation.x = -0.3;
+      chain.position.set(0, 0, -0.08);
+      grp.add(chain);
+      g.add(grp);
+      break;
+    }
+
+    case 'watch': {
+      const grp = new THREE.Group();
+      // attach to armGroupL in local arm space (wrist position)
+      const target = rob.armGroupL || g;
+      grp.position.set(-0.090, -1.096, 0);
+      const strap = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.048, 0.055, 14), new M({color:0x1a1a1a,roughness:0.85,metalness:0.1}));
+      strap.rotation.x = Math.PI / 2;
+      grp.add(strap);
+      const face = new THREE.Mesh(new THREE.BoxGeometry(0.064, 0.064, 0.020), new M({color:0x111111,roughness:0.3,metalness:0.7}));
+      face.position.z = -0.036;
+      grp.add(face);
+      const display = new THREE.Mesh(new THREE.BoxGeometry(0.050, 0.050, 0.004), new BM({color:0x00ff88}));
+      display.position.z = -0.047;
+      grp.add(display);
+      const crown = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.018, 0.010), new M({color:0x888888,roughness:0.3,metalness:0.9}));
+      crown.position.set(0.038, 0, -0.040);
+      grp.add(crown);
+      target.add(grp);
+      break;
+    }
+
+    case 'power_band': {
+      const grp = new THREE.Group();
+      const target = rob.armGroupL || g;
+      grp.position.set(-0.090, -1.096, 0);
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.052, 0.012, 10, 20), new M({color:0x0a0a1a,roughness:0.5,metalness:0.7}));
+      band.rotation.x = Math.PI / 2;
+      grp.add(band);
+      const colors = [0xff2222, 0xffcc00, 0x22aaff];
+      colors.forEach((col, i) => {
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), new BM({color:col}));
+        const a = (i / 3) * Math.PI * 2 - Math.PI / 2;
+        dot.position.set(Math.cos(a) * 0.052, 0, Math.sin(a) * 0.052 - 0.001);
+        grp.add(dot);
+      });
+      target.add(grp);
+      break;
+    }
+  }
+}
+
 function addRemotePlayer(data) {
   if (remotePlayers.has(data.id)) return;
   const rob = buildRobot();
@@ -855,15 +1112,19 @@ function addRemotePlayer(data) {
   const labelSprite = makePlayerLabel(username, health, pvpOn, isAdmin, gunId);
   rob.group.add(labelSprite);
 
-  // Raise both arms to chest-level gun-hold pose
-  rob.armGroupR.rotation.x = -1.10;
-  rob.armGroupL.rotation.x = -1.10;
-  rob.armGroupR.rotation.z = -0.32;  // angle right arm inward
-  rob.armGroupL.rotation.z =  0.32;  // angle left arm inward
+  // Raise both arms forward into gun-hold pose
+  rob.armGroupR.rotation.x =  1.10;
+  rob.armGroupL.rotation.x =  1.10;
+  rob.armGroupR.rotation.z = -0.32;
+  rob.armGroupL.rotation.z =  0.32;
 
   const remoteGun = buildRemoteGun(gunId);
-  remoteGun.group.position.set(0, 1.22, -0.62);
+  remoteGun.group.position.set(0, 1.20, -0.80);
   rob.group.add(remoteGun.group);
+
+  if (data.equippedItems && data.equippedItems.length) {
+    data.equippedItems.forEach(id => addRobotAccessory(rob, id));
+  }
 
   remotePlayers.set(data.id, {
     ...rob,
@@ -1035,6 +1296,8 @@ function setupWeapon(id) {
   // Cache the base Y/X set by the build function so bob can offset from it
   weaponRoot.userData.baseY = weaponRoot.position.y;
   weaponRoot.userData.baseX = weaponRoot.position.x;
+  weaponRoot.userData.baseZ = weaponRoot.position.z;
+  recoilZ = 0; recoilY = 0;
 }
 
 // ============================================================
@@ -1043,299 +1306,386 @@ function setupWeapon(id) {
 function buildRobot() {
   const g = new THREE.Group();
 
-  // Per-bot PBR material instances (hit flash isolated per-bot)
-  const BODY   = new THREE.MeshStandardMaterial({color:0x3a3a50, roughness:0.60, metalness:0.48});
-  const DARK   = new THREE.MeshStandardMaterial({color:0x1a1a28, roughness:0.70, metalness:0.32});
-  const CHROME = new THREE.MeshStandardMaterial({color:0xa0b0c0, roughness:0.06, metalness:0.98});
-  const RED    = new THREE.MeshStandardMaterial({color:0xcc1818, roughness:0.38, metalness:0.52});
-  const PANEL  = new THREE.MeshStandardMaterial({color:0x252538, roughness:0.82, metalness:0.30});
-  const JOINT  = new THREE.MeshStandardMaterial({color:0x505060, roughness:0.22, metalness:0.82});
-  const EYE_L  = new THREE.MeshBasicMaterial({color:0xff3300});
-  const EYE_R  = new THREE.MeshBasicMaterial({color:0xff3300});
-  const LED_G  = new THREE.MeshBasicMaterial({color:0x00ff88});
-  const LED_B  = new THREE.MeshBasicMaterial({color:0x66ccff});
+  // ── Materials ─────────────────────────────────────────────
+  const HULL   = new THREE.MeshStandardMaterial({color:0x18202a, roughness:0.58, metalness:0.76});
+  const ARMOR  = new THREE.MeshStandardMaterial({color:0x242c3a, roughness:0.65, metalness:0.55});
+  const PANEL  = new THREE.MeshStandardMaterial({color:0x2c3448, roughness:0.74, metalness:0.42});
+  const DARK   = new THREE.MeshStandardMaterial({color:0x08090e, roughness:0.92, metalness:0.12});
+  const STEEL  = new THREE.MeshStandardMaterial({color:0x7c8ea2, roughness:0.04, metalness:0.99});
+  const SERVO  = new THREE.MeshStandardMaterial({color:0x2a2e3c, roughness:0.10, metalness:0.97});
+  const PIPE   = new THREE.MeshStandardMaterial({color:0x48525e, roughness:0.30, metalness:0.90});
+  const ACCENT = new THREE.MeshStandardMaterial({color:0x580c10, roughness:0.42, metalness:0.62});
+  const WORN   = new THREE.MeshStandardMaterial({color:0x3a1e1e, roughness:0.82, metalness:0.38});
+  const EYE_L  = new THREE.MeshBasicMaterial({color:0xff0800});
+  const EYE_R  = new THREE.MeshBasicMaterial({color:0xff0800});
 
-  // Helper: add a box part to the root group
-  function bp(w,h,d,x,y,z,mat){
+  // ── Root-level helpers ─────────────────────────────────────
+  function box(w,h,d,x,y,z,mat,rX=0,rZ=0){
     const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+    m.position.set(x,y,z); if(rX)m.rotation.x=rX; if(rZ)m.rotation.z=rZ;
+    g.add(m); return m;
+  }
+  function cyl(rt,rb,h,segs,x,y,z,mat,rX=0,rZ=0){
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,segs),mat);
+    m.position.set(x,y,z); if(rX)m.rotation.x=rX; if(rZ)m.rotation.z=rZ;
+    g.add(m); return m;
+  }
+  function sph(r,segs,x,y,z,mat){
+    const m=new THREE.Mesh(new THREE.SphereGeometry(r,segs,Math.ceil(segs*.72)),mat);
     m.position.set(x,y,z); g.add(m); return m;
   }
-  // Helper: add a cylinder (rotX=0 → vertical, rotX=PI/2 → along Z)
-  function cyl(rt,rb,h,segs,x,y,z,mat,rotX=0,rotZ=0){
-    const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,segs),mat);
-    m.position.set(x,y,z);
-    if(rotX) m.rotation.x=rotX;
-    if(rotZ) m.rotation.z=rotZ;
+  function glow(w,h,d,x,y,z,col){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:col}));
+    m.position.set(x,y,z); g.add(m); return m;
+  }
+  function glowCyl(rt,rb,h,segs,x,y,z,col,rX=0,rZ=0){
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,segs),new THREE.MeshBasicMaterial({color:col}));
+    m.position.set(x,y,z); if(rX)m.rotation.x=rX; if(rZ)m.rotation.z=rZ;
     g.add(m); return m;
   }
 
-  // ── Torso ─────────────────────────────────────────────────
-  bp(.70,.84,.46,  0,1.32,0,  BODY);           // main block
-  bp(.72,.10,.48,  0,1.32,0,  RED);            // horizontal accent band
-  bp(.72,.10,.48,  0,1.56,0,  DARK);           // upper chest band
-  bp(.72,.10,.48,  0,1.08,0,  DARK);           // lower chest band
-  // Chest armour plates (two angled side panels)
-  bp(.24,.42,.06,  .20,1.32,-.24, PANEL);
-  bp(.24,.42,.06, -.20,1.32,-.24, PANEL);
-  // Centre chest display — glowing energy core
-  bp(.20,.20,.06,  0,1.40,-.25, DARK);          // housing
-  bp(.16,.16,.02,  0,1.40,-.28, PANEL);         // panel frame
-  // Cyan energy core (MeshBasicMaterial — blooms)
-  const coreMat=new THREE.MeshBasicMaterial({color:0x00eeff});
-  const core=new THREE.Mesh(new THREE.BoxGeometry(.10,.10,.02),coreMat);
-  core.position.set(0,1.40,-.30); g.add(core);
-  // Status LEDs around core
-  bp(.03,.03,.02,  .07,1.47,-.29, LED_G);
-  bp(.03,.03,.02, -.07,1.47,-.29, LED_G);
-  bp(.03,.03,.02,  .07,1.33,-.29, new THREE.MeshBasicMaterial({color:0xff4400}));
-  bp(.03,.03,.02, -.07,1.33,-.29, new THREE.MeshBasicMaterial({color:0xff4400}));
-  // Torso side hydraulic cylinders (actual round tubes)
-  cyl(.018,.018,.38,8,  .38,1.30, .14, CHROME);
-  cyl(.018,.018,.38,8, -.38,1.30, .14, CHROME);
-  cyl(.018,.018,.38,8,  .38,1.30,-.14, CHROME);
-  cyl(.018,.018,.38,8, -.38,1.30,-.14, CHROME);
-  // Piston sleeves (slightly wider, shorter — sliding over the tubes)
-  cyl(.028,.028,.14,8,  .38,1.44, .14, BODY);
-  cyl(.028,.028,.14,8, -.38,1.44, .14, BODY);
-  cyl(.028,.028,.14,8,  .38,1.44,-.14, BODY);
-  cyl(.028,.028,.14,8, -.38,1.44,-.14, BODY);
-  // Waist reinforcement band
-  bp(.68,.08,.44,  0,1.04,0, RED);
-  // Back armour plate
-  bp(.60,.72,.06,  0,1.32,.25, PANEL);
-  // Back power pack
-  bp(.32,.32,.14,  0,1.44,.30, BODY);
-  bp(.34,.06,.16,  0,1.58,.30, DARK);           // pack vent top
-  bp(.34,.06,.16,  0,1.30,.30, DARK);           // pack vent bottom
-  cyl(.032,.026,.28,7,  .10,1.44,.38, CHROME);  // exhaust pipe R (tapered)
-  cyl(.032,.026,.28,7, -.10,1.44,.38, CHROME);  // exhaust pipe L (tapered)
-  cyl(.018,.018,.06,6,  .10,1.58,.38, new THREE.MeshBasicMaterial({color:0xff4400})); // exhaust glow R
-  cyl(.018,.018,.06,6, -.10,1.58,.38, new THREE.MeshBasicMaterial({color:0xff4400})); // exhaust glow L
-  // Spine glow strip (orange — blooms)
-  const spineMat=new THREE.MeshBasicMaterial({color:0xff6600});
-  const spineGlow=new THREE.Mesh(new THREE.BoxGeometry(.04,.62,.015),spineMat);
-  spineGlow.position.set(0,1.32,.245); g.add(spineGlow);
+  // ════════════════════════════════════════════════════════
+  // LEGS  (pivot group at side*0.22, 0.74, 0)
+  // ════════════════════════════════════════════════════════
+  function makeLeg(side) {
+    const lg = new THREE.Group();
+    lg.position.set(side*0.22, 0.74, 0);
+    function lbox(w,h,d,x,y,z,mat,rZ=0){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z); if(rZ)m.rotation.z=rZ; lg.add(m); }
+    function lcyl(rt,rb,h,n,x,y,z,mat,rX=0,rZ=0){ const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,n),mat); m.position.set(x,y,z); if(rX)m.rotation.x=rX; if(rZ)m.rotation.z=rZ; lg.add(m); }
+    function lsph(r,n,x,y,z,mat){ const m=new THREE.Mesh(new THREE.SphereGeometry(r,n,Math.ceil(n*.72)),mat); m.position.set(x,y,z); lg.add(m); }
+    function lglow(w,h,d,x,y,z,col){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:col})); m.position.set(x,y,z); lg.add(m); }
 
-  // ── Pelvis ────────────────────────────────────────────────
-  bp(.56,.22,.42,  0,.87,0, DARK);
-  bp(.58,.06,.44,  0,.97,0, RED);               // hip trim band
-  bp(.58,.06,.44,  0,.77,0, RED);
+    // ── Hip joint cluster ──
+    lsph(0.148,13,  0,0,0, SERVO);      // outer housing sphere
+    lsph(0.108,10,  0,0,0, STEEL);      // polished inner ball
+    lcyl(0.162,0.162,0.050,12, 0,0,side*0.045, DARK, 0,Math.PI/2); // socket collar
+    lbox(0.072,0.120,0.145, side*0.158,0,-0.010, ARMOR);           // hip flange
+    lbox(0.052,0.090,0.100, side*0.178,0,-0.012, PANEL);
 
-  // ── Head ──────────────────────────────────────────────────
-  bp(.44,.42,.44,  0,1.94,0, BODY);             // main head block
-  // Forehead brow ridge
-  bp(.46,.06,.08,  0,2.08,-.22, DARK);
-  // Visor slit — full glowing red bar (blooms)
-  bp(.40,.14,.06,  0,1.94,-.23, DARK);
-  const visorGlow=new THREE.Mesh(new THREE.BoxGeometry(.36,.08,.015),new THREE.MeshBasicMaterial({color:0xff1800}));
-  visorGlow.position.set(0,1.94,-.265); g.add(visorGlow);
-  bp(.42,.02,.04,  0,2.02,-.24, LED_B);         // brow light strip
-  // Side ear modules
-  bp(.05,.22,.18,  .24,1.94,0, RED);
-  bp(.05,.22,.18, -.24,1.94,0, RED);
-  bp(.04,.08,.08,  .27,2.00,-.04, CHROME);      // ear sensor R
-  bp(.04,.08,.08, -.27,2.00,-.04, CHROME);      // ear sensor L
-  // Side vents on ears
-  bp(.02,.06,.14,  .26,1.90,.04, DARK);
-  bp(.02,.06,.14, -.26,1.90,.04, DARK);
-  // Chin guard
-  bp(.32,.10,.08,  0,1.76,-.22, DARK);
-  bp(.30,.06,.04,  0,1.72,-.24, RED);
-  // Top head fin / crest
-  bp(.08,.18,.32,  0,2.22,0, DARK);
-  bp(.10,.04,.34,  0,2.32,0, RED);
-  // Eyes (glowing spheres)
-  const eGeo=new THREE.SphereGeometry(.062,8,6);
-  const eyeL=new THREE.Mesh(eGeo,EYE_L); eyeL.position.set( .11,1.95,-.25); g.add(eyeL);
-  const eyeR=new THREE.Mesh(eGeo,EYE_R); eyeR.position.set(-.11,1.95,-.25); g.add(eyeR);
-  // Extra small eye detail rings
-  bp(.10,.10,.02,  .11,1.95,-.23, DARK);
-  bp(.10,.10,.02, -.11,1.95,-.23, DARK);
+    // ── Upper thigh ──
+    lcyl(0.130,0.106,0.52,13, 0,-0.260,0, HULL);
+    lbox(0.200,0.305,0.072, 0,-0.220,-0.118, ARMOR);   // front plate
+    lbox(0.170,0.260,0.040, 0,-0.225,-0.138, PANEL);   // sub-plate
+    lglow(0.155,0.022,0.038, 0,-0.378,-0.140, 0xff0800);
+    lbox(0.065,0.295,0.195, side*0.122,-0.232,0.002, ARMOR); // outer side plate
+    lbox(0.045,0.260,0.165, side*0.132,-0.232,0.002, PANEL);
+    lbox(0.170,0.270,0.060, 0,-0.220,0.116, HULL);     // rear plate
+    lcyl(0.024,0.020,0.44,9, side*0.068,-0.230,0.102, STEEL); // primary piston
+    lcyl(0.014,0.014,0.34,8, side*0.090,-0.230,0.108, PIPE);
+    lsph(0.028,7, side*0.068,-0.006,0.102, SERVO);    // piston top cap
+    lsph(0.028,7, side*0.068,-0.452,0.102, SERVO);    // piston bottom cap
+    lcyl(0.013,0.010,0.30,7, side*0.046,-0.260,0.095, PIPE); // secondary piston
+    for(let i=0;i<3;i++) lbox(0.016,0.040,0.080, side*0.142,-0.165-i*0.058,0.010, DARK); // vent slits
+    lbox(0.100,0.055,0.012, 0,-0.310,-0.152, DARK);   // detail indent
 
-  // ── Neck ──────────────────────────────────────────────────
-  bp(.20,.10,.20,  0,1.75,0, DARK);
-  bp(.24,.05,.24,  0,1.80,0, RED);              // neck collar ring
-  bp(.16,.14,.16,  0,1.70,0, JOINT);           // neck ball joint
+    // ── Knee mechanism ──
+    lsph(0.112,13, 0,-0.555,0, SERVO);
+    lsph(0.084, 9, 0,-0.555,0, STEEL);
+    lbox(0.228,0.098,0.152, 0,-0.554,-0.105, ACCENT); // kneecap
+    lbox(0.195,0.065,0.110, 0,-0.554,-0.128, DARK);   // recess
+    lbox(0.210,0.030,0.152, 0,-0.601,-0.108, DARK);   // lower overhang
+    lglow(0.198,0.012,0.142, 0,-0.607,-0.058, 0xff0800);
+    lbox(0.045,0.125,0.152, side*0.130,-0.555,-0.042, ARMOR); // side guard
+    lbox(0.038,0.100,0.115, side*0.142,-0.555,-0.042, PANEL);
+    lcyl(0.024,0.024,0.058,9, side*0.148,-0.555,0.008, STEEL, 0,Math.PI/2); // axle bolt
+    lsph(0.022,7, side*0.178,-0.555,0.008, DARK);
 
-  // ── Antenna ───────────────────────────────────────────────
-  bp(.08,.08,.08,  .08,2.44,0, RED);
-  const apole=new THREE.Mesh(new THREE.CylinderGeometry(.016,.016,.28,6),CHROME);
-  apole.position.set(.08,2.60,0); g.add(apole);
-  const atip=new THREE.Mesh(new THREE.SphereGeometry(.042,7,5),EYE_L);
-  atip.position.set(.08,2.75,0); g.add(atip);
+    // ── Shin ──
+    lcyl(0.106,0.088,0.46,13, 0,-0.825,0, HULL);
+    lbox(0.168,0.258,0.065, 0,-0.796,-0.118, ARMOR);  // front plate (3-layer)
+    lbox(0.145,0.218,0.042, 0,-0.800,-0.140, PANEL);
+    lbox(0.115,0.165,0.025, 0,-0.808,-0.155, DARK);
+    lglow(0.065,0.012,0.032, 0,-0.706,-0.158, 0xff0800);
+    lglow(0.048,0.008,0.030, 0,-0.868,-0.156, 0xff2200);
+    lbox(0.062,0.240,0.195, side*0.118,-0.808,0.006, ARMOR); // outer plate
+    lbox(0.118,0.225,0.092, 0,-0.824,0.126, DARK);           // calf housing
+    lcyl(0.026,0.022,0.40,9, 0,-0.820,0.126, STEEL);
+    lcyl(0.015,0.015,0.28,7, side*0.040,-0.820,0.130, PIPE);
+    for(let i=0;i<2;i++) lbox(0.018,0.032,0.065, side*0.118,-0.766-i*0.062,0.005, DARK);
 
-  // ── Shoulders ─────────────────────────────────────────────
-  // Shoulder ball joints (sphere at junction)
-  const sjGeo=new THREE.SphereGeometry(.12,8,6);
-  const sjL=new THREE.Mesh(sjGeo,JOINT); sjL.position.set(-.46,1.68,0); g.add(sjL);
-  const sjR=new THREE.Mesh(sjGeo,JOINT); sjR.position.set( .46,1.68,0); g.add(sjR);
-  // Shoulder pauldrons
-  bp(.20,.18,.42, -.58,1.68,0, RED);
-  bp(.20,.18,.42,  .58,1.68,0, RED);
-  bp(.22,.06,.44, -.58,1.78,0, DARK);          // pauldron top edge
-  bp(.22,.06,.44,  .58,1.78,0, DARK);
-  // Shoulder spikes
-  bp(.04,.22,.08, -.58,1.93,-.06, CHROME);
-  bp(.04,.22,.08,  .58,1.93,-.06, CHROME);
-  // Shoulder emissive strips (red — blooms)
-  const shStripMat=new THREE.MeshBasicMaterial({color:0xff1800});
-  const shStripL=new THREE.Mesh(new THREE.BoxGeometry(.015,.12,.38),shStripMat);
-  shStripL.position.set(-.49,1.68,0); g.add(shStripL);
-  const shStripR=new THREE.Mesh(new THREE.BoxGeometry(.015,.12,.38),shStripMat);
-  shStripR.position.set( .49,1.68,0); g.add(shStripR);
+    // ── Ankle ──
+    lsph(0.085,12, 0,-1.072,0, SERVO);
+    lsph(0.062, 9, 0,-1.072,0, STEEL);
+    lcyl(0.110,0.102,0.044,11, 0,-1.088,0, DARK);             // exo ring
+    lbox(0.052,0.095,0.120, side*0.108,-1.072,0.010, ARMOR);
+    lcyl(0.020,0.020,0.050,8, side*0.138,-1.062,0.010, STEEL, 0,Math.PI/2);
 
-  // ── Arms (pivoting groups — shoulder is the rotation origin) ──
+    // ── Foot ──
+    lbox(0.255,0.085,0.402, 0,-1.148,0.044, HULL);
+    lbox(0.235,0.028,0.380, 0,-1.106,0.044, ARMOR);  // top plate
+    lbox(0.215,0.020,0.355, 0,-1.090,0.044, PANEL);  // inner top
+    lbox(0.212,0.092,0.112, 0,-1.144,-0.188, ACCENT); // toe cap
+    lglow(0.178,0.010,0.024, 0,-1.100,-0.232, 0xff0800);
+    lbox(0.060,0.078,0.102, side*0.090,-1.144,-0.185, PANEL);
+    lbox(0.165,0.065,0.090, 0,-1.148,0.228, DARK);   // heel
+    lbox(0.145,0.040,0.072, 0,-1.148,0.240, ARMOR);
+    lglow(0.188,0.010,0.280, 0,-1.192,0.044, 0xff1800); // sole glow
+    lcyl(0.016,0.016,0.048,8, side*0.134,-1.118,0.038, STEEL, 0,Math.PI/2);
+
+    g.add(lg);
+    return lg;
+  }
+  const legL = makeLeg(-1);
+  const legR = makeLeg( 1);
+
+  // ════════════════════════════════════════════════════════
+  // PELVIS
+  // ════════════════════════════════════════════════════════
+  box(0.555,0.212,0.402, 0,0.878,0, HULL);
+  box(0.535,0.040,0.382, 0,0.984,0, ACCENT);
+  box(0.535,0.040,0.382, 0,0.772,0, ACCENT);
+  box(0.138,0.188,0.352, -0.352,0.878,0, DARK);
+  box(0.138,0.188,0.352,  0.352,0.878,0, DARK);
+  box(0.232,0.145,0.100, 0,0.822,-0.202, ARMOR);
+  box(0.190,0.105,0.055, 0,0.822,-0.254, PANEL);
+  glow(0.185,0.010,0.062, 0,0.873,-0.260, 0xff0800);
+  for(let s=-1;s<=1;s+=2) for(let i=0;i<2;i++)
+    box(0.016,0.052,0.290, s*0.276,0.905-i*0.074,0.042, DARK);
+
+  // ════════════════════════════════════════════════════════
+  // TORSO
+  // ════════════════════════════════════════════════════════
+  box(0.595,0.530,0.450, 0,1.272,0, HULL);
+  box(0.680,0.310,0.465, 0,1.600,0, HULL);
+  box(0.740,0.042,0.458, 0,1.050,0, ACCENT);
+  for(let i=0;i<5;i++){
+    box(0.610,0.054,0.424, 0,1.080+i*0.070,0, ARMOR);
+    box(0.590,0.016,0.408, 0,1.080+i*0.070-0.016,0, DARK);
+  }
+  box(0.052,0.320,0.016, 0,1.120,-0.214, DARK);
+  glow(0.018,0.290,0.010, 0,1.120,-0.222, 0xff0800);
+  // Pectorals
+  box(0.278,0.318,0.080, -0.174,1.570,-0.226, ARMOR);
+  box(0.278,0.318,0.080,  0.174,1.570,-0.226, ARMOR);
+  box(0.115,0.330,0.076,  0.000,1.570,-0.225, DARK);
+  box(0.228,0.170,0.030, -0.174,1.558,-0.256, PANEL);
+  box(0.228,0.170,0.030,  0.174,1.558,-0.256, PANEL);
+  glow(0.226,0.016,0.038, -0.174,1.736,-0.252, 0xff0800);
+  glow(0.226,0.016,0.038,  0.174,1.736,-0.252, 0xff0800);
+  box(0.240,0.036,0.077, -0.174,1.425,-0.230, WORN);
+  box(0.240,0.036,0.077,  0.174,1.425,-0.230, WORN);
+  box(0.008,0.300,0.072, -0.048,1.570,-0.226, DARK); // lateral pec ridges
+  box(0.008,0.300,0.072,  0.048,1.570,-0.226, DARK);
+  // Energy core
+  box(0.200,0.200,0.085, 0,1.395,-0.230, DARK);
+  box(0.175,0.175,0.025, 0,1.395,-0.270, ACCENT);
+  glow(0.116,0.116,0.016, 0,1.395,-0.285, 0x00ccff);
+  glow(0.138,0.008,0.013, 0,1.395,-0.288, 0x0055cc);
+  glow(0.008,0.138,0.013, 0,1.395,-0.288, 0x0055cc);
+  [[-0.062,-0.062],[0.062,-0.062],[-0.062,0.062],[0.062,0.062]].forEach(([dx,dy])=>
+    glow(0.018,0.018,0.012, dx,1.395+dy,-0.287, 0x00aaff));
+  // Side rib cooling pipes
+  for(let s=-1;s<=1;s+=2){
+    for(let i=0;i<5;i++) cyl(0.013,0.013,0.42,7, s*0.358,1.210+i*0.088,0.098, PIPE);
+    cyl(0.032,0.028,0.22,9, s*0.358,1.470,0.098, HULL);
+    glow(0.012,0.195,0.008, s*0.358,1.385,0.100, 0xff2200);
+    box(0.040,0.260,0.092, s*0.348,1.278,0.062, DARK);
+    for(let i=0;i<6;i++) box(0.016,0.020,0.070, s*0.354,1.150+i*0.044,0.068, DARK);
+  }
+  // Back plate & power pack
+  box(0.638,0.695,0.058, 0,1.332,0.235, ARMOR);
+  box(0.298,0.350,0.208, 0,1.468,0.328, HULL);
+  box(0.340,0.038,0.212, 0,1.618,0.330, DARK);
+  box(0.340,0.038,0.212, 0,1.318,0.330, DARK);
+  for(let i=0;i<4;i++) box(0.285,0.025,0.048, 0,1.490-i*0.062,0.428, DARK);
+  cyl(0.030,0.024,0.34,9,  0.098,1.480,0.430, STEEL);
+  cyl(0.030,0.024,0.34,9, -0.098,1.480,0.430, STEEL);
+  cyl(0.037,0.030,0.065,9,  0.098,1.654,0.430, PIPE);
+  cyl(0.037,0.030,0.065,9, -0.098,1.654,0.430, PIPE);
+  glowCyl(0.021,0.021,0.055,8,  0.098,1.665,0.430, 0xff3300);
+  glowCyl(0.021,0.021,0.055,8, -0.098,1.665,0.430, 0xff3300);
+  glow(0.030,0.620,0.010, 0,1.332,0.248, 0xff4400);
+  for(let i=0;i<7;i++) box(0.072,0.042,0.084, 0,0.988+i*0.086,0.180, ARMOR);
+
+  // ════════════════════════════════════════════════════════
+  // NECK
+  // ════════════════════════════════════════════════════════
+  cyl(0.144,0.165,0.148,12, 0,1.815,0, SERVO);
+  cyl(0.160,0.160,0.026,12, 0,1.892,0, DARK);
+  cyl(0.160,0.160,0.026,12, 0,1.738,0, DARK);
+  for(let dx of [-0.050,0,0.050]) cyl(0.009,0.009,0.126,7, dx,1.815,-0.112, PIPE);
+  for(let s=-1;s<=1;s+=2) for(let i=0;i<3;i++)
+    box(0.030,0.030,0.010, s*0.115,1.845-i*0.040,0.068, DARK);
+  box(0.228,0.022,0.228, 0,1.890,0, ACCENT);
+  box(0.208,0.022,0.208, 0,1.740,0, ACCENT);
+
+  // ════════════════════════════════════════════════════════
+  // HEAD
+  // ════════════════════════════════════════════════════════
+  box(0.462,0.388,0.450, 0,1.982,0, HULL);           // skull main
+  box(0.408,0.148,0.388, 0,2.168,0, HULL);            // cranial dome
+  box(0.372,0.055,0.368, 0,2.248,-0.008, ARMOR);      // dome cap
+  box(0.280,0.022,0.320, 0,2.278,0.018, DARK);        // top vent strip
+  for(let i=0;i<4;i++) box(0.240,0.014,0.016, 0,2.275,-i*0.075+0.030, DARK);
+  // Brow ridge
+  box(0.480,0.070,0.102, 0,2.118,-0.220, DARK);
+  box(0.442,0.024,0.092, 0,2.154,-0.228, ACCENT);
+  glow(0.380,0.010,0.010, 0,2.084,-0.268, 0x0044ff);
+  for(let s=-1;s<=1;s+=2) box(0.032,0.065,0.095, s*0.228,2.118,-0.228, WORN);
+  // Cheeks
+  box(0.068,0.238,0.318, -0.268,1.982,0, ARMOR);
+  box(0.068,0.238,0.318,  0.268,1.982,0, ARMOR);
+  box(0.062,0.210,0.285, -0.272,1.982,0, PANEL);
+  box(0.062,0.210,0.285,  0.272,1.982,0, PANEL);
+  box(0.065,0.040,0.105, -0.268,1.858,-0.060, WORN); // lower cheek notch
+  box(0.065,0.040,0.105,  0.268,1.858,-0.060, WORN);
+  // Visor system
+  box(0.408,0.130,0.062, 0,1.982,-0.232, DARK);
+  box(0.382,0.108,0.030, 0,1.982,-0.252, WORN);
+  glow(0.348,0.065,0.010, 0,1.982,-0.270, 0xff0800);
+  // Eye socket rings (two per side)
+  for(let s=-1;s<=1;s+=2){
+    cyl(0.065,0.065,0.016,10, s*0.100,1.982,-0.256, DARK, Math.PI/2);
+    cyl(0.058,0.058,0.010,10, s*0.100,1.982,-0.262, WORN, Math.PI/2);
+  }
+  // Eye spheres
+  const eyeL=new THREE.Mesh(new THREE.SphereGeometry(0.054,11,8),EYE_L); eyeL.position.set( 0.100,1.982,-0.250); g.add(eyeL);
+  const eyeR=new THREE.Mesh(new THREE.SphereGeometry(0.054,11,8),EYE_R); eyeR.position.set(-0.100,1.982,-0.250); g.add(eyeR);
+  glowCyl(0.056,0.056,0.008,10,  0.100,1.982,-0.254, 0xff3300, Math.PI/2); // eye scan ring
+  glowCyl(0.056,0.056,0.008,10, -0.100,1.982,-0.254, 0xff3300, Math.PI/2);
+  // Chin/jaw
+  box(0.348,0.106,0.100, 0,1.804,-0.202, DARK);
+  box(0.292,0.062,0.060, 0,1.756,-0.236, ACCENT);
+  for(let i=0;i<3;i++) box(0.048,0.022,0.015, -0.072+i*0.072,1.820,-0.272, DARK);
+  glow(0.228,0.009,0.010, 0,1.804,-0.274, 0xff2200);
+  // Side sensor pods
+  for(let s=-1;s<=1;s+=2){
+    cyl(0.044,0.038,0.086,10, s*0.290,2.028,-0.055, STEEL, 0,Math.PI/2);
+    cyl(0.038,0.038,0.012,10, s*0.312,2.028,-0.055, DARK, 0,Math.PI/2);
+    glowCyl(0.036,0.036,0.008,10, s*0.314,2.028,-0.055, 0x00aaff, 0,Math.PI/2);
+    cyl(0.011,0.007,0.096,6, s*0.274,2.086,-0.042, STEEL);
+    sph(0.016,8, s*0.274,2.138,-0.042, new THREE.MeshBasicMaterial({color:0x00aaff}));
+    cyl(0.024,0.020,0.058,8, s*0.282,1.948,-0.078, PIPE, 0,Math.PI/2);
+    glowCyl(0.018,0.018,0.008,7, s*0.308,1.948,-0.078, 0xff0000, 0,Math.PI/2);
+  }
+  // Back of head
+  box(0.388,0.248,0.030, 0,1.982,0.248, ARMOR);
+  box(0.302,0.082,0.038, 0,1.950,0.244, DARK);
+  box(0.255,0.042,0.038, 0,2.062,0.244, DARK);
+  for(let i=0;i<5;i++) box(0.248,0.014,0.030, 0,1.933+i*0.018,0.248, DARK);
+  for(let i=0;i<3;i++) box(0.062,0.024,0.022, -0.068+i*0.068,2.065,0.230, new THREE.MeshBasicMaterial({color:0x0022cc}));
+
+  // ════════════════════════════════════════════════════════
+  // SHOULDERS
+  // ════════════════════════════════════════════════════════
+  for(let s=-1;s<=1;s+=2){
+    sph(0.138,13, s*0.46,1.68,0, SERVO);
+    sph(0.100, 9, s*0.46,1.68,0, STEEL);
+    box(0.192,0.238,0.448, s*0.620,1.700,0, HULL);
+    box(0.215,0.060,0.450, s*0.620,1.818,0, DARK);
+    box(0.215,0.060,0.450, s*0.620,1.580,0, DARK);
+    box(0.195,0.200,0.428, s*0.622,1.700,0, ARMOR);
+    box(0.030,0.138,0.194, s*0.622,1.700,-0.115, PANEL);
+    box(0.026,0.105,0.042, s*0.624,1.700,-0.222, DARK);
+    cyl(0.022,0.009,0.230,8, s*0.620,1.968,-0.036, STEEL);
+    sph(0.020,8, s*0.620,2.086,-0.036, new THREE.MeshBasicMaterial({color:0xff0800}));
+    glow(0.010,0.148,0.358, s*0.518,1.700,0, 0xff0800);
+    for(let i=-1;i<=1;i+=2)
+      cyl(0.015,0.015,0.032,8, s*0.624,1.700+i*0.058,-0.254, STEEL, 0,Math.PI/2);
+  }
+
+  // ════════════════════════════════════════════════════════
+  // ARMS  (pivot group at side*0.46, 1.68, 0)
+  // ════════════════════════════════════════════════════════
   function makeArmGroup(side) {
     const ag = new THREE.Group();
     ag.position.set(side*0.46, 1.68, 0);
-    const sx = side*0.12;
+    const sx = side*0.090;
+    function abx(w,h,d,x,y,z,mat){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z); ag.add(m); }
+    function acy(rt,rb,h,n,x,y,z,mat,rX=0,rZ=0){ const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,n),mat); m.position.set(x,y,z); if(rX)m.rotation.x=rX; if(rZ)m.rotation.z=rZ; ag.add(m); }
+    function asp(r,n,x,y,z,mat){ const m=new THREE.Mesh(new THREE.SphereGeometry(r,n,Math.ceil(n*.72)),mat); m.position.set(x,y,z); ag.add(m); }
+    function agl(w,h,d,x,y,z,col){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:col})); m.position.set(x,y,z); ag.add(m); }
 
-    function abp(w,h,d,x,y,z,mat){
-      const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
-      m.position.set(x,y,z); ag.add(m);
-    }
-    function acyl(rt,rb,h,segs,x,y,z,mat,rotX=0){
-      const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,segs),mat);
-      m.position.set(x,y,z); if(rotX) m.rotation.x=rotX; ag.add(m);
+    // ── Upper arm ──
+    acy(0.116,0.094,0.48,13, sx,-0.390,0, HULL);
+    abx(0.172,0.235,0.062, sx,-0.382,-0.092, ARMOR);
+    abx(0.145,0.198,0.040, sx,-0.385,-0.112, PANEL);
+    agl(0.135,0.020,0.038, sx,-0.508,-0.114, 0xff0800);
+    abx(0.062,0.225,0.195, sx+side*0.122,-0.388,0.006, ARMOR); // outer plate
+    abx(0.045,0.195,0.165, sx+side*0.132,-0.388,0.006, PANEL);
+    acy(0.020,0.016,0.38,9, sx+side*0.076,-0.388,0.086, STEEL); // rear hydraulic
+    acy(0.012,0.012,0.30,7, sx+side*0.095,-0.388,0.094, PIPE);
+    asp(0.024,7, sx+side*0.076,-0.202,0.086, SERVO);  // piston caps
+    asp(0.024,7, sx+side*0.076,-0.574,0.086, SERVO);
+    asp(0.100,12, sx,-0.162,0, SERVO);  // shoulder-end cap
+    asp(0.074, 9, sx,-0.162,0, STEEL);
+    for(let i=0;i<3;i++) abx(0.016,0.038,0.072, sx+side*0.126,-0.288-i*0.060,0.010, DARK);
+
+    // ── Elbow joint ──
+    asp(0.100,13, sx,-0.662,0, SERVO);
+    asp(0.074, 9, sx,-0.662,0, STEEL);
+    abx(0.200,0.082,0.145, sx,-0.662,-0.085, ACCENT); // guard
+    abx(0.168,0.055,0.102, sx,-0.662,-0.120, DARK);
+    agl(0.162,0.010,0.082, sx,-0.698,-0.091, 0xff0800);
+    acy(0.028,0.028,0.060,9, sx+side*0.122,-0.662,0.010, STEEL, 0,Math.PI/2);
+    asp(0.022,7, sx+side*0.154,-0.662,0.010, DARK);
+
+    // ── Forearm ──
+    acy(0.095,0.078,0.45,13, sx,-0.882,0, HULL);
+    abx(0.158,0.218,0.058, sx,-0.872,-0.096, ARMOR);   // 3-layer front
+    abx(0.132,0.185,0.038, sx,-0.875,-0.116, PANEL);
+    abx(0.110,0.148,0.022, sx,-0.880,-0.132, DARK);
+    abx(0.058,0.208,0.195, sx+side*0.116,-0.875,0.008, ARMOR); // outer plate
+    acy(0.010,0.010,0.34,8, sx+side*0.086,-0.862,0.054, new THREE.MeshBasicMaterial({color:0x0055cc})); // cables
+    acy(0.008,0.008,0.30,7, sx+side*0.075,-0.862,0.068, STEEL);
+    acy(0.009,0.009,0.26,6, sx+side*0.062,-0.862,0.058, new THREE.MeshBasicMaterial({color:0xcc3300}));
+    acy(0.015,0.015,0.32,8, sx-side*0.085,-0.862,0.072, PIPE);
+    agl(0.062,0.012,0.034, sx,-0.776,-0.125, 0xff0800);
+    agl(0.046,0.008,0.030, sx,-0.934,-0.125, 0xff2200);
+    if(side > 0){
+      abx(0.062,0.105,0.200, sx,-0.940,-0.142, DARK);
+      acy(0.018,0.018,0.148,7, sx,-0.940,-0.208, STEEL);
+      acy(0.014,0.014,0.095,6, sx,-0.940,-0.268, PIPE);
     }
 
-    // Upper arm (coords relative to shoulder pivot)
-    abp(.20,.46,.20,  sx,-.40,0,  BODY);
-    abp(.06,.40,.22,  sx,-.40,-.02, PANEL);
-    // Elbow
-    const ej=new THREE.Mesh(new THREE.SphereGeometry(.10,8,6),JOINT);
-    ej.position.set(sx,-.66,0); ag.add(ej);
-    abp(.18,.12,.20,  sx,-.66,-.08, RED);
-    // Forearm
-    abp(.18,.40,.18,  sx,-.84,0,  CHROME);
-    abp(.10,.36,.20,  sx,-.84,-.06, PANEL);
-    const cMat=new THREE.MeshBasicMaterial({color:0x0088ff});
-    acyl(.009,.009,.30,6, sx+side*.09,-.84,0, cMat);
-    acyl(.007,.007,.30,6, sx+side*.06,-.84,.04, cMat);
-    acyl(.018,.018,.34,8, sx-side*.08,-.84,.08, RED);
-    if(side>0){
-      abp(.08,.08,.22,  sx,-.92,-.14, DARK);
-      abp(.03,.03,.18,  sx,-.90,-.22, CHROME);
-    }
-    // Hand / claws
-    abp(.22,.14,.22,  sx,-1.09,0,  DARK);
-    abp(.20,.05,.06,  sx,-1.14,-.10, RED);
+    // ── Wrist joint ──
+    asp(0.082,11, sx,-1.108,0, SERVO);
+    asp(0.060, 8, sx,-1.108,0, STEEL);
+    acy(0.098,0.092,0.038,11, sx,-1.114,0, DARK);
+    acy(0.102,0.102,0.010,11, sx,-1.096,0, ACCENT);
+
+    // ── Palm ──
+    abx(0.225,0.105,0.205, sx,-1.178,0, HULL);
+    abx(0.200,0.032,0.185, sx,-1.128,0, ARMOR);
+    abx(0.078,0.062,0.055, sx+side*0.145,-1.178,-0.040, HULL); // thumb stub
+    acy(0.022,0.017,0.070,7, sx+side*0.145,-1.178,-0.090, STEEL);
+    asp(0.020,7, sx+side*0.145,-1.178,-0.130, ACCENT);
+    abx(0.200,0.038,0.062, sx,-1.228,-0.086, ACCENT); // knuckle ridge
+    agl(0.175,0.010,0.042, sx,-1.234,-0.105, 0xff0800);
+    abx(0.105,0.065,0.018, sx,-1.175,0.095, DARK); // palm tech indent
+    agl(0.072,0.042,0.014, sx,-1.175,0.102, 0x00aaff);
+
+    // ── Three articulated fingers ──
     for(let f=-1;f<=1;f++){
-      abp(.04,.04,.16, sx+side*(0.02+f*.06),-1.12,-.14, DARK);
-      abp(.03,.03,.04, sx+side*(0.02+f*.06),-1.12,-.23, CHROME);
+      const fx = sx+side*(0.018+f*0.062);
+      acy(0.021,0.017,0.145,8, fx,-1.248,-0.102, HULL);  // proximal
+      asp(0.024,8, fx,-1.330,-0.102, SERVO);              // knuckle joint
+      acy(0.017,0.013,0.105,7, fx,-1.248,-0.188, STEEL);  // distal
+      asp(0.018,7, fx,-1.248,-0.248, ACCENT);              // fingertip
+      if(f===0) agl(0.010,0.008,0.010, fx,-1.248,-0.200, 0xff0000); // mid-finger LED
     }
 
     g.add(ag);
     return ag;
   }
-
   const armGroupL = makeArmGroup(-1);
   const armGroupR = makeArmGroup( 1);
 
-  // ── Legs (groups pivoted at hip for walk animation) ────────
-  function makeLeg(side) {
-    const lg=new THREE.Group();
-    lg.position.set(side*.22, .74, 0);
-
-    // Upper leg main block
-    const ul=new THREE.Mesh(new THREE.BoxGeometry(.22,.50,.22),BODY);
-    ul.position.y=-.25; lg.add(ul);
-    // Thigh armour plate (front face)
-    const tap=new THREE.Mesh(new THREE.BoxGeometry(.16,.26,.06),RED);
-    tap.position.set(0,-.22,-.14); lg.add(tap);
-    // Thigh side trim
-    const tst=new THREE.Mesh(new THREE.BoxGeometry(.24,.06,.24),DARK);
-    tst.position.y=-.08; lg.add(tst);
-    // Thigh hydraulic (back)
-    const th=new THREE.Mesh(new THREE.BoxGeometry(.04,.36,.04),CHROME);
-    th.position.set(0,-.22,.12); lg.add(th);
-
-    // Knee cap (larger, more mechanical)
-    const kn=new THREE.Mesh(new THREE.BoxGeometry(.22,.12,.24),RED);
-    kn.position.y=-.54; lg.add(kn);
-    const knb=new THREE.Mesh(new THREE.BoxGeometry(.18,.06,.18),JOINT);
-    knb.position.y=-.62; lg.add(knb);
-    // Knee emissive ring (red — blooms)
-    const kneeLedMat=new THREE.MeshBasicMaterial({color:0xff2200});
-    const kneeLed=new THREE.Mesh(new THREE.BoxGeometry(.24,.025,.26),kneeLedMat);
-    kneeLed.position.y=-.575; lg.add(kneeLed);
-
-    // Lower leg
-    const ll=new THREE.Mesh(new THREE.BoxGeometry(.19,.44,.19),CHROME);
-    ll.position.y=-.78; lg.add(ll);
-    // Shin armour plate
-    const sh=new THREE.Mesh(new THREE.BoxGeometry(.14,.24,.06),PANEL);
-    sh.position.set(0,-.74,-.13); lg.add(sh);
-    // Shin LED strip
-    const sl=new THREE.Mesh(new THREE.BoxGeometry(.06,.02,.04),EYE_L);
-    sl.position.set(0,-.66,-.16); lg.add(sl);
-    // Calf hydraulic (round tube)
-    const clGeo=new THREE.CylinderGeometry(.018,.018,.32,8);
-    const cl=new THREE.Mesh(clGeo,RED);
-    cl.position.set(0,-.78,.10); lg.add(cl);
-    // Secondary calf tube
-    const cl2=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,.24,7),CHROME);
-    cl2.position.set(.04,-.80,.10); lg.add(cl2);
-
-    // Ankle joint
-    const an=new THREE.Mesh(new THREE.BoxGeometry(.20,.10,.22),DARK);
-    an.position.y=-1.02; lg.add(an);
-    const aj=new THREE.Mesh(new THREE.SphereGeometry(.08,7,5),JOINT);
-    aj.position.y=-1.01; lg.add(aj);
-
-    // Foot with toe cap
-    const ft=new THREE.Mesh(new THREE.BoxGeometry(.24,.09,.36),DARK);
-    ft.position.set(0,-1.11,.06); lg.add(ft);
-    const tc=new THREE.Mesh(new THREE.BoxGeometry(.22,.10,.10),RED);  // toe cap
-    tc.position.set(0,-1.10,-.18); lg.add(tc);
-    const heel=new THREE.Mesh(new THREE.BoxGeometry(.18,.06,.08),DARK);
-    heel.position.set(0,-1.12,.18); lg.add(heel);
-
-    g.add(lg);
-    return lg;
-  }
-
-  const legL=makeLeg(-1);
-  const legR=makeLeg( 1);
-
-  // Collect all Lambert materials for hit flash (skip MeshBasicMaterial LEDs/eyes)
+  // ── Collect Standard materials for hit flash ──────────────
   const allMats=[];
   g.traverse(child=>{
     if(child.isMesh && child.material.isMeshStandardMaterial) allMats.push(child.material);
   });
 
-  // ── Health bar (world-space billboard above head) ──────────
+  // ── Health bar ────────────────────────────────────────────
   const hpBarGroup=new THREE.Group();
   hpBarGroup.position.set(0, 2.88, 0);
-
-  // Outer border
-  const hpBorder=new THREE.Mesh(
-    new THREE.BoxGeometry(.76,.115,.01),
-    new THREE.MeshBasicMaterial({color:0x111111})
-  );
-  hpBarGroup.add(hpBorder);
-
-  // Background track
-  const hpBg=new THREE.Mesh(
-    new THREE.BoxGeometry(.70,.075,.015),
-    new THREE.MeshBasicMaterial({color:0x330000})
-  );
-  hpBarGroup.add(hpBg);
-
-  // Fill bar — scale.x and position.x updated each frame
+  hpBarGroup.add(new THREE.Mesh(new THREE.BoxGeometry(.76,.115,.01),new THREE.MeshBasicMaterial({color:0x111111})));
+  hpBarGroup.add(new THREE.Mesh(new THREE.BoxGeometry(.70,.075,.015),new THREE.MeshBasicMaterial({color:0x330000})));
   const hpFillMat=new THREE.MeshBasicMaterial({color:0x22dd44});
-  const hpFill=new THREE.Mesh(new THREE.BoxGeometry(.68,.055,.02), hpFillMat);
+  const hpFill=new THREE.Mesh(new THREE.BoxGeometry(.68,.055,.02),hpFillMat);
   hpBarGroup.add(hpFill);
-
-  // Segment dividers (2 lines splitting into 3 HP sections)
-  [-0.226, 0.226].forEach(dx=>{
-    const div=new THREE.Mesh(
-      new THREE.BoxGeometry(.014,.09,.022),
-      new THREE.MeshBasicMaterial({color:0x000000})
-    );
-    div.position.x=dx; hpBarGroup.add(div);
-  });
-
+  [-0.226,0.226].forEach(dx=>{ const d=new THREE.Mesh(new THREE.BoxGeometry(.014,.09,.022),new THREE.MeshBasicMaterial({color:0x000000})); d.position.x=dx; hpBarGroup.add(d); });
   g.add(hpBarGroup);
 
   return { group:g, legL, legR, armGroupL, armGroupR, eyeMatL:EYE_L, eyeMatR:EYE_R, allMats, hpBarGroup, hpFill, hpFillMat };
@@ -1416,6 +1766,11 @@ function shoot(){
   }
 
   if(socket && socket.connected) socket.emit('playerShot', {});
+
+  const maxZ = (def.kick || 0) * 2.5;
+  const maxY = (def.kick || 0) * 0.9;
+  recoilZ = Math.min(recoilZ + (def.kick || 0), maxZ);
+  recoilY = Math.min(recoilY + (def.kick || 0) * 0.35, maxY);
 
   gun.canShoot=false; gun.shootTimer=def.fireRate;
 }
@@ -1774,12 +2129,17 @@ function update(dt){
     }
   }
 
-  // ── Weapon bob ──────────────────────────────────────────
+  // ── Weapon bob + recoil ──────────────────────────────────
   const bobRate=moving?9.0:2.2, bobAmp=moving?.014:.005;
   bobClock+=dt*bobRate;
+  const decay = 1 - Math.min(1, dt * 11);
+  recoilZ *= decay;
+  recoilY *= decay;
   if(weaponRoot.userData.baseY !== undefined){
-    weaponRoot.position.y = weaponRoot.userData.baseY + Math.sin(bobClock)*bobAmp;
+    weaponRoot.position.y = weaponRoot.userData.baseY + Math.sin(bobClock)*bobAmp + recoilY;
     weaponRoot.position.x = weaponRoot.userData.baseX + Math.sin(bobClock*.5)*bobAmp*.55;
+    weaponRoot.position.z = weaponRoot.userData.baseZ + recoilZ;
+    weaponRoot.rotation.x = -recoilY * 1.6;
   }
 
   // ── Hurt cooldown ───────────────────────────────────────
@@ -2153,7 +2513,7 @@ function initSocket() {
   const username = localStorage.getItem('ah_username') || 'Guest';
 
   socket.on('connect', () => {
-    socket.emit('join', { username });
+    socket.emit('join', { username, equippedItems: JSON.parse(localStorage.getItem('ah_equipped') || '[]') });
 
     // Broadcast position + health every 50 ms
     if (moveInterval) clearInterval(moveInterval);

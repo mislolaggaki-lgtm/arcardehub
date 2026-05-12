@@ -329,6 +329,259 @@
     }
     .auth-submit:disabled { opacity: 0.35; cursor: not-allowed; }
 
+    /* ── Bucks display (nav) ─────────────────────────────── */
+    .bucks-display {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(200,162,21,0.10);
+      border: 1px solid rgba(200,162,21,0.28);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 13px; font-weight: 700;
+      color: #ffd700; letter-spacing: 1px;
+      cursor: pointer; transition: background .15s, border-color .15s;
+    }
+    .bucks-display:hover { background: rgba(200,162,21,0.18); border-color: rgba(200,162,21,0.5); }
+    .bucks-display svg { flex-shrink: 0; }
+
+    /* ── Shop button ────────────────────────────────────── */
+    .btn-shop {
+      padding: 7px 18px;
+      background: transparent;
+      border: 1px solid rgba(200,162,21,0.30);
+      border-radius: 5px; color: #c8a215;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+    }
+    .btn-shop:hover { background: rgba(200,162,21,0.12); border-color: rgba(200,162,21,0.6); color: #ffd700; }
+
+    /* ── Shop Modal ──────────────────────────────────────── */
+    .shop-overlay {
+      display: none; position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      align-items: flex-start; justify-content: center;
+      padding: 48px 16px 32px; overflow-y: auto;
+    }
+    .shop-overlay.open { display: flex; }
+    .shop-modal-inner {
+      width: 100%; max-width: 900px;
+      background: #0d0d1a; border: 1px solid rgba(200,162,21,0.18);
+      border-radius: 14px; overflow: hidden;
+      box-shadow: 0 0 60px rgba(0,0,0,0.9);
+    }
+    .shop-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 24px 32px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      background: rgba(200,162,21,0.05);
+    }
+    .shop-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 32px; letter-spacing: 6px; color: #ffd700;
+      text-shadow: 0 0 20px rgba(255,215,0,0.3);
+    }
+    .shop-header-bucks {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 22px; font-weight: 800; color: #ffd700; letter-spacing: 2px;
+    }
+    .shop-close {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: transparent; color: #666; font-size: 16px;
+      cursor: pointer; transition: background .15s, color .15s;
+    }
+    .shop-close:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    .shop-earn-note {
+      padding: 8px 32px;
+      font-size: 11px; color: #556; letter-spacing: 2px; text-align: center;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .shop-earn-note span { color: #ffd700; }
+    .bucks-packages {
+      display: flex; gap: 16px; padding: 28px 32px;
+      justify-content: center; flex-wrap: wrap;
+    }
+    .bucks-pkg {
+      flex: 1; min-width: 160px; max-width: 200px;
+      background: rgba(255,215,0,0.04);
+      border: 1px solid rgba(255,215,0,0.18);
+      border-radius: 12px; padding: 22px 16px 18px;
+      text-align: center; cursor: pointer;
+      transition: border-color .18s, background .18s, transform .12s;
+    }
+    .bucks-pkg:hover { border-color: #ffd700; background: rgba(255,215,0,0.10); transform: translateY(-2px); }
+    .bucks-pkg-amount {
+      font-size: 34px; font-weight: 900; color: #ffd700;
+      letter-spacing: 2px; line-height: 1;
+    }
+    .bucks-pkg-label { font-size: 11px; color: #888; letter-spacing: 3px; margin: 4px 0 14px; }
+    .bucks-pkg-price {
+      display: inline-block;
+      background: #ffd700; color: #1a1200;
+      font-weight: 800; font-size: 15px; letter-spacing: 1px;
+      border-radius: 6px; padding: 7px 18px;
+    }
+    .bucks-pkg-per { font-size: 10px; color: #666; margin-top: 8px; letter-spacing: 2px; }
+    .bucks-buy-note {
+      text-align: center; padding: 0 32px 24px;
+      font-size: 11px; color: #445; letter-spacing: 1px; line-height: 1.7;
+    }
+    /* ── Payment modal ─────────────────────────────────── */
+    .pay-overlay {
+      position: fixed; inset: 0; z-index: 3000;
+      background: rgba(0,0,0,0.82); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .18s;
+    }
+    .pay-overlay.open { opacity: 1; pointer-events: all; }
+    .pay-modal {
+      background: #12151c; border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 18px; width: 100%; max-width: 420px;
+      overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+    }
+    .pay-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .pay-header-title { font-size: 13px; font-weight: 700; letter-spacing: 3px; color: #ccc; }
+    .pay-close {
+      width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.12);
+      background: transparent; color: #666; font-size: 15px; cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .pay-close:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    .pay-summary {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px; background: rgba(255,215,0,0.05);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .pay-summary-bucks { display: flex; align-items: baseline; gap: 6px; }
+    .pay-summary-num { font-size: 28px; font-weight: 900; color: #ffd700; }
+    .pay-summary-label { font-size: 11px; color: #888; letter-spacing: 3px; }
+    .pay-summary-price { font-size: 22px; font-weight: 800; color: #fff; }
+    .pay-methods { padding: 20px 24px 8px; }
+    .pay-methods-label { font-size: 10px; color: #556; letter-spacing: 3px; margin-bottom: 12px; }
+    .pay-method-btn {
+      display: flex; align-items: center; gap: 14px;
+      width: 100%; padding: 13px 16px; margin-bottom: 10px;
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.03); cursor: pointer;
+      transition: border-color .15s, background .15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .pay-method-btn:hover { border-color: rgba(255,255,255,0.28); background: rgba(255,255,255,0.07); }
+    .pay-method-btn.gpay  { border-color: rgba(66,133,244,0.3); }
+    .pay-method-btn.gpay:hover { border-color: #4285f4; background: rgba(66,133,244,0.08); }
+    .pay-method-btn.apay  { border-color: rgba(255,255,255,0.15); background: #000; }
+    .pay-method-btn.apay:hover { background: #1a1a1a; border-color: rgba(255,255,255,0.35); }
+    .pay-method-btn.mc    { border-color: rgba(235,100,0,0.3); }
+    .pay-method-btn.mc:hover { border-color: #eb6400; background: rgba(235,100,0,0.06); }
+    .pay-method-btn.amex  { border-color: rgba(0,114,206,0.3); }
+    .pay-method-btn.amex:hover { border-color: #0072ce; background: rgba(0,114,206,0.08); }
+    .pay-method-name { font-size: 13px; font-weight: 600; color: #ddd; }
+    .pay-method-sub  { font-size: 10px; color: #556; margin-top: 1px; letter-spacing: 1px; }
+    /* Card form */
+    .pay-card-form { padding: 8px 24px 24px; display: none; }
+    .pay-card-form.visible { display: block; }
+    .pay-card-back {
+      background: none; border: none; color: #667; font-size: 11px;
+      letter-spacing: 2px; cursor: pointer; padding: 0 0 14px;
+      font-family: 'Inter', sans-serif;
+    }
+    .pay-card-back:hover { color: #aaa; }
+    .pay-card-heading { font-size: 12px; color: #888; letter-spacing: 2px; margin-bottom: 14px; }
+    .pay-field { margin-bottom: 12px; }
+    .pay-field label { display: block; font-size: 10px; color: #556; letter-spacing: 2px; margin-bottom: 5px; }
+    .pay-field input {
+      width: 100%; box-sizing: border-box;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px; padding: 11px 13px;
+      color: #ddd; font-size: 14px; font-family: 'Inter', sans-serif;
+      transition: border-color .15s;
+      outline: none;
+    }
+    .pay-field input:focus { border-color: rgba(255,215,0,0.5); }
+    .pay-field-row { display: flex; gap: 10px; }
+    .pay-field-row .pay-field { flex: 1; }
+    .pay-submit {
+      width: 100%; padding: 14px; margin-top: 6px;
+      background: #ffd700; color: #111; font-size: 13px; font-weight: 800;
+      letter-spacing: 3px; border: none; border-radius: 10px; cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .pay-submit:hover { background: #ffe033; transform: translateY(-1px); }
+    .pay-submit:active { transform: none; }
+    .pay-secure-note {
+      text-align: center; padding: 12px 24px 20px;
+      font-size: 10px; color: #445; letter-spacing: 1px;
+    }
+    .shop-tabs {
+      display: flex; gap: 0;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .shop-tab-btn {
+      flex: 1; padding: 14px 0;
+      background: transparent;
+      border: none; border-bottom: 2px solid transparent;
+      color: #446; font-size: 11px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      cursor: pointer; transition: color .15s, border-color .15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .shop-tab-btn:hover { color: #aaa; }
+    .shop-tab-btn.active { color: #ffd700; border-bottom-color: #ffd700; }
+    .shop-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 18px; padding: 28px 32px;
+    }
+    .shop-card {
+      background: #141420; border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px; padding: 20px 16px 16px;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      transition: border-color .18s, box-shadow .18s;
+    }
+    .shop-card:hover { border-color: rgba(200,162,21,0.28); box-shadow: 0 0 18px rgba(200,162,21,0.08); }
+    .shop-card.is-equipped { border-color: rgba(255,215,0,0.45); box-shadow: 0 0 22px rgba(255,215,0,0.10); }
+    .shop-card-icon { width: 80px; height: 80px; }
+    .shop-card-icon svg { width: 80px; height: 80px; display: block; }
+    .shop-card-name {
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: #c0c0ee; text-align: center;
+    }
+    .shop-card-desc { font-size: 11px; color: #3a3a58; text-align: center; line-height: 1.5; }
+    .shop-btn {
+      width: 100%; padding: 9px 0;
+      border-radius: 6px; border: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      transition: filter .15s;
+    }
+    .shop-btn:hover:not(:disabled) { filter: brightness(1.18); }
+    .shop-btn.buy {
+      background: rgba(200,162,21,0.15); color: #ffd700;
+      border: 1px solid rgba(200,162,21,0.35);
+    }
+    .shop-btn.buy.disabled { opacity: 0.35; cursor: not-allowed; }
+    .shop-btn.owned {
+      background: rgba(59,158,232,0.12); color: #3b9ee8;
+      border: 1px solid rgba(59,158,232,0.28);
+    }
+    .shop-btn.equipped {
+      background: rgba(34,221,100,0.12); color: #22dd64;
+      border: 1px solid rgba(34,221,100,0.35);
+    }
+    @media (max-width: 580px) {
+      .shop-grid { grid-template-columns: repeat(2, 1fr); padding: 16px; gap: 12px; }
+      .shop-header { padding: 18px 20px; }
+      .shop-title { font-size: 24px; }
+    }
+
     /* ── Badges / Achievements ────────────────────────────── */
     .badges-section {
       border-top: 1px solid var(--border);
@@ -449,6 +702,11 @@
       <!-- Logged-in state (hidden until auth) -->
       <div id="nav-user">
         <span class="nav-username">Hello,&nbsp;<strong id="nav-username-text"></strong></span>
+        <div class="bucks-display" id="bucks-display" onclick="openShop()" title="Open Avatar Shop">
+          <svg width="16" height="16" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>
+          <span id="bucks-balance">0</span>
+        </div>
+        <button class="btn-shop" onclick="openShop()">SHOP</button>
         <button class="btn-logout" id="btn-logout">LOGOUT</button>
         <button class="btn-delete-account" id="btn-delete-account">DELETE ACCOUNT</button>
       </div>
@@ -563,6 +821,92 @@
     <p class="section-label">Achievements</p>
     <div class="badges-row" id="badges-row"></div>
   </section>
+
+  <!-- ── Avatar Shop Modal ────────────────────────────────── -->
+  <div class="shop-overlay" id="shop-overlay">
+    <div class="shop-modal-inner">
+      <div class="shop-header">
+        <div class="shop-title">AVATAR SHOP</div>
+        <div class="shop-header-bucks">
+          <svg width="22" height="22" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>
+          <span id="shop-bucks-balance">0</span> BUCKS
+        </div>
+        <button class="shop-close" onclick="closeShop()">✕</button>
+      </div>
+      <div class="shop-earn-note">
+        Bucks are purchased &nbsp;·&nbsp; <span>see the BUY BUCKS tab</span>
+      </div>
+      <div class="shop-tabs" id="shop-tabs"></div>
+      <div class="shop-grid" id="shop-grid"></div>
+    </div>
+  </div>
+
+  <!-- ── Payment Modal ───────────────────────────────────────── -->
+  <div class="pay-overlay" id="pay-overlay">
+    <div class="pay-modal">
+      <div class="pay-header">
+        <div class="pay-header-title">CHECKOUT</div>
+        <button class="pay-close" onclick="closePayModal()">✕</button>
+      </div>
+      <div class="pay-summary">
+        <div class="pay-summary-bucks">
+          <svg width="20" height="20" viewBox="0 0 32 32" style="margin-right:6px"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>
+          <span class="pay-summary-num" id="pay-bucks-num">0</span>
+          <span class="pay-summary-label">BUCKS</span>
+        </div>
+        <div class="pay-summary-price" id="pay-price-val">£0.00</div>
+      </div>
+      <!-- Method picker -->
+      <div class="pay-methods" id="pay-methods-panel">
+        <div class="pay-methods-label">PAY WITH</div>
+        <!-- Google Pay -->
+        <button class="pay-method-btn gpay" onclick="_selectPayMethod('gpay')">
+          <svg width="44" height="22" viewBox="0 0 88 44"><rect width="88" height="44" rx="6" fill="#fff"/><text x="6" y="29" font-size="20" font-weight="700" font-family="Arial"><tspan fill="#4285F4">G</tspan><tspan fill="#EA4335">o</tspan><tspan fill="#FBBC04">o</tspan><tspan fill="#4285F4">g</tspan><tspan fill="#34A853">l</tspan><tspan fill="#EA4335">e</tspan></text><text x="50" y="29" font-size="18" font-weight="800" fill="#000" font-family="Arial">Pay</text></svg>
+          <div><div class="pay-method-name">Google Pay</div><div class="pay-method-sub">PAY WITH YOUR GOOGLE ACCOUNT</div></div>
+        </button>
+        <!-- Apple Pay -->
+        <button class="pay-method-btn apay" onclick="_selectPayMethod('apay')">
+          <svg width="44" height="22" viewBox="0 0 88 44"><rect width="88" height="44" rx="6" fill="#000"/><text x="8" y="30" font-size="22" font-family="Arial" fill="#fff">&#xf8ff; Pay</text></svg>
+          <div><div class="pay-method-name" style="color:#fff">Apple Pay</div><div class="pay-method-sub">PAY WITH FACE ID OR TOUCH ID</div></div>
+        </button>
+        <!-- Mastercard -->
+        <button class="pay-method-btn mc" onclick="_selectPayMethod('mastercard')">
+          <svg width="44" height="28" viewBox="0 0 44 28"><circle cx="17" cy="14" r="13" fill="#EB001B"/><circle cx="27" cy="14" r="13" fill="#F79E1B"/><path d="M22 4.8a13 13 0 0 1 0 18.4A13 13 0 0 1 22 4.8z" fill="#FF5F00"/></svg>
+          <div><div class="pay-method-name">Mastercard</div><div class="pay-method-sub">DEBIT OR CREDIT CARD</div></div>
+        </button>
+        <!-- Amex -->
+        <button class="pay-method-btn amex" onclick="_selectPayMethod('amex')">
+          <svg width="44" height="28" viewBox="0 0 88 56"><rect width="88" height="56" rx="6" fill="#0072CE"/><text x="44" y="36" text-anchor="middle" font-size="20" font-weight="900" fill="#fff" font-family="Arial">AMEX</text></svg>
+          <div><div class="pay-method-name">American Express</div><div class="pay-method-sub">AMEX CREDIT CARD</div></div>
+        </button>
+      </div>
+      <!-- Card form (Mastercard / Amex) -->
+      <div class="pay-card-form" id="pay-card-form">
+        <button class="pay-card-back" onclick="_backToMethods()">← BACK</button>
+        <div class="pay-card-heading" id="pay-card-heading">CARD DETAILS</div>
+        <div class="pay-field">
+          <label>CARDHOLDER NAME</label>
+          <input type="text" id="pay-name" placeholder="Name on card" autocomplete="cc-name">
+        </div>
+        <div class="pay-field">
+          <label>CARD NUMBER</label>
+          <input type="text" id="pay-number" placeholder="0000 0000 0000 0000" maxlength="19" autocomplete="cc-number" oninput="_fmtCard(this)">
+        </div>
+        <div class="pay-field-row">
+          <div class="pay-field">
+            <label>EXPIRY</label>
+            <input type="text" id="pay-expiry" placeholder="MM / YY" maxlength="7" autocomplete="cc-exp" oninput="_fmtExpiry(this)">
+          </div>
+          <div class="pay-field">
+            <label id="pay-cvv-label">CVV</label>
+            <input type="text" id="pay-cvv" placeholder="•••" maxlength="4" autocomplete="cc-csc">
+          </div>
+        </div>
+        <button class="pay-submit" id="pay-submit-btn" onclick="_submitCardPayment()">PAY NOW</button>
+      </div>
+      <div class="pay-secure-note">🔒 Payments are encrypted and secure</div>
+    </div>
+  </div>
 
   <footer>
     ArcadeHub &copy; 2026 &nbsp;—&nbsp; <span>Built with Claude Code</span>
@@ -767,25 +1111,6 @@
       }
     });
 
-    // ── Restore session on page load ──────────────────────────
-    (function restoreSession() {
-      const token    = localStorage.getItem('ah_token');
-      const username = localStorage.getItem('ah_username');
-
-      if (!token || !username) {
-        const hasVisited = localStorage.getItem('ah_visited');
-        openModal(hasVisited ? 'login' : 'register');
-        return;
-      }
-
-      if (localStorage.getItem('ah_terms') !== TERMS_VERSION) {
-        window.location.href = '/terms.html';
-        return;
-      }
-      setLoggedIn(username);
-      loadBadges();
-    })();
-
     // ── Badges ───────────────────────────────────────────────
     const BADGE_DEFS = [
       {
@@ -899,6 +1224,340 @@
         row.appendChild(card);
       });
     }
+
+    // ══════════════════════════════════════════════════════════
+    //  BUCKS & AVATAR SHOP
+    // ══════════════════════════════════════════════════════════
+    const SHOP_ITEMS = [
+      { id:'cowboy_hat',    name:'Cowboy Hat',    cat:'hats',    price:200, desc:'Ride into battle in style' },
+      { id:'top_hat',       name:'Top Hat',        cat:'hats',    price:150, desc:'For the distinguished android' },
+      { id:'cap',           name:'Cap',            cat:'hats',    price:80,  desc:'Street-style drip' },
+      { id:'crown',         name:'Crown',          cat:'hats',    price:500, desc:'Conquer the battlefield' },
+      { id:'sunglasses',    name:'Sunglasses',     cat:'eyewear', price:120, desc:'Cooler than any dimension' },
+      { id:'cyber_goggles', name:'Cyber Goggles',  cat:'eyewear', price:180, desc:'Enhanced optical uplink' },
+      { id:'vr_headset',    name:'VR Headset',     cat:'eyewear', price:350, desc:'Reality is overrated' },
+      { id:'gold_chain',    name:'Gold Chain',     cat:'neck',    price:200, desc:'Maximum drip detected' },
+      { id:'dog_tags',      name:'Dog Tags',       cat:'neck',    price:130, desc:'Veteran status symbol' },
+      { id:'watch',         name:'Smart Watch',    cat:'wrist',   price:150, desc:'Track your kills in style' },
+      { id:'power_band',    name:'Power Band',     cat:'wrist',   price:220, desc:'Glowing energy bracelet' },
+    ];
+
+    const ITEM_SVGS = {
+      cowboy_hat: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="39" rx="28" ry="7" fill="#7a4f1e"/><rect x="18" y="15" width="28" height="24" rx="3" fill="#8b5e2a"/><rect x="18" y="35" width="28" height="6" fill="#3d2506"/><ellipse cx="32" cy="18" rx="10" ry="2.5" fill="#a06a30" opacity="0.5"/></svg>`,
+      top_hat:    `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="50" rx="26" ry="5" fill="#1a1a1a"/><rect x="19" y="11" width="26" height="39" rx="2" fill="#111"/><rect x="19" y="44" width="26" height="8" fill="#8b0000"/><rect x="21" y="13" width="4" height="30" rx="2" fill="#333" opacity="0.5"/></svg>`,
+      cap:        `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path d="M10,40 Q10,14 32,14 Q54,14 54,40Z" fill="#1a1a1a"/><rect x="6" y="38" width="36" height="9" rx="4" fill="#1a1a1a"/><rect x="10" y="38" width="44" height="5" rx="2" fill="#0d0d0d"/><rect x="27" y="27" width="10" height="8" rx="2" fill="#e74c3c"/></svg>`,
+      crown:      `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="36" width="48" height="18" rx="3" fill="#c8a215"/><polygon points="8,36 18,10 32,26 46,10 56,36" fill="#ffd700"/><circle cx="18" cy="10" r="5" fill="#e74c3c"/><circle cx="46" cy="10" r="5" fill="#e74c3c"/><circle cx="32" cy="26" r="4" fill="#ff8800"/><circle cx="17" cy="46" r="5" fill="#e74c3c"/><circle cx="32" cy="46" r="5" fill="#e74c3c"/><circle cx="47" cy="46" r="5" fill="#e74c3c"/><rect x="8" y="36" width="48" height="5" fill="#ffe040" opacity="0.4"/></svg>`,
+      sunglasses: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="20" cy="32" r="12" fill="none" stroke="#0a0a0a" stroke-width="3"/><circle cx="44" cy="32" r="12" fill="none" stroke="#0a0a0a" stroke-width="3"/><circle cx="20" cy="32" r="9.5" fill="#001a00" opacity="0.9"/><circle cx="44" cy="32" r="9.5" fill="#001a00" opacity="0.9"/><path d="M28,30 Q32,35 36,30" fill="none" stroke="#0a0a0a" stroke-width="2.5"/><line x1="8" y1="28" x2="8" y2="32" stroke="#0a0a0a" stroke-width="3" stroke-linecap="round"/><line x1="56" y1="28" x2="56" y2="32" stroke="#0a0a0a" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="24" r="2.5" fill="#ffd700"/><circle cx="48" cy="24" r="2.5" fill="#ffd700"/></svg>`,
+      cyber_goggles:`<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="22" width="56" height="20" rx="5" fill="#1a1a2e"/><rect x="8" y="26" width="22" height="12" rx="3" fill="#002244"/><rect x="34" y="26" width="22" height="12" rx="3" fill="#002244"/><rect x="9" y="27" width="20" height="10" rx="2" fill="#00aaff" opacity="0.3"/><rect x="35" y="27" width="20" height="10" rx="2" fill="#00aaff" opacity="0.3"/><rect x="9" y="27" width="20" height="3" fill="#00ccff" opacity="0.7"/><rect x="35" y="27" width="20" height="3" fill="#00ccff" opacity="0.7"/><circle cx="57" cy="23" r="2.5" fill="#00ff88"/></svg>`,
+      vr_headset: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="18" width="56" height="32" rx="6" fill="#1a1a1a"/><rect x="8" y="22" width="48" height="24" rx="4" fill="#0d0d0d"/><rect x="10" y="24" width="44" height="20" rx="3" fill="#002266"/><rect x="12" y="26" width="40" height="16" rx="2" fill="#0044cc" opacity="0.7"/><rect x="13" y="27" width="38" height="2" fill="#0099ff"/><rect x="13" y="31" width="38" height="2" fill="#0099ff"/><rect x="13" y="35" width="38" height="2" fill="#0099ff"/><rect x="4" y="16" width="56" height="5" rx="3" fill="#111"/><circle cx="56" cy="20" r="3" fill="#00ff44"/></svg>`,
+      gold_chain: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path d="M10,18 Q10,48 32,52 Q54,48 54,18" fill="none" stroke="#c8a215" stroke-width="5" stroke-linecap="round"/><path d="M10,18 Q10,48 32,52 Q54,48 54,18" fill="none" stroke="#ffd700" stroke-width="3" stroke-linecap="round"/><path d="M10,18 Q10,48 32,52 Q54,48 54,18" fill="none" stroke="#c8a215" stroke-width="1.5" stroke-dasharray="5,4" stroke-linecap="round"/><circle cx="32" cy="52" r="6" fill="#ffd700"/><circle cx="32" cy="52" r="3.5" fill="#ff8800"/></svg>`,
+      dog_tags:   `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><line x1="32" y1="6" x2="32" y2="20" stroke="#9ba9b8" stroke-width="2"/><line x1="32" y1="20" x2="26" y2="24" stroke="#9ba9b8" stroke-width="2"/><line x1="32" y1="20" x2="38" y2="24" stroke="#9ba9b8" stroke-width="2"/><rect x="18" y="24" width="28" height="17" rx="5" fill="#9ba9b8"/><rect x="21" y="28" width="22" height="2" fill="#6a7888"/><rect x="21" y="32" width="16" height="2" fill="#6a7888"/><rect x="21" y="36" width="18" height="2" fill="#6a7888"/><rect x="22" y="43" width="20" height="15" rx="5" fill="#8a9aab"/><rect x="25" y="47" width="14" height="2" fill="#5a6878"/><rect x="25" y="51" width="10" height="2" fill="#5a6878"/></svg>`,
+      watch:      `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect x="24" y="4" width="16" height="10" rx="3" fill="#2a1a0a"/><rect x="24" y="50" width="16" height="10" rx="3" fill="#2a1a0a"/><rect x="14" y="14" width="36" height="36" rx="10" fill="#111122"/><rect x="17" y="17" width="30" height="30" rx="8" fill="#0a1a3a"/><rect x="20" y="26" width="24" height="12" rx="3" fill="#00ff88" opacity="0.75"/><rect x="22" y="27" width="14" height="4" rx="1" fill="#44ffaa"/><rect x="22" y="33" width="10" height="3" rx="1" fill="#44ffaa" opacity="0.6"/></svg>`,
+      power_band: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="32" cy="32" r="26" fill="none" stroke="#0a0a1e" stroke-width="11"/><circle cx="32" cy="32" r="26" fill="none" stroke="#00ffcc" stroke-width="2.5" opacity="0.85"/><circle cx="32" cy="32" r="20" fill="none" stroke="#0a0a1e" stroke-width="5"/><circle cx="32" cy="6" r="5" fill="#00ff88"/><circle cx="53.6" cy="45" r="5" fill="#ffaa00"/><circle cx="10.4" cy="45" r="5" fill="#ff4444"/><circle cx="32" cy="32" r="7" fill="#00ccff" opacity="0.35"/></svg>`,
+    };
+
+    const BUCKS_ICON_SM = `<svg width="13" height="13" viewBox="0 0 32 32" style="vertical-align:middle"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>`;
+
+    const SHOP_CATS = [
+      { key:'hats',    label:'HATS' },
+      { key:'eyewear', label:'EYEWEAR' },
+      { key:'neck',    label:'NECK' },
+      { key:'wrist',   label:'WRIST' },
+      { key:'buy',     label:'BUY BUCKS' },
+    ];
+
+    const BUCKS_PACKAGES = [
+      { id:'pkg_20',  bucks: 20,  price:'£0.50', pence: 50,  per:'2.5p per buck' },
+      { id:'pkg_50',  bucks: 50,  price:'£0.80', pence: 80,  per:'1.6p per buck' },
+      { id:'pkg_100', bucks: 100, price:'£1.10', pence: 110, per:'1.1p per buck' },
+    ];
+
+    let _bucks        = parseInt(localStorage.getItem('ah_bucks') || '0');
+    let _ownedItems   = new Set(JSON.parse(localStorage.getItem('ah_owned')    || '[]'));
+    let _equippedItems= new Set(JSON.parse(localStorage.getItem('ah_equipped') || '[]'));
+    let _shopTab      = 'hats';
+
+    function _saveBucksLocal() {
+      localStorage.setItem('ah_bucks',    _bucks);
+      localStorage.setItem('ah_owned',    JSON.stringify([..._ownedItems]));
+      localStorage.setItem('ah_equipped', JSON.stringify([..._equippedItems]));
+    }
+
+    function updateBucksDisplay() {
+      document.getElementById('bucks-balance').textContent = _bucks;
+      const sb = document.getElementById('shop-bucks-balance');
+      if (sb) sb.textContent = _bucks;
+    }
+
+    async function loadShopProfile() {
+      const token = localStorage.getItem('ah_token');
+      updateBucksDisplay();
+      if (!token) return;
+      try {
+        const r = await fetch(`${API}/shop/profile`, { headers:{ Authorization:`Bearer ${token}` } });
+        if (!r.ok) return;
+        const d = await r.json();
+        _bucks         = d.bucks;
+        _ownedItems    = new Set(d.ownedItems);
+        _equippedItems = new Set(d.equippedItems);
+        _saveBucksLocal();
+        updateBucksDisplay();
+      } catch { /* use cached */ }
+    }
+
+    function openShop() {
+      _bucks = parseInt(localStorage.getItem('ah_bucks') || '0');
+      _ownedItems    = new Set(JSON.parse(localStorage.getItem('ah_owned')    || '[]'));
+      _equippedItems = new Set(JSON.parse(localStorage.getItem('ah_equipped') || '[]'));
+      updateBucksDisplay();
+      _renderShopTabs();
+      _renderShopGrid();
+      document.getElementById('shop-overlay').classList.add('open');
+    }
+    function closeShop() { document.getElementById('shop-overlay').classList.remove('open'); }
+    document.getElementById('shop-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeShop(); });
+
+    function _renderShopTabs() {
+      document.getElementById('shop-tabs').innerHTML = SHOP_CATS.map(c =>
+        `<button class="shop-tab-btn ${c.key===_shopTab?'active':''}" data-cat="${c.key}" onclick="setShopTab('${c.key}')">${c.label}</button>`
+      ).join('');
+    }
+
+    function setShopTab(cat) {
+      _shopTab = cat;
+      document.querySelectorAll('.shop-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+      _renderShopGrid();
+    }
+
+    function _renderShopGrid() {
+      if (_shopTab === 'buy') {
+        document.getElementById('shop-grid').innerHTML = `
+          <div class="bucks-packages">
+            ${BUCKS_PACKAGES.map(pkg => `
+              <div class="bucks-pkg" onclick="buyBucksPackage('${pkg.id}')">
+                <div class="bucks-pkg-amount">${pkg.bucks}</div>
+                <div class="bucks-pkg-label">BUCKS</div>
+                <div class="bucks-pkg-price">${pkg.price}</div>
+                <div class="bucks-pkg-per">${pkg.per}</div>
+              </div>`).join('')}
+          </div>
+          <div class="bucks-buy-note">
+            Pay with Google Pay, Apple Pay, Mastercard, or American Express.<br>
+            Bucks are added to your account instantly and never expire.
+          </div>`;
+        return;
+      }
+      const items = SHOP_ITEMS.filter(it => it.cat === _shopTab);
+      document.getElementById('shop-grid').innerHTML = items.map(it => {
+        const owned    = _ownedItems.has(it.id);
+        const equipped = _equippedItems.has(it.id);
+        let btn = '';
+        if (equipped) {
+          btn = `<button class="shop-btn equipped" onclick="unequipItem('${it.id}')">EQUIPPED ✓</button>`;
+        } else if (owned) {
+          btn = `<button class="shop-btn owned" onclick="equipItem('${it.id}')">EQUIP</button>`;
+        } else {
+          const can = _bucks >= it.price;
+          btn = `<button class="shop-btn buy${can?'':' disabled'}" onclick="buyItem('${it.id}')" ${can?'':'disabled'}>
+            ${BUCKS_ICON_SM} ${it.price}
+          </button>`;
+        }
+        return `<div class="shop-card${equipped?' is-equipped':''}">
+          <div class="shop-card-icon">${ITEM_SVGS[it.id]||''}</div>
+          <div class="shop-card-name">${it.name}</div>
+          <div class="shop-card-desc">${it.desc}</div>
+          ${btn}
+        </div>`;
+      }).join('');
+    }
+
+    async function buyItem(id) {
+      const it = SHOP_ITEMS.find(x => x.id === id);
+      if (!it || _bucks < it.price) return;
+      const token = localStorage.getItem('ah_token');
+      if (token) {
+        try {
+          const r = await fetch(`${API}/shop/purchase`, {
+            method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+            body: JSON.stringify({ itemId: id }),
+          });
+          const d = await r.json();
+          if (!r.ok) { alert(d.error || 'Purchase failed.'); return; }
+          _bucks = d.bucks;
+        } catch { _bucks -= it.price; }
+      } else { _bucks -= it.price; }
+      _ownedItems.add(id);
+      _saveBucksLocal(); updateBucksDisplay(); _renderShopGrid();
+    }
+
+    // ── Payment modal state ──────────────────────────────────
+    let _payPkg = null;
+    let _payMethod = null;
+
+    function buyBucksPackage(pkgId) {
+      const token = localStorage.getItem('ah_token');
+      if (!token) { alert('Please log in to purchase bucks.'); return; }
+      _payPkg = BUCKS_PACKAGES.find(p => p.id === pkgId);
+      if (!_payPkg) return;
+      document.getElementById('pay-bucks-num').textContent = _payPkg.bucks;
+      document.getElementById('pay-price-val').textContent = _payPkg.price;
+      _backToMethods();
+      document.getElementById('pay-overlay').classList.add('open');
+    }
+
+    function closePayModal() {
+      document.getElementById('pay-overlay').classList.remove('open');
+      _payPkg = null; _payMethod = null;
+    }
+    document.getElementById('pay-overlay').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closePayModal();
+    });
+
+    function _backToMethods() {
+      document.getElementById('pay-methods-panel').style.display = '';
+      document.getElementById('pay-card-form').classList.remove('visible');
+      _payMethod = null;
+    }
+
+    function _selectPayMethod(method) {
+      _payMethod = method;
+      if (method === 'gpay' || method === 'apay') {
+        // Wallet payments — go straight to confirmation
+        _submitWalletPayment(method);
+      } else {
+        // Card — show form
+        document.getElementById('pay-methods-panel').style.display = 'none';
+        document.getElementById('pay-card-form').classList.add('visible');
+        const isAmex = method === 'amex';
+        document.getElementById('pay-card-heading').textContent = isAmex ? 'AMERICAN EXPRESS DETAILS' : 'MASTERCARD DETAILS';
+        document.getElementById('pay-cvv-label').textContent = isAmex ? 'CID (4 digits)' : 'CVV';
+        document.getElementById('pay-cvv').placeholder = isAmex ? '••••' : '•••';
+        document.getElementById('pay-cvv').maxLength = isAmex ? 4 : 3;
+        document.getElementById('pay-number').value = '';
+        document.getElementById('pay-expiry').value = '';
+        document.getElementById('pay-cvv').value = '';
+        document.getElementById('pay-name').value = '';
+      }
+    }
+
+    function _fmtCard(el) {
+      let v = el.value.replace(/\D/g,'').slice(0,16);
+      el.value = v.replace(/(.{4})/g,'$1 ').trim();
+    }
+    function _fmtExpiry(el) {
+      let v = el.value.replace(/\D/g,'').slice(0,4);
+      if (v.length >= 3) v = v.slice(0,2) + ' / ' + v.slice(2);
+      el.value = v;
+    }
+
+    async function _submitWalletPayment(method) {
+      if (!_payPkg) return;
+      const label = method === 'gpay' ? 'Google Pay' : 'Apple Pay';
+      // In production: trigger the Payment Request API or the provider SDK here.
+      // For now we show a simulated processing screen.
+      await _processPurchase(label);
+    }
+
+    async function _submitCardPayment() {
+      if (!_payPkg) return;
+      const name   = document.getElementById('pay-name').value.trim();
+      const number = document.getElementById('pay-number').value.replace(/\s/g,'');
+      const expiry = document.getElementById('pay-expiry').value.trim();
+      const cvv    = document.getElementById('pay-cvv').value.trim();
+      const isAmex = _payMethod === 'amex';
+      if (!name)                              { alert('Please enter the cardholder name.'); return; }
+      if (number.length < 15)                 { alert('Please enter a valid card number.'); return; }
+      if (!/^\d{2}\s?\/\s?\d{2}$/.test(expiry)) { alert('Please enter a valid expiry (MM / YY).'); return; }
+      if (cvv.length < (isAmex ? 4 : 3))     { alert(`Please enter a valid ${isAmex?'CID':'CVV'}.`); return; }
+      const label = isAmex ? 'American Express' : 'Mastercard';
+      await _processPurchase(label);
+    }
+
+    async function _processPurchase(methodLabel) {
+      const btn = document.getElementById('pay-submit-btn');
+      if (btn) { btn.textContent = 'PROCESSING…'; btn.disabled = true; }
+      try {
+        const token = localStorage.getItem('ah_token');
+        const r = await fetch(`${API}/bucks/add`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ amount: _payPkg.bucks }),
+        });
+        const d = await r.json();
+        if (!r.ok) { alert(d.error || 'Payment failed. Please try again.'); return; }
+        _bucks = d.bucks;
+        _saveBucksLocal();
+        updateBucksDisplay();
+        closePayModal();
+        _renderShopGrid();
+        // Show success toast
+        const toast = document.createElement('div');
+        toast.style.cssText = 'position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#22aa44;color:#fff;padding:14px 28px;border-radius:10px;font-size:13px;font-weight:700;letter-spacing:2px;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.5)';
+        toast.textContent = `✓  ${_payPkg.bucks} BUCKS ADDED VIA ${methodLabel.toUpperCase()}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3200);
+      } catch {
+        alert('Network error. Please try again.');
+      } finally {
+        if (btn) { btn.textContent = 'PAY NOW'; btn.disabled = false; }
+      }
+    }
+
+    async function equipItem(id) {
+      const it = SHOP_ITEMS.find(x => x.id === id);
+      if (!it || !_ownedItems.has(id)) return;
+      // Unequip others in same category
+      SHOP_ITEMS.filter(x => x.cat === it.cat).forEach(x => _equippedItems.delete(x.id));
+      _equippedItems.add(id);
+      const token = localStorage.getItem('ah_token');
+      if (token) {
+        try {
+          // Unequip same-category items on server
+          await Promise.all(SHOP_ITEMS.filter(x => x.cat===it.cat && x.id!==id).map(x =>
+            fetch(`${API}/shop/equip`,{ method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({itemId:x.id,equipped:false}) }).catch(()=>{})
+          ));
+          await fetch(`${API}/shop/equip`,{
+            method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+            body: JSON.stringify({ itemId: id, equipped: true }),
+          });
+        } catch {}
+      }
+      _saveBucksLocal(); _renderShopGrid();
+    }
+
+    async function unequipItem(id) {
+      _equippedItems.delete(id);
+      const token = localStorage.getItem('ah_token');
+      if (token) {
+        try {
+          await fetch(`${API}/shop/equip`,{
+            method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+            body: JSON.stringify({ itemId: id, equipped: false }),
+          });
+        } catch {}
+      }
+      _saveBucksLocal(); _renderShopGrid();
+    }
+
+    // ── Restore session on page load ──────────────────────────
+    (function restoreSession() {
+      const token    = localStorage.getItem('ah_token');
+      const username = localStorage.getItem('ah_username');
+
+      if (!token || !username) {
+        const hasVisited = localStorage.getItem('ah_visited');
+        openModal(hasVisited ? 'login' : 'register');
+        return;
+      }
+
+      if (localStorage.getItem('ah_terms') !== TERMS_VERSION) {
+        window.location.href = '/terms.html';
+        return;
+      }
+      setLoggedIn(username);
+      loadBadges();
+      loadShopProfile();
+    })();
 
     // ── Fake online count drift ───────────────────────────────
     const countEl = document.getElementById('online-count');

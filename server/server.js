@@ -97,7 +97,7 @@ async function start() {
   io.on('connection', socket => {
     const color = PLAYER_COLORS[players.size % PLAYER_COLORS.length];
 
-    socket.on('join', async ({ username }) => {
+    socket.on('join', async ({ username, equippedItems: clientEquipped }) => {
       const cleanName = (username || 'Guest').slice(0, 24);
 
       // Reject banned players immediately
@@ -108,9 +108,10 @@ async function start() {
         return;
       }
 
-      // Look up admin status from DB
+      // Look up admin status + equipped items from DB
       const userDoc = await usersCol.findOne({ username: cleanName });
-      const isAdmin = !!(userDoc && userDoc.isAdmin);
+      const isAdmin      = !!(userDoc && userDoc.isAdmin);
+      const equippedItems = (userDoc && userDoc.equippedItems) || clientEquipped || [];
 
       const player = {
         id: socket.id,
@@ -121,6 +122,7 @@ async function start() {
         pvpMode: true,
         health: 100,
         isAdmin,
+        equippedItems,
       };
       players.set(socket.id, player);
       socket.emit('currentPlayers', [...players.values()].filter(p => p.id !== socket.id));
@@ -396,6 +398,87 @@ async function start() {
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
       console.error('/api/badges/unlock error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── GET /api/shop/profile ───────────────────────────────────
+  app.get('/api/shop/profile', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { ObjectId } = require('mongodb');
+      const user = await usersCol.findOne(
+        { _id: new ObjectId(payload.userId) },
+        { projection: { bucks: 1, ownedItems: 1, equippedItems: 1 } }
+      );
+      if (!user) return res.status(404).json({ error: 'User not found.' });
+      res.json({ bucks: user.bucks || 0, ownedItems: user.ownedItems || [], equippedItems: user.equippedItems || [] });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      console.error('/api/shop/profile error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── POST /api/bucks/add ─────────────────────────────────────
+  app.post('/api/bucks/add', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const n = Math.max(0, Math.min(1000, parseInt(req.body.amount) || 0));
+      const { ObjectId } = require('mongodb');
+      const result = await usersCol.findOneAndUpdate(
+        { _id: new ObjectId(payload.userId) },
+        { $inc: { bucks: n } },
+        { returnDocument: 'after', projection: { bucks: 1 } }
+      );
+      res.json({ success: true, bucks: (result && result.bucks) || 0 });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── POST /api/shop/purchase ─────────────────────────────────
+  app.post('/api/shop/purchase', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { itemId } = req.body;
+      const PRICES = {
+        cowboy_hat:200, top_hat:150, cap:80, crown:500,
+        sunglasses:120, cyber_goggles:180, vr_headset:350,
+        gold_chain:200, dog_tags:130, watch:150, power_band:220,
+      };
+      if (!PRICES[itemId]) return res.status(400).json({ error: 'Invalid item.' });
+      const { ObjectId } = require('mongodb');
+      const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { bucks:1, ownedItems:1 } });
+      if (!user) return res.status(404).json({ error: 'User not found.' });
+      if ((user.ownedItems || []).includes(itemId)) return res.status(409).json({ error: 'Already owned.' });
+      if ((user.bucks || 0) < PRICES[itemId]) return res.status(402).json({ error: 'Not enough bucks.' });
+      await usersCol.updateOne(
+        { _id: new ObjectId(payload.userId) },
+        { $inc: { bucks: -PRICES[itemId] }, $addToSet: { ownedItems: itemId } }
+      );
+      res.json({ success: true, bucks: (user.bucks || 0) - PRICES[itemId] });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── POST /api/shop/equip ────────────────────────────────────
+  app.post('/api/shop/equip', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { itemId, equipped } = req.body;
+      const { ObjectId } = require('mongodb');
+      const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { ownedItems:1 } });
+      if (!user) return res.status(404).json({ error: 'User not found.' });
+      if (!(user.ownedItems || []).includes(itemId)) return res.status(403).json({ error: 'Item not owned.' });
+      const op = equipped ? { $addToSet: { equippedItems: itemId } } : { $pull: { equippedItems: itemId } };
+      await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, op);
+      res.json({ success: true });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
       res.status(500).json({ error: 'Server error.' });
     }
   });
