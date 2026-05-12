@@ -849,26 +849,30 @@
     // ── Register ─────────────────────────────────────────────
     document.getElementById('form-register').addEventListener('submit', async e => {
       e.preventDefault();
+      console.log('[REGISTER] Form submitted');
       const username = document.getElementById('reg-username').value.trim();
       const password = document.getElementById('reg-password').value;
       const btn = e.target.querySelector('.auth-submit');
+      console.log('[REGISTER] Username:', username, '| API:', API);
 
       clearMsg('reg-msg');
       btn.disabled = true;
 
       try {
+        console.log('[REGISTER] Sending POST to', `${API}/register`);
         const res  = await fetch(`${API}/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password }),
         });
         const data = await res.json();
+        console.log('[REGISTER] Response status:', res.status, '| data:', data);
 
         if (!res.ok) {
           showMsg('reg-msg', data.error, 'error');
           btn.disabled = false;
         } else {
-          // Auto-login then go to terms
+          console.log('[REGISTER] Success — auto-logging in');
           try {
             const loginRes  = await fetch(`${API}/login`, {
               method: 'POST',
@@ -876,24 +880,28 @@
               body: JSON.stringify({ username, password }),
             });
             const loginData = await loginRes.json();
+            console.log('[REGISTER] Auto-login status:', loginRes.status, '| data:', loginData);
             if (loginRes.ok) {
               localStorage.setItem('ah_token',    loginData.token);
               localStorage.setItem('ah_username', loginData.username);
               localStorage.setItem('isAdmin',     loginData.isAdmin ? 'true' : 'false');
               localStorage.setItem('ah_visited',  'true');
+              console.log('[REGISTER] Token saved, redirecting to /terms.html');
               window.location.href = '/terms.html';
             } else {
               showMsg('reg-msg', 'Account created! Please log in.', 'success');
               setTimeout(() => { clearMsg('reg-msg'); switchTab('login'); }, 1500);
               btn.disabled = false;
             }
-          } catch {
+          } catch(err) {
+            console.warn('[REGISTER] Auto-login network error:', err);
             showMsg('reg-msg', 'Account created! Please log in.', 'success');
             setTimeout(() => { clearMsg('reg-msg'); switchTab('login'); }, 1500);
             btn.disabled = false;
           }
         }
-      } catch {
+      } catch(err) {
+        console.error('[REGISTER] Network error:', err);
         showMsg('reg-msg', 'Could not reach server. Is it running on port 3001?', 'error');
         btn.disabled = false;
       }
@@ -902,43 +910,52 @@
     // ── Login ─────────────────────────────────────────────────
     document.getElementById('form-login').addEventListener('submit', async e => {
       e.preventDefault();
+      console.log('[LOGIN] Form submitted');
       const username = document.getElementById('login-username').value.trim();
       const password = document.getElementById('login-password').value;
       const btn = e.target.querySelector('.auth-submit');
+      console.log('[LOGIN] Username:', username, '| API:', API);
 
       clearMsg('login-msg');
       btn.disabled = true;
 
       try {
+        console.log('[LOGIN] Sending POST to', `${API}/login`);
         const res  = await fetch(`${API}/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password }),
         });
         const data = await res.json();
+        console.log('[LOGIN] Response status:', res.status, '| data:', data);
 
         if (!res.ok) {
           showMsg('login-msg', data.error, 'error');
         } else {
+          console.log('[LOGIN] Saving token & username to localStorage');
           localStorage.setItem('ah_token',    data.token);
           localStorage.setItem('ah_username', data.username);
           localStorage.setItem('isAdmin',     data.isAdmin ? 'true' : 'false');
           localStorage.setItem('ah_terms',    data.termsAccepted ? TERMS_VERSION : '0');
-          // Sync account-linked bucks immediately from login response
+          console.log('[LOGIN] Token saved:', !!localStorage.getItem('ah_token'));
           _bucks = data.bucks || 0;
           _ownedItems    = new Set(data.ownedItems    || []);
           _equippedItems = new Set(data.equippedItems || []);
           _saveBucksLocal();
           updateBucksDisplay();
           if (!data.termsAccepted) {
+            console.log('[LOGIN] Terms not accepted — redirecting to /terms.html');
             window.location.href = '/terms.html';
             return;
           }
+          console.log('[LOGIN] Closing modal and setting logged-in state');
           setLoggedIn(data.username);
           closeModal();
           loadBadges();
+          console.log('[LOGIN] Done');
         }
-      } catch {
+      } catch(err) {
+        console.error('[LOGIN] Network error:', err);
         showMsg('login-msg', 'Could not reach server. Is it running on port 3001?', 'error');
       } finally {
         btn.disabled = false;
@@ -1109,7 +1126,7 @@
       sunglasses:'Cooler than any dimension', goggles:'Enhanced optical uplink',
       vrset:'Reality is overrated', monocle:'Sophistication.exe', eyepatch:'Depth perception? Overrated',
       nerd:'Intelligence +99', pilot:'Cleared for takeoff', ski:'Downhill destroyer',
-      nightvision:'See in the dark', 3d:'Cinematic carnage',
+      nightvision:'See in the dark', '3d':'Cinematic carnage',
       chain:'Maximum drip detected', dogtags:'Veteran status symbol',
       bowtie:'Deadly and dapper', scarf:'Wrapped in mystery', tie:'Corporate assassin',
       pearls:'Elegance armed', choker:'Edge personified', bandana:'Outlaw aesthetic',
