@@ -970,6 +970,11 @@
     function setLoggedOut() {
       document.getElementById('btn-login').style.display = '';
       document.getElementById('nav-user').style.display = 'none';
+      const sec = document.getElementById('badges-section');
+      sec.style.display = 'none';
+      const row = document.getElementById('badges-row');
+      row.innerHTML = '';
+      delete row.dataset.renderKey;
       localStorage.removeItem('isAdmin');
       chatDisconnect();
     }
@@ -1312,7 +1317,11 @@
 
     function renderBadges(unlocked) {
       const row = document.getElementById('badges-row');
-      row.innerHTML = '';
+      const key = unlocked.slice().sort().join(',');
+      if (row.dataset.renderKey === key) return;
+      row.dataset.renderKey = key;
+
+      const frag = document.createDocumentFragment();
       BADGE_DEFS.forEach(def => {
         const isUnlocked = unlocked.includes(def.id);
 
@@ -1347,8 +1356,11 @@
           lbl.textContent = '✓ UNLOCKED';
           card.appendChild(lbl);
         }
-        row.appendChild(card);
+        frag.appendChild(card);
       });
+
+      row.innerHTML = '';
+      row.appendChild(frag);
     }
 
     // ══════════════════════════════════════════════════════════
