@@ -131,6 +131,7 @@ async function start() {
         pvpMode: true,
         health: 100,
         isAdmin,
+        isGuest: !userDoc,
         equippedItems,
       };
       players.set(socket.id, player);

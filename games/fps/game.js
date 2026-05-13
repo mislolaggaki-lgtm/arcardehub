@@ -1500,6 +1500,7 @@ function addRemotePlayer(data) {
     health,
     pvpMode:    pvpOn,
     isAdmin,
+    isGuest:    !!data.isGuest,
     gunId,
     inCoop:     false,
     remoteGun,
@@ -3284,15 +3285,17 @@ function _isStotch() {
 
 function showGiveBucksPanel() {
   if (!_isStotch() || !giveBucksPanel) return;
-  // Populate online players dropdown
+  // Populate online players dropdown — registered accounts only
   const sel = document.getElementById('gb-player-select');
   sel.innerHTML = '<option value="">— select online player —</option>';
-  [...remotePlayers.values()].forEach(rp => {
-    const opt = document.createElement('option');
-    opt.value = rp.username || '';
-    opt.textContent = rp.username || 'Player';
-    sel.appendChild(opt);
-  });
+  [...remotePlayers.values()]
+    .filter(rp => !rp.isGuest)
+    .forEach(rp => {
+      const opt = document.createElement('option');
+      opt.value = rp.username || '';
+      opt.textContent = rp.username || 'Player';
+      sel.appendChild(opt);
+    });
   // Sync dropdown → text input
   sel.onchange = () => {
     if (sel.value) document.getElementById('gb-player-input').value = sel.value;
