@@ -3108,6 +3108,54 @@ function initSocket() {
 
     // Sync initial PVP state with server on connect
     socket.emit('pvpMode', { enabled: pvpMode });
+
+    // Join chat (logged-in users only)
+    const _tok = localStorage.getItem('ah_token');
+    if (_tok) socket.emit('chatJoin', { token: _tok });
+  });
+
+  // ── Text chat ────────────────────────────────────────────────
+  socket.on('chatMsg', ({ username: sender, text }) => {
+    const isSelf = sender === localStorage.getItem('ah_username');
+    _fpsChatAppend(sender, text, isSelf);
+    // Speech bubble above remote player
+    if (!isSelf) {
+      for (const rp of remotePlayers.values()) {
+        if (rp.username === sender) { _showSpeechBubble(rp, text); break; }
+      }
+    }
+  });
+
+  // ── Voice signaling ──────────────────────────────────────────
+  socket.on('voiceExisting', async (users) => {
+    for (const { socketId, username: uname } of users) {
+      _fpsVoicePeerMap.set(socketId, uname);
+      await _fpsCreateOffer(socketId);
+    }
+  });
+  socket.on('voiceUserJoined', async ({ socketId, username: uname }) => {
+    _fpsVoicePeerMap.set(socketId, uname);
+    await _fpsCreateOffer(socketId);
+  });
+  socket.on('voiceUserLeft', ({ socketId }) => {
+    _fpsVoicePeerMap.delete(socketId);
+    _fpsClosePeer(socketId);
+  });
+  socket.on('voiceOffer', async ({ fromId, offer }) => {
+    const pc = _fpsGetOrCreatePeer(fromId);
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    if (_fpsLocalStream) _fpsLocalStream.getTracks().forEach(t => pc.addTrack(t, _fpsLocalStream));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.emit('voiceAnswer', { targetId: fromId, answer });
+  });
+  socket.on('voiceAnswer', async ({ fromId, answer }) => {
+    const pc = _fpsPeers.get(fromId);
+    if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
+  });
+  socket.on('voiceIce', async ({ fromId, candidate }) => {
+    const pc = _fpsPeers.get(fromId);
+    if (pc && candidate) { try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch {} }
   });
 
   // Populate existing players when we first join
@@ -3273,6 +3321,235 @@ function initSocket() {
     if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
     remotePlayers.forEach((_, id) => removeRemotePlayer(id));
   });
+}
+
+// ════════════════════════════════════════════════════════════
+// CHAT + VOICE (FPS)
+// ════════════════════════════════════════════════════════════
+
+// ── Show/hide chat & mic based on login state ────────────────
+(function() {
+  const token = localStorage.getItem('ah_token');
+  if (token) {
+    const micBtn  = document.getElementById('voice-mic-btn');
+    const chatBtn = document.getElementById('chat-toggle-btn');
+    if (micBtn)  micBtn.style.display  = 'flex';
+    if (chatBtn) chatBtn.style.display = 'flex';
+  }
+})();
+
+// ── Speech bubble above remote player ────────────────────────
+function _showSpeechBubble(rp, text) {
+  if (rp.speechBubble) {
+    rp.group.remove(rp.speechBubble);
+    rp.speechBubble.material.map.dispose();
+    rp.speechBubble.material.dispose();
+    rp.speechBubble = null;
+    if (rp._sbTimer) clearTimeout(rp._sbTimer);
+  }
+  const W = 320, H = 72;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const cx = cv.getContext('2d');
+
+  // White rounded bubble
+  cx.beginPath();
+  const r = 14;
+  cx.moveTo(r, 4); cx.lineTo(W-r, 4);
+  cx.quadraticCurveTo(W-4, 4, W-4, 4+r);
+  cx.lineTo(W-4, H-20-r);
+  cx.quadraticCurveTo(W-4, H-20, W-4-r, H-20);
+  cx.lineTo(W/2+10, H-20);
+  cx.lineTo(W/2, H-4);          // tail point
+  cx.lineTo(W/2-10, H-20);
+  cx.lineTo(r, H-20);
+  cx.quadraticCurveTo(4, H-20, 4, H-20-r);
+  cx.lineTo(4, 4+r);
+  cx.quadraticCurveTo(4, 4, r, 4);
+  cx.closePath();
+  cx.fillStyle   = 'rgba(255,255,255,0.96)';
+  cx.shadowColor = 'rgba(0,0,0,0.4)';
+  cx.shadowBlur  = 8;
+  cx.fill();
+
+  // Black text (truncate if long)
+  cx.shadowBlur = 0;
+  cx.fillStyle  = '#111';
+  cx.font       = 'bold 18px Inter,Arial,sans-serif';
+  cx.textAlign  = 'center';
+  cx.textBaseline = 'middle';
+  const maxLen = 36;
+  const label = text.length > maxLen ? text.slice(0, maxLen-1) + '…' : text;
+  cx.fillText(label, W/2, (H-20)/2 + 4);
+
+  const tex = new THREE.CanvasTexture(cv);
+  const sp  = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  sp.scale.set(2.2, 0.50, 1);
+  sp.position.set(0, 3.05, 0);  // above the name label
+  rp.group.add(sp);
+  rp.speechBubble = sp;
+  rp._sbTimer = setTimeout(() => {
+    if (rp.speechBubble === sp) {
+      rp.group.remove(sp);
+      sp.material.map.dispose();
+      sp.material.dispose();
+      rp.speechBubble = null;
+    }
+  }, 5000);
+}
+
+// ── Chat UI ───────────────────────────────────────────────────
+let _fpsChatOpen  = false;
+let _fpsUnread    = 0;
+
+function fpsChatToggle() {
+  _fpsChatOpen = !_fpsChatOpen;
+  const panel = document.getElementById('fps-chat-panel');
+  if (panel) {
+    panel.style.display = _fpsChatOpen ? 'block' : 'none';
+    if (_fpsChatOpen) {
+      _fpsUnread = 0;
+      document.getElementById('chat-unread-dot').style.display = 'none';
+      const msgs = document.getElementById('fps-chat-msgs');
+      if (msgs) msgs.scrollTop = msgs.scrollHeight;
+      // Focus input but don't capture pointer lock events
+      setTimeout(() => {
+        const inp = document.getElementById('fps-chat-input');
+        if (inp) inp.focus();
+      }, 50);
+    }
+  }
+}
+
+function fpsChatSend() {
+  if (!socket) return;
+  const inp = document.getElementById('fps-chat-input');
+  if (!inp) return;
+  const text = inp.value.trim();
+  if (!text) return;
+  socket.emit('chatMsg', { text });
+  inp.value = '';
+}
+
+function _fpsChatAppend(sender, text, isSelf, isSystem) {
+  const box = document.getElementById('fps-chat-msgs');
+  if (!box) return;
+  const line = document.createElement('div');
+  if (isSystem) {
+    line.className = 'fps-chat-line sys';
+    line.textContent = text;
+  } else {
+    line.className = 'fps-chat-line msg' + (isSelf ? ' self' : '');
+    line.innerHTML = `<span class="fps-chat-user">${_esc(sender)}:</span><span class="fps-chat-text"> ${_esc(text)}</span>`;
+  }
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+
+  if (!_fpsChatOpen && !isSystem) {
+    _fpsUnread++;
+    const dot = document.getElementById('chat-unread-dot');
+    if (dot) dot.style.display = 'block';
+  }
+  // Prune old messages (keep last 120)
+  while (box.children.length > 120) box.removeChild(box.firstChild);
+}
+
+function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Patch pushKillFeed to also post system messages to chat ──
+const _origPushKillFeed = pushKillFeed;
+window.pushKillFeed = function(msg) {
+  _origPushKillFeed(msg);
+  _fpsChatAppend(null, msg, false, true);
+};
+
+// ── Voice chat (WebRTC) ───────────────────────────────────────
+let _fpsVoiceOn      = false;
+let _fpsLocalStream  = null;
+const _fpsPeers      = new Map();   // socketId → RTCPeerConnection
+const _fpsAudios     = new Map();   // socketId → Audio
+const _fpsVoicePeerMap = new Map(); // socketId → username
+
+const _FPS_RTC_CFG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+async function fpsVoiceToggle() {
+  if (_fpsVoiceOn) {
+    _fpsVoiceOff();
+  } else {
+    await _fpsVoiceOn_fn();
+  }
+}
+
+async function _fpsVoiceOn_fn() {
+  const token = localStorage.getItem('ah_token');
+  if (!token || !socket) return;
+  try {
+    _fpsLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch {
+    _fpsChatAppend(null, 'Microphone access denied.', false, true);
+    return;
+  }
+  _fpsVoiceOn = true;
+  _fpsUpdateMicBtn();
+  socket.emit('voiceJoin', { token });
+}
+
+function _fpsVoiceOff() {
+  _fpsVoiceOn = false;
+  if (socket) socket.emit('voiceLeave');
+  if (_fpsLocalStream) { _fpsLocalStream.getTracks().forEach(t => t.stop()); _fpsLocalStream = null; }
+  _fpsPeers.forEach((_, sid) => _fpsClosePeer(sid));
+  _fpsPeers.clear();
+  _fpsAudios.forEach(a => { a.pause(); a.srcObject = null; });
+  _fpsAudios.clear();
+  _fpsVoicePeerMap.clear();
+  _fpsUpdateMicBtn();
+}
+
+function _fpsUpdateMicBtn() {
+  const btn    = document.getElementById('voice-mic-btn');
+  const onIcon = document.getElementById('mic-on-icon');
+  const offIcon= document.getElementById('mic-off-icon');
+  if (!btn) return;
+  if (_fpsVoiceOn) {
+    btn.classList.remove('muted');
+    if (onIcon)  onIcon.style.display  = 'block';
+    if (offIcon) offIcon.style.display = 'none';
+    btn.title = 'Voice ON — click to turn off';
+  } else {
+    btn.classList.add('muted');
+    if (onIcon)  onIcon.style.display  = 'none';
+    if (offIcon) offIcon.style.display = 'block';
+    btn.title = 'Voice OFF — click to turn on';
+  }
+}
+
+function _fpsGetOrCreatePeer(targetId) {
+  if (_fpsPeers.has(targetId)) return _fpsPeers.get(targetId);
+  const pc = new RTCPeerConnection(_FPS_RTC_CFG);
+  _fpsPeers.set(targetId, pc);
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate && socket) socket.emit('voiceIce', { targetId, candidate });
+  };
+  pc.ontrack = ({ streams }) => {
+    let audio = _fpsAudios.get(targetId);
+    if (!audio) { audio = new Audio(); audio.autoplay = true; _fpsAudios.set(targetId, audio); }
+    audio.srcObject = streams[0];
+  };
+  return pc;
+}
+
+async function _fpsCreateOffer(targetId) {
+  const pc = _fpsGetOrCreatePeer(targetId);
+  if (_fpsLocalStream) _fpsLocalStream.getTracks().forEach(t => pc.addTrack(t, _fpsLocalStream));
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  if (socket) socket.emit('voiceOffer', { targetId, offer });
+}
+
+function _fpsClosePeer(sid) {
+  const pc = _fpsPeers.get(sid); if (pc) { pc.close(); _fpsPeers.delete(sid); }
+  const a  = _fpsAudios.get(sid); if (a)  { a.pause(); a.srcObject = null; _fpsAudios.delete(sid); }
 }
 
 // ── Give Bucks panel (Stotch only) ────────────────────────────

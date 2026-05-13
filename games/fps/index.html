@@ -170,6 +170,85 @@
     }
     #unban-no:hover { background: rgba(255,255,255,0.08); color: #aaaacc; }
 
+    /* ── Voice mic button (top-right) ──────────────────────── */
+    #voice-mic-btn {
+      display: none;
+      position: fixed; top: 18px; right: 165px; z-index: 400;
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(6,6,14,0.82);
+      border: 1.5px solid rgba(106,191,64,0.45);
+      cursor: pointer;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+      transition: border-color .15s, box-shadow .15s;
+      padding: 0; overflow: visible;
+    }
+    #voice-mic-btn:hover { border-color: rgba(106,191,64,0.8); box-shadow: 0 2px 16px rgba(106,191,64,.25); }
+    #voice-mic-btn.muted { border-color: rgba(231,76,60,0.45); }
+    #voice-mic-btn.muted:hover { border-color: rgba(231,76,60,0.8); }
+    #voice-mic-btn svg { display: block; margin: auto; }
+
+    /* ── Chat panel ─────────────────────────────────────────── */
+    #chat-toggle-btn {
+      display: none;
+      position: fixed; bottom: 24px; left: 24px; z-index: 400;
+      width: 42px; height: 42px; border-radius: 50%;
+      background: rgba(6,6,14,0.88);
+      border: 1.5px solid rgba(255,255,255,0.14);
+      cursor: pointer;
+      box-shadow: 0 2px 14px rgba(0,0,0,0.55);
+      transition: border-color .15s, transform .15s;
+      padding: 0;
+    }
+    #chat-toggle-btn:hover { border-color: rgba(100,180,255,0.5); transform: scale(1.07); }
+    #chat-unread-dot {
+      position: absolute; top: -3px; right: -3px;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #e74c3c; display: none;
+      border: 2px solid #06060e;
+    }
+    #fps-chat-panel {
+      display: none;
+      position: fixed; bottom: 76px; left: 24px; z-index: 400;
+      width: 300px;
+      background: rgba(6,6,14,0.92);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 36px rgba(0,0,0,0.7);
+      font-family: 'Inter','Segoe UI', sans-serif;
+    }
+    #fps-chat-msgs {
+      height: 200px; overflow-y: auto;
+      padding: 10px 12px; display: flex; flex-direction: column; gap: 4px;
+    }
+    #fps-chat-msgs::-webkit-scrollbar { width: 3px; }
+    #fps-chat-msgs::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+    .fps-chat-line { font-size: 11px; line-height: 1.45; word-break: break-word; }
+    .fps-chat-line.sys { color: #5a5a8a; font-style: italic; }
+    .fps-chat-line.msg .fps-chat-user { color: #7ec8ff; font-weight: 700; margin-right: 4px; }
+    .fps-chat-line.msg .fps-chat-text { color: #c0c0dd; }
+    .fps-chat-line.msg.self .fps-chat-user { color: #6abf40; }
+    #fps-chat-input-row {
+      display: flex; gap: 6px; padding: 8px 10px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+    }
+    #fps-chat-input {
+      flex: 1; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px; padding: 5px 12px;
+      color: #ddddf0; font-size: 11px; outline: none;
+      font-family: inherit;
+    }
+    #fps-chat-input:focus { border-color: rgba(59,158,232,.4); }
+    #fps-chat-input::placeholder { color: #333355; }
+    #fps-chat-send {
+      width: 28px; height: 28px; border-radius: 50%; border: none;
+      background: rgba(59,158,232,0.2); cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    #fps-chat-send:hover { background: rgba(59,158,232,0.4); }
+
     /* ── Give Bucks panel ──────────────────────────────────── */
     #give-bucks-panel {
       display: none;
@@ -371,6 +450,49 @@
           <button id="unban-no">CANCEL</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Voice mic toggle (top-right, logged-in only) -->
+  <button id="voice-mic-btn" title="Toggle voice chat" onclick="fpsVoiceToggle()">
+    <!-- ON: plain green mic -->
+    <svg id="mic-on-icon" viewBox="0 0 24 24" width="18" height="18" fill="none"
+         stroke="#6abf40" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="2" width="6" height="12" rx="3"/>
+      <path d="M5 10v2a7 7 0 0 0 14 0v-2"/>
+      <line x1="12" y1="19" x2="12" y2="22"/>
+    </svg>
+    <!-- OFF: green mic + red slash -->
+    <svg id="mic-off-icon" viewBox="0 0 24 24" width="18" height="18" fill="none"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+      <rect x="9" y="2" width="6" height="12" rx="3" stroke="#6abf40"/>
+      <path d="M5 10v2a7 7 0 0 0 14 0v-2" stroke="#6abf40"/>
+      <line x1="12" y1="19" x2="12" y2="22" stroke="#6abf40"/>
+      <line x1="3" y1="3" x2="21" y2="21" stroke="#e74c3c" stroke-width="2.5"/>
+    </svg>
+  </button>
+
+  <!-- Chat toggle button + panel (logged-in only) -->
+  <button id="chat-toggle-btn" title="Toggle chat" onclick="fpsChatToggle()">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+         stroke="rgba(180,180,220,0.8)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+    <span id="chat-unread-dot"></span>
+  </button>
+
+  <div id="fps-chat-panel">
+    <div id="fps-chat-msgs"></div>
+    <div id="fps-chat-input-row">
+      <input id="fps-chat-input" placeholder="Say something…" maxlength="200" autocomplete="off"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();fpsChatSend();}">
+      <button id="fps-chat-send" onclick="fpsChatSend()" title="Send">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="white"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
     </div>
   </div>
 
