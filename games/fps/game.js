@@ -2374,7 +2374,7 @@ if (touchPauseBtn) {
     if (tc) tc.style.display = 'none';
     hudEl.style.display = 'none';
     startScreen.style.display = 'flex';
-    hideBanPanel();
+    showBanPanel();
     showCoopPanel();
   });
 }
