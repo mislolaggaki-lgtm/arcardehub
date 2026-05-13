@@ -3466,6 +3466,7 @@ window.pushKillFeed = function(msg) {
 // ── Voice chat (WebRTC) ───────────────────────────────────────
 let _fpsVoiceOn      = false;
 let _fpsLocalStream  = null;
+let _fpsAudioCtx     = null;        // unlocked during mic-button gesture (iOS fix)
 const _fpsPeers      = new Map();   // socketId → RTCPeerConnection
 const _fpsAudios     = new Map();   // socketId → Audio
 const _fpsVoicePeerMap = new Map(); // socketId → username
@@ -3483,6 +3484,11 @@ async function fpsVoiceToggle() {
 async function _fpsVoiceOn_fn() {
   const token = localStorage.getItem('ah_token');
   if (!token || !socket) return;
+  // Unlock audio playback while we're inside a user-gesture handler (iOS Safari requirement)
+  try {
+    if (!_fpsAudioCtx) _fpsAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_fpsAudioCtx.state === 'suspended') await _fpsAudioCtx.resume();
+  } catch {}
   try {
     _fpsLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
   } catch {
@@ -3531,10 +3537,20 @@ function _fpsGetOrCreatePeer(targetId) {
   pc.onicecandidate = ({ candidate }) => {
     if (candidate && socket) socket.emit('voiceIce', { targetId, candidate });
   };
-  pc.ontrack = ({ streams }) => {
+  pc.ontrack = ({ track, streams }) => {
+    // Use the stream if provided, otherwise wrap the bare track in a new MediaStream
+    const stream = (streams && streams.length) ? streams[0] : new MediaStream([track]);
     let audio = _fpsAudios.get(targetId);
-    if (!audio) { audio = new Audio(); audio.autoplay = true; _fpsAudios.set(targetId, audio); }
-    audio.srcObject = streams[0];
+    if (!audio) {
+      audio = new Audio();
+      audio.autoplay   = true;
+      audio.playsInline = true;  // required for iOS
+      _fpsAudios.set(targetId, audio);
+    }
+    audio.srcObject = stream;
+    // Resume AudioContext if suspended, then explicitly trigger playback
+    if (_fpsAudioCtx && _fpsAudioCtx.state === 'suspended') _fpsAudioCtx.resume();
+    audio.play().catch(() => {});
   };
   return pc;
 }

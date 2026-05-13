@@ -378,6 +378,47 @@ body {
 }
 #touch-pause-btn:active { background: rgba(255,255,255,0.18); }
 
+/* ── Mobile responsive — push buttons above system nav bar ───── */
+@media (max-width: 900px) {
+  /* FIRE — lift above Android nav bar / iPhone home indicator */
+  #touch-shoot-btn {
+    bottom: calc(28px + env(safe-area-inset-bottom, 56px));
+    right: 18px;
+    width: 78px; height: 78px;
+  }
+  /* JUMP — same vertical shift */
+  #touch-jump-btn {
+    bottom: calc(34px + env(safe-area-inset-bottom, 56px));
+    right: 112px;
+  }
+  /* RELOAD — same vertical shift */
+  #touch-reload-btn {
+    bottom: calc(116px + env(safe-area-inset-bottom, 56px));
+    right: 122px;
+  }
+
+  /* HUD — move bottom elements above the touch-button zone so they're readable */
+  #health-container {
+    bottom: calc(220px + env(safe-area-inset-bottom, 56px));
+    left: 16px;
+  }
+  #health-bar { width: 130px; height: 11px; }
+  #health-text { font-size: 11px; }
+  #ammo-display {
+    bottom: calc(220px + env(safe-area-inset-bottom, 56px));
+    right: 18px; font-size: 16px; letter-spacing: 2px;
+  }
+  #gun-name {
+    bottom: calc(200px + env(safe-area-inset-bottom, 56px));
+    right: 18px; font-size: 10px; letter-spacing: 2px;
+  }
+
+  /* Start screen — more compact on small screens */
+  #start-screen h1 { font-size: 36px; letter-spacing: 4px; }
+  .gun-card { width: 116px; padding: 10px 8px; }
+  .controls-list { display: none; }  /* keyboard hints not relevant on touch */
+}
+
 /* ── Sniper scope overlay ────────────────────────────────────── */
 #scope-overlay {
   position:fixed; inset:0;

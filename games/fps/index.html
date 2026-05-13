@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>ArcadeHub FPS</title>
   <link rel="stylesheet" href="style.css">
   <style>
@@ -325,7 +325,7 @@
         box-sizing: border-box;
       }
       /* Co-op — bottom-right (touch controls are hidden during pause) */
-      #coop-panel  { right: 8px; bottom: 24px; }
+      #coop-panel  { right: 8px; bottom: calc(24px + env(safe-area-inset-bottom, 56px)); }
       /* Admin ban — top-right */
       #ban-panel   { right: 8px; top: 76px; }
       /* Give Bucks — top-left */
