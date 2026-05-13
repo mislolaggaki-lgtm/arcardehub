@@ -169,6 +169,70 @@
       border: 1px solid rgba(255,255,255,0.1); color: #555577;
     }
     #unban-no:hover { background: rgba(255,255,255,0.08); color: #aaaacc; }
+
+    /* ── Give Bucks panel ──────────────────────────────────── */
+    #give-bucks-panel {
+      display: none;
+      position: fixed; top: 80px; left: 24px; z-index: 300;
+      background: rgba(6, 6, 14, 0.94);
+      border: 1px solid rgba(253, 203, 60, 0.28);
+      border-radius: 10px;
+      padding: 18px 20px 16px;
+      min-width: 240px;
+      box-shadow: 0 8px 36px rgba(0,0,0,0.75);
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+    }
+    #give-bucks-title {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: #fdcb3c; margin-bottom: 14px;
+    }
+    .gb-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 2px;
+      text-transform: uppercase; color: #7070a0; margin-bottom: 5px;
+    }
+    #gb-player-select, #gb-player-input, #gb-amount-input {
+      width: 100%; padding: 6px 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 5px; color: #c0c0ee;
+      font-size: 12px; font-family: inherit; outline: none;
+      box-sizing: border-box;
+    }
+    #gb-player-select { margin-bottom: 8px; cursor: pointer; }
+    #gb-player-select option { background: #0d0d1c; }
+    #gb-player-input::placeholder, #gb-amount-input::placeholder { color: #333355; }
+    #gb-amount-input { margin-top: 5px; }
+    #gb-amount-input::-webkit-inner-spin-button { opacity: 0.4; }
+    #gb-btn-row {
+      display: flex; gap: 8px; margin-top: 12px;
+    }
+    #gb-confirm-btn {
+      flex: 1; padding: 7px 0;
+      background: rgba(253,203,60,0.12);
+      border: 1px solid rgba(253,203,60,0.35);
+      border-radius: 5px; color: #fdcb3c;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; transition: background .15s;
+    }
+    #gb-confirm-btn:hover:not(:disabled) { background: rgba(253,203,60,0.26); }
+    #gb-confirm-btn:disabled { opacity: 0.4; cursor: default; }
+    #gb-reset-btn {
+      padding: 7px 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 5px; color: #555577;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; transition: background .15s, color .15s;
+    }
+    #gb-reset-btn:hover { background: rgba(255,255,255,0.09); color: #aaaacc; }
+    #gb-status {
+      margin-top: 10px; font-size: 11px; min-height: 16px;
+      color: #6abf40; display: none;
+    }
+    #gb-status.error { color: #e74c3c; }
   </style>
 </head>
 <body>
@@ -308,6 +372,28 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Give Bucks panel (Stotch admin only, shown when paused) -->
+  <div id="give-bucks-panel">
+    <div id="give-bucks-title">&#9733; Give Bucks</div>
+
+    <div class="gb-label">Online Players</div>
+    <select id="gb-player-select">
+      <option value="">— select online player —</option>
+    </select>
+
+    <div class="gb-label">Or type username</div>
+    <input id="gb-player-input" type="text" placeholder="Username…" maxlength="24" autocomplete="off">
+
+    <div class="gb-label" style="margin-top:10px">Amount</div>
+    <input id="gb-amount-input" type="number" placeholder="e.g. 200" min="1" max="100000">
+
+    <div id="gb-btn-row">
+      <button id="gb-confirm-btn">&#10003; Confirm</button>
+      <button id="gb-reset-btn">&#8635; Reset</button>
+    </div>
+    <div id="gb-status"></div>
   </div>
 
   <!-- Touch controls (mobile/tablet only — shown via JS on game start) -->

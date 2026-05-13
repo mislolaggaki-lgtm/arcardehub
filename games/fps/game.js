@@ -3274,6 +3274,95 @@ function initSocket() {
   });
 }
 
+// ── Give Bucks panel (Stotch only) ────────────────────────────
+const giveBucksPanel = document.getElementById('give-bucks-panel');
+
+function _isStotch() {
+  return localStorage.getItem('isAdmin') === 'true' &&
+         localStorage.getItem('ah_username') === 'Stotch';
+}
+
+function showGiveBucksPanel() {
+  if (!_isStotch() || !giveBucksPanel) return;
+  // Populate online players dropdown
+  const sel = document.getElementById('gb-player-select');
+  sel.innerHTML = '<option value="">— select online player —</option>';
+  [...remotePlayers.values()].forEach(rp => {
+    const opt = document.createElement('option');
+    opt.value = rp.username || '';
+    opt.textContent = rp.username || 'Player';
+    sel.appendChild(opt);
+  });
+  // Sync dropdown → text input
+  sel.onchange = () => {
+    if (sel.value) document.getElementById('gb-player-input').value = sel.value;
+  };
+  giveBucksPanel.style.display = 'block';
+}
+
+function hideGiveBucksPanel() {
+  if (giveBucksPanel) giveBucksPanel.style.display = 'none';
+}
+
+(function setupGiveBucks() {
+  if (!giveBucksPanel) return;
+
+  const confirmBtn  = document.getElementById('gb-confirm-btn');
+  const resetBtn    = document.getElementById('gb-reset-btn');
+  const playerInput = document.getElementById('gb-player-input');
+  const amountInput = document.getElementById('gb-amount-input');
+  const statusEl    = document.getElementById('gb-status');
+  const sel         = document.getElementById('gb-player-select');
+
+  function resetForm() {
+    sel.value = '';
+    playerInput.value = '';
+    amountInput.value = '';
+    statusEl.style.display = 'none';
+    statusEl.textContent = '';
+    statusEl.className = '';
+    confirmBtn.disabled = false;
+  }
+
+  function showStatus(msg, isError) {
+    statusEl.textContent = msg;
+    statusEl.className = isError ? 'error' : '';
+    statusEl.style.display = 'block';
+  }
+
+  resetBtn.addEventListener('click', resetForm);
+
+  confirmBtn.addEventListener('click', async () => {
+    const username = playerInput.value.trim() || sel.value.trim();
+    const amount   = parseInt(amountInput.value);
+    if (!username) { showStatus('Select or type a username.', true); return; }
+    if (!amount || amount < 1) { showStatus('Enter a valid amount (≥ 1).', true); return; }
+
+    confirmBtn.disabled = true;
+    showStatus('Sending…', false);
+
+    try {
+      const token = localStorage.getItem('ah_token');
+      const res = await fetch(_API_BASE + '/api/admin/give-bucks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ targetUsername: username, amount }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showStatus(`✓ Gave ${amount} bucks to ${data.username}. New balance: ${data.bucks}`, false);
+        amountInput.value = '';
+      } else {
+        showStatus(data.error || 'Failed.', true);
+        confirmBtn.disabled = false;
+      }
+    } catch {
+      showStatus('Network error.', true);
+      confirmBtn.disabled = false;
+    }
+  });
+})();
+
 // ── Admin ban panel ───────────────────────────────────────────
 const banPanel = document.getElementById('ban-panel');
 const banList  = document.getElementById('ban-player-list');
@@ -3311,10 +3400,12 @@ function showBanPanel() {
     });
   }
   banPanel.style.display = 'block';
+  showGiveBucksPanel();
 }
 
 function hideBanPanel() {
   if (banPanel) banPanel.style.display = 'none';
+  hideGiveBucksPanel();
   const unbanConfirm = document.getElementById('unban-confirm');
   const unbanInput   = document.getElementById('unban-input');
   if (unbanConfirm) unbanConfirm.style.display = 'none';

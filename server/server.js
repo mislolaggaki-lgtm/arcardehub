@@ -522,6 +522,37 @@ async function start() {
     }
   });
 
+  // ── POST /api/admin/give-bucks ─────────────────────────────
+  app.post('/api/admin/give-bucks', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      // Only the Stotch admin account can use this
+      if (!payload.isAdmin || payload.username !== 'Stotch')
+        return res.status(403).json({ error: 'Forbidden.' });
+
+      const { targetUsername, amount } = req.body;
+      if (!targetUsername || typeof targetUsername !== 'string')
+        return res.status(400).json({ error: 'targetUsername required.' });
+      const n = parseInt(amount);
+      if (!Number.isFinite(n) || n < 1 || n > 100000)
+        return res.status(400).json({ error: 'Amount must be 1–100 000.' });
+
+      const target = await usersCol.findOne({ username: targetUsername });
+      if (!target) return res.status(404).json({ error: `User "${targetUsername}" not found.` });
+
+      const { ObjectId } = require('mongodb');
+      const result = await usersCol.findOneAndUpdate(
+        { _id: new ObjectId(target._id) },
+        { $inc: { bucks: n } },
+        { returnDocument: 'after', projection: { username: 1, bucks: 1 } }
+      );
+      res.json({ success: true, username: result.username, bucks: result.bucks });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
   // ── POST /api/shop/purchase ─────────────────────────────────
   app.post('/api/shop/purchase', async (req, res) => {
     try {
