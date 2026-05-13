@@ -87,17 +87,17 @@ async function start() {
         password:      hashed,
         isAdmin:       true,
         banned:        false,
-        bucks:         500,
+        bucks:         2500,
         termsAccepted: true,
         termsVersion:  TERMS_VERSION,
         created_at:    new Date().toISOString(),
       });
-      console.log('Admin account "Stotch" created with 500 bucks');
+      console.log('Admin account "Stotch" created with 2500 bucks');
     } else {
-      // Ensure existing admin always has at least 500 bucks
+      // Ensure existing admin always has at least 2500 bucks
       await usersCol.updateOne(
-        { username: 'Stotch', $or: [{ bucks: { $exists: false } }, { bucks: { $lt: 500 } }] },
-        { $set: { bucks: 500 } }
+        { username: 'Stotch', $or: [{ bucks: { $exists: false } }, { bucks: { $lt: 2500 } }] },
+        { $set: { bucks: 2500 } }
       );
     }
   }
