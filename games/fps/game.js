@@ -3127,35 +3127,75 @@ function initSocket() {
   });
 
   // ── Voice signaling ──────────────────────────────────────────
+
+  // Server tells us who is already in voice when WE join.
+  // WE are the joiner → WE create offers to all of them.
   socket.on('voiceExisting', async (users) => {
     for (const { socketId, username: uname } of users) {
       _fpsVoicePeerMap.set(socketId, uname);
       await _fpsCreateOffer(socketId);
     }
   });
-  socket.on('voiceUserJoined', async ({ socketId, username: uname }) => {
+
+  // Someone else joined voice while we are already here.
+  // THEY will create an offer to us via voiceExisting — we must NOT
+  // create one back, that would cause "glare" (both sides in
+  // have-local-offer state simultaneously → silent crash).
+  socket.on('voiceUserJoined', ({ socketId, username: uname }) => {
     _fpsVoicePeerMap.set(socketId, uname);
-    await _fpsCreateOffer(socketId);
+    // Intentionally NOT calling _fpsCreateOffer here.
   });
+
   socket.on('voiceUserLeft', ({ socketId }) => {
     _fpsVoicePeerMap.delete(socketId);
     _fpsClosePeer(socketId);
   });
+
+  // We are the answerer — the remote peer initiated the call.
   socket.on('voiceOffer', async ({ fromId, offer }) => {
+    if (!_fpsVoiceOn || !_fpsLocalStream) return; // ignore if we're not in voice
     const pc = _fpsGetOrCreatePeer(fromId);
-    await pc.setRemoteDescription(new RTCSessionDescription(offer));
-    if (_fpsLocalStream) _fpsLocalStream.getTracks().forEach(t => pc.addTrack(t, _fpsLocalStream));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    socket.emit('voiceAnswer', { targetId: fromId, answer });
+    // Add our mic tracks, guarding against duplicates
+    const existingSenders = new Set(pc.getSenders().map(s => s.track));
+    _fpsLocalStream.getTracks().forEach(t => {
+      if (!existingSenders.has(t)) pc.addTrack(t, _fpsLocalStream);
+    });
+    try {
+      await _fpsSetRemoteDesc(pc, fromId, offer);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      socket.emit('voiceAnswer', { targetId: fromId, answer: pc.localDescription });
+    } catch (err) {
+      console.warn('[Voice] voiceOffer processing error:', err);
+      _fpsClosePeer(fromId);
+    }
   });
+
+  // We are the offerer — the remote peer accepted our offer.
   socket.on('voiceAnswer', async ({ fromId, answer }) => {
     const pc = _fpsPeers.get(fromId);
-    if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
+    if (!pc) return;
+    // Only valid when we have an outstanding offer
+    if (pc.signalingState !== 'have-local-offer') return;
+    try {
+      await _fpsSetRemoteDesc(pc, fromId, answer);
+    } catch (err) {
+      console.warn('[Voice] voiceAnswer processing error:', err);
+    }
   });
+
+  // Trickle-ICE candidate from the remote side.
+  // If the remote description isn't set yet, buffer the candidate.
   socket.on('voiceIce', async ({ fromId, candidate }) => {
+    if (!candidate) return;
     const pc = _fpsPeers.get(fromId);
-    if (pc && candidate) { try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch {} }
+    if (pc && pc.remoteDescription) {
+      try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch {}
+    } else {
+      // Buffer — will be flushed by _fpsSetRemoteDesc once the answer/offer arrives
+      if (!_fpsIceQueue.has(fromId)) _fpsIceQueue.set(fromId, []);
+      _fpsIceQueue.get(fromId).push(candidate);
+    }
   });
 
   // Populate existing players when we first join
@@ -3463,109 +3503,183 @@ window.pushKillFeed = function(msg) {
   _fpsChatAppend(null, msg, false, true);
 };
 
-// ── Voice chat (WebRTC) ───────────────────────────────────────
-let _fpsVoiceOn      = false;
-let _fpsLocalStream  = null;
-let _fpsAudioCtx     = null;        // unlocked during mic-button gesture (iOS fix)
-const _fpsPeers      = new Map();   // socketId → RTCPeerConnection
-const _fpsAudios     = new Map();   // socketId → Audio
+// ════════════════════════════════════════════════════════════
+// VOICE CHAT (WebRTC)
+// ════════════════════════════════════════════════════════════
+//
+// Architecture:
+//   • Only the *joining* user creates offers (via voiceExisting).
+//     Existing users NEVER initiate — they only answer.
+//     This eliminates the "glare" race where both sides create
+//     simultaneous offers and the WebRTC state machine crashes.
+//
+//   • ICE candidates that arrive before setRemoteDescription
+//     completes are queued per-peer and flushed afterward.
+//     Without this, all ICE candidates are silently dropped
+//     and the DTLS/SRTP channel never opens.
+//
+//   • Audio is explicitly play()-ed with an AudioContext that
+//     was unlocked during the mic-button user gesture so that
+//     iOS Safari's autoplay policy is satisfied.
+// ────────────────────────────────────────────────────────────
+
+let _fpsVoiceOn     = false;
+let _fpsLocalStream = null;
+let _fpsAudioCtx    = null;       // created in user-gesture context (iOS fix)
+
+const _fpsPeers      = new Map(); // socketId → RTCPeerConnection
+const _fpsAudios     = new Map(); // socketId → HTMLAudioElement
+const _fpsIceQueue   = new Map(); // socketId → RTCIceCandidateInit[] (buffered pre-remoteDesc)
 const _fpsVoicePeerMap = new Map(); // socketId → username
 
-const _FPS_RTC_CFG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+const _FPS_RTC_CFG = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+  ],
+};
 
+// ── Toggle ────────────────────────────────────────────────────
 async function fpsVoiceToggle() {
-  if (_fpsVoiceOn) {
-    _fpsVoiceOff();
-  } else {
-    await _fpsVoiceOn_fn();
-  }
+  if (_fpsVoiceOn) { _fpsVoiceOff(); } else { await _fpsVoiceOn_fn(); }
 }
 
+// ── Turn voice ON ─────────────────────────────────────────────
 async function _fpsVoiceOn_fn() {
   const token = localStorage.getItem('ah_token');
   if (!token || !socket) return;
-  // Unlock audio playback while we're inside a user-gesture handler (iOS Safari requirement)
+
+  // Unlock audio playback while still inside the user-gesture handler (iOS Safari)
   try {
-    if (!_fpsAudioCtx) _fpsAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!_fpsAudioCtx)
+      _fpsAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (_fpsAudioCtx.state === 'suspended') await _fpsAudioCtx.resume();
   } catch {}
+
   try {
     _fpsLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
   } catch {
     _fpsChatAppend(null, 'Microphone access denied.', false, true);
     return;
   }
+
   _fpsVoiceOn = true;
   _fpsUpdateMicBtn();
+  // Server will respond with voiceExisting → we create offers from there
   socket.emit('voiceJoin', { token });
 }
 
+// ── Turn voice OFF ────────────────────────────────────────────
 function _fpsVoiceOff() {
   _fpsVoiceOn = false;
   if (socket) socket.emit('voiceLeave');
   if (_fpsLocalStream) { _fpsLocalStream.getTracks().forEach(t => t.stop()); _fpsLocalStream = null; }
-  _fpsPeers.forEach((_, sid) => _fpsClosePeer(sid));
-  _fpsPeers.clear();
+  for (const sid of [..._fpsPeers.keys()]) _fpsClosePeer(sid);
   _fpsAudios.forEach(a => { a.pause(); a.srcObject = null; });
   _fpsAudios.clear();
+  _fpsIceQueue.clear();
   _fpsVoicePeerMap.clear();
   _fpsUpdateMicBtn();
 }
 
+// ── Mic button icon ───────────────────────────────────────────
 function _fpsUpdateMicBtn() {
-  const btn    = document.getElementById('voice-mic-btn');
-  const onIcon = document.getElementById('mic-on-icon');
-  const offIcon= document.getElementById('mic-off-icon');
+  const btn     = document.getElementById('voice-mic-btn');
+  const onIcon  = document.getElementById('mic-on-icon');
+  const offIcon = document.getElementById('mic-off-icon');
   if (!btn) return;
   if (_fpsVoiceOn) {
     btn.classList.remove('muted');
     if (onIcon)  onIcon.style.display  = 'block';
     if (offIcon) offIcon.style.display = 'none';
-    btn.title = 'Voice ON — click to turn off';
+    btn.title = 'Voice ON — click to mute';
   } else {
     btn.classList.add('muted');
     if (onIcon)  onIcon.style.display  = 'none';
     if (offIcon) offIcon.style.display = 'block';
-    btn.title = 'Voice OFF — click to turn on';
+    btn.title = 'Voice OFF — click to unmute';
   }
 }
 
+// ── Create / retrieve RTCPeerConnection for a remote peer ─────
 function _fpsGetOrCreatePeer(targetId) {
   if (_fpsPeers.has(targetId)) return _fpsPeers.get(targetId);
+
   const pc = new RTCPeerConnection(_FPS_RTC_CFG);
   _fpsPeers.set(targetId, pc);
+  _fpsIceQueue.set(targetId, []); // start with empty candidate queue
+
+  // Trickle-ICE: send each candidate to the remote side as it's gathered
   pc.onicecandidate = ({ candidate }) => {
     if (candidate && socket) socket.emit('voiceIce', { targetId, candidate });
   };
+
+  // Clean up automatically if the connection breaks
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+      _fpsClosePeer(targetId);
+    }
+  };
+
+  // Incoming audio from the remote peer
   pc.ontrack = ({ track, streams }) => {
-    // Use the stream if provided, otherwise wrap the bare track in a new MediaStream
     const stream = (streams && streams.length) ? streams[0] : new MediaStream([track]);
     let audio = _fpsAudios.get(targetId);
     if (!audio) {
       audio = new Audio();
-      audio.autoplay   = true;
-      audio.playsInline = true;  // required for iOS
+      audio.autoplay    = true;
+      audio.playsInline = true; // iOS: must not go fullscreen
       _fpsAudios.set(targetId, audio);
     }
     audio.srcObject = stream;
-    // Resume AudioContext if suspended, then explicitly trigger playback
+    // Resume AudioContext first (iOS suspends it between gesture and async callback)
     if (_fpsAudioCtx && _fpsAudioCtx.state === 'suspended') _fpsAudioCtx.resume();
+    // Explicitly trigger playback — autoplay alone is blocked by modern browsers
     audio.play().catch(() => {});
   };
+
   return pc;
 }
 
-async function _fpsCreateOffer(targetId) {
-  const pc = _fpsGetOrCreatePeer(targetId);
-  if (_fpsLocalStream) _fpsLocalStream.getTracks().forEach(t => pc.addTrack(t, _fpsLocalStream));
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  if (socket) socket.emit('voiceOffer', { targetId, offer });
+// ── Set remote description AND flush buffered ICE candidates ──
+async function _fpsSetRemoteDesc(pc, targetId, desc) {
+  await pc.setRemoteDescription(new RTCSessionDescription(desc));
+  // Apply any ICE candidates that arrived before the remote description was ready
+  const queue = _fpsIceQueue.get(targetId) || [];
+  for (const c of queue) {
+    try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch {}
+  }
+  _fpsIceQueue.set(targetId, []); // clear the queue
 }
 
+// ── Initiate a call to a remote peer (we are the offerer) ─────
+async function _fpsCreateOffer(targetId) {
+  const pc = _fpsGetOrCreatePeer(targetId);
+  // Add our mic tracks — guard against duplicates if called more than once
+  if (_fpsLocalStream) {
+    const existing = new Set(pc.getSenders().map(s => s.track));
+    _fpsLocalStream.getTracks().forEach(t => {
+      if (!existing.has(t)) pc.addTrack(t, _fpsLocalStream);
+    });
+  }
+  try {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    if (socket) socket.emit('voiceOffer', { targetId, offer: pc.localDescription });
+  } catch (err) {
+    console.warn('[Voice] createOffer error:', err);
+    _fpsClosePeer(targetId);
+  }
+}
+
+// ── Tear down one peer connection ─────────────────────────────
 function _fpsClosePeer(sid) {
-  const pc = _fpsPeers.get(sid); if (pc) { pc.close(); _fpsPeers.delete(sid); }
-  const a  = _fpsAudios.get(sid); if (a)  { a.pause(); a.srcObject = null; _fpsAudios.delete(sid); }
+  const pc = _fpsPeers.get(sid);
+  if (pc) { try { pc.close(); } catch {} _fpsPeers.delete(sid); }
+  const a = _fpsAudios.get(sid);
+  if (a) { a.pause(); a.srcObject = null; _fpsAudios.delete(sid); }
+  _fpsIceQueue.delete(sid);
 }
 
 // ── Give Bucks panel (Stotch only) ────────────────────────────
