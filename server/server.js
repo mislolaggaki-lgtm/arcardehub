@@ -36,6 +36,8 @@ const PLAYER_COLORS = [
 
 const players    = new Map();
 const coopGroups = new Map(); // hostSocketId → Set<guestSocketId>
+const chatUsers  = new Map(); // socketId → { username }
+const voiceUsers = new Map(); // socketId → { username }
 
 // ── Auth helper ───────────────────────────────────────────────
 function verifyToken(authHeader) {
@@ -85,11 +87,18 @@ async function start() {
         password:      hashed,
         isAdmin:       true,
         banned:        false,
+        bucks:         500,
         termsAccepted: true,
         termsVersion:  TERMS_VERSION,
         created_at:    new Date().toISOString(),
       });
-      console.log('Admin account "Stotch" created');
+      console.log('Admin account "Stotch" created with 500 bucks');
+    } else {
+      // Ensure existing admin always has at least 500 bucks
+      await usersCol.updateOne(
+        { username: 'Stotch', $or: [{ bucks: { $exists: false } }, { bucks: { $lt: 500 } }] },
+        { $set: { bucks: 500 } }
+      );
     }
   }
 
@@ -254,11 +263,77 @@ async function start() {
       });
     });
 
+    // ── Chat ──────────────────────────────────────────────────
+    socket.on('chatJoin', ({ token }) => {
+      try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        chatUsers.set(socket.id, { username: payload.username });
+        socket.emit('chatHistory', []); // could persist messages here later
+        io.emit('chatOnline', [...chatUsers.values()].map(u => u.username));
+      } catch { /* invalid token — silently ignore */ }
+    });
+
+    socket.on('chatMsg', ({ text }) => {
+      const user = chatUsers.get(socket.id);
+      if (!user) return;
+      const clean = (typeof text === 'string' ? text : '').trim().slice(0, 300);
+      if (!clean) return;
+      io.emit('chatMsg', { username: user.username, text: clean, ts: Date.now() });
+    });
+
+    // ── Voice signaling ───────────────────────────────────────
+    socket.on('voiceJoin', ({ token }) => {
+      try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        voiceUsers.set(socket.id, { username: payload.username });
+        // Tell the new user about everyone already in voice
+        const existing = [...voiceUsers.entries()]
+          .filter(([sid]) => sid !== socket.id)
+          .map(([sid, u]) => ({ socketId: sid, username: u.username }));
+        socket.emit('voiceExisting', existing);
+        // Tell everyone else a new user joined
+        socket.broadcast.emit('voiceUserJoined', { socketId: socket.id, username: payload.username });
+      } catch { /* ignore */ }
+    });
+
+    socket.on('voiceLeave', () => {
+      voiceUsers.delete(socket.id);
+      io.emit('voiceUserLeft', { socketId: socket.id });
+    });
+
+    socket.on('voiceOffer', ({ targetId, offer }) => {
+      if (!voiceUsers.has(socket.id)) return;
+      const ts = io.sockets.sockets.get(targetId);
+      if (ts) ts.emit('voiceOffer', { fromId: socket.id, offer });
+    });
+
+    socket.on('voiceAnswer', ({ targetId, answer }) => {
+      if (!voiceUsers.has(socket.id)) return;
+      const ts = io.sockets.sockets.get(targetId);
+      if (ts) ts.emit('voiceAnswer', { fromId: socket.id, answer });
+    });
+
+    socket.on('voiceIce', ({ targetId, candidate }) => {
+      const ts = io.sockets.sockets.get(targetId);
+      if (ts) ts.emit('voiceIce', { fromId: socket.id, candidate });
+    });
+
+    socket.on('voiceSpeaking', ({ speaking }) => {
+      const user = voiceUsers.get(socket.id);
+      if (!user) return;
+      socket.broadcast.emit('voiceSpeaking', { socketId: socket.id, speaking });
+    });
+
     socket.on('disconnect', () => {
       players.delete(socket.id);
       io.emit('playerLeft', { id: socket.id });
       coopGroups.delete(socket.id);
       for (const [, guests] of coopGroups) guests.delete(socket.id);
+      // Clean up chat / voice
+      if (chatUsers.delete(socket.id))
+        io.emit('chatOnline', [...chatUsers.values()].map(u => u.username));
+      if (voiceUsers.delete(socket.id))
+        io.emit('voiceUserLeft', { socketId: socket.id });
     });
   });
 

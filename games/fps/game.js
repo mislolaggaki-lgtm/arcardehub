@@ -2059,8 +2059,73 @@ function buildRobot() {
 }
 
 // ─── Bot pool (populated per-level) ──────────────────────────
-const BOT_DMG_INT = 0.9;   // seconds between bot hits (fixed)
-const BOT_MELEE   = 2.2;
+const BOT_DMG_INT   = 0.9;   // seconds between bot hits (melee)
+const BOT_MELEE     = 2.2;
+const BOT_RADIUS    = 0.42;
+const BOT_SHOOT_DST = 26;    // max range bots will fire
+const BOT_BULLET_V  = 22;    // bullet travel speed (units/s)
+const BOT_BULLET_DMG= 7;     // damage per bot bullet
+const botBullets    = [];    // live projectiles: { mesh, pos, vel, dist, maxDist }
+
+// ── Line-vs-AABB helper (2D, x/z plane) ──────────────────────
+function _lineHitsBox(x1,z1,x2,z2,minX,minZ,maxX,maxZ){
+  const dx=x2-x1, dz=z2-z1;
+  let tmin=0, tmax=1;
+  for(const [lo,hi,p,d] of [[minX,maxX,x1,dx],[minZ,maxZ,z1,dz]]){
+    if(Math.abs(d)<1e-9){ if(p<lo||p>hi) return false; }
+    else{
+      let t1=(lo-p)/d, t2=(hi-p)/d;
+      if(t1>t2){const tmp=t1;t1=t2;t2=tmp;}
+      tmin=Math.max(tmin,t1); tmax=Math.min(tmax,t2);
+      if(tmin>tmax) return false;
+    }
+  }
+  return true;
+}
+
+// Returns true if a clear line of sight exists between two XZ positions
+function botHasLOS(bx,bz,tx,tz){
+  for(const b of coverBoxes){
+    if(_lineHitsBox(bx,bz,tx,tz, b.cx-b.hw,b.cz-b.hd, b.cx+b.hw,b.cz+b.hd)) return false;
+  }
+  return true;
+}
+
+// Returns true if XZ position is inside any cover box
+function _inCoverBox(x,z,r=0){
+  for(const b of coverBoxes){
+    if(x>b.cx-b.hw-r&&x<b.cx+b.hw+r&&z>b.cz-b.hd-r&&z<b.cz+b.hd+r) return true;
+  }
+  return false;
+}
+
+// ── Bot pistol mesh ───────────────────────────────────────────
+function buildBotPistol(){
+  const g   = new THREE.Group();
+  const M   = new THREE.MeshStandardMaterial({color:0x2a2e3c,roughness:0.35,metalness:0.9});
+  const Mg  = c => new THREE.MeshBasicMaterial({color:c});
+  // Slide / receiver
+  const slide = new THREE.Mesh(new THREE.BoxGeometry(0.055,0.062,0.175),M);
+  slide.position.set(0,0.012,-0.025); g.add(slide);
+  // Barrel
+  const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.028,0.028,0.14),M);
+  barrel.position.set(0,-0.004,-0.145); g.add(barrel);
+  // Muzzle tip accent
+  const tip = new THREE.Mesh(new THREE.BoxGeometry(0.032,0.032,0.018),Mg(0x888888));
+  tip.position.set(0,-0.004,-0.216); g.add(tip);
+  // Handle
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.046,0.11,0.065),
+    new THREE.MeshStandardMaterial({color:0x0e0e0e,roughness:0.9,metalness:0.1}));
+  handle.position.set(0,-0.076,0.055); handle.rotation.x=0.18; g.add(handle);
+  // Trigger guard
+  const tg = new THREE.Mesh(new THREE.BoxGeometry(0.008,0.028,0.055),Mg(0x444444));
+  tg.position.set(0,-0.038,0.014); g.add(tg);
+  // Muzzle flash (hidden by default)
+  const flash = new THREE.Mesh(new THREE.SphereGeometry(0.04,5,4),Mg(0xffee88));
+  flash.position.set(0,-0.004,-0.23); flash.visible=false; g.add(flash);
+  g.userData.flash = flash;
+  return g;
+}
 
 function rndPos(){
   return new THREE.Vector3((Math.random()-.5)*(AW*2-8),0,(Math.random()-.5)*(AD*2-8));
@@ -2529,42 +2594,126 @@ function update(dt){
     const heightDiff = playerGroundY - botGY;
     const diffFloor  = Math.abs(heightDiff) > 1.5;
 
-    // Choose movement target — steer toward staircase when floors differ
-    let targetX = px, targetZ = pz;
-    if(diffFloor){
-      const wp = heightDiff > 0
-        ? nearestStairEntry(bp, false)   // player is higher: go to stair ground entry
-        : nearestStairEntry(bp, true);   // player is lower: go to stair mezz exit
-      targetX = wp.x; targetZ = wp.z;
+    const distToPlayer = Math.sqrt((px-bp.x)**2+(pz-bp.z)**2);
+    const los = !diffFloor && botHasLOS(bp.x, bp.z, px, pz);
+
+    // Alert level: escalate on detect or LOS, slowly decay on patrol
+    if(los && distToPlayer < det)        bot.alertLevel = 2;
+    else if(distToPlayer < det * 0.65)   bot.alertLevel = Math.max(bot.alertLevel, 1);
+    else if(bot.alertLevel > 0)          bot.alertLevel = Math.max(0, bot.alertLevel - dt * 0.4);
+
+    // ── Stuck detection ────────────────────────────────────
+    const moved = Math.sqrt((bp.x-bot.lastPos.x)**2+(bp.z-bot.lastPos.z)**2);
+    if(moved < 0.01 * dt * spd){ bot.stuckTimer += dt; } else { bot.stuckTimer = 0; }
+    bot.lastPos.set(bp.x, bp.y, bp.z);
+    if(bot.stuckTimer > 0.9){
+      // Nudge toward player with a random perpendicular offset
+      const angle = Math.atan2(px-bp.x, pz-bp.z) + (Math.random()-.5)*Math.PI;
+      bot.patrolTarget.set(bp.x+Math.sin(angle)*6, 0, bp.z+Math.cos(angle)*6);
+      bot.patrolTimer = 1.8; bot.stuckTimer = 0;
     }
 
-    const dx=targetX-bp.x, dz=targetZ-bp.z;
-    const dist=Math.sqrt(dx*dx+dz*dz);
-    const distToPlayer=Math.sqrt((px-bp.x)**2+(pz-bp.z)**2);
+    // ── Flank angle drift ──────────────────────────────────
+    bot.flankChangeTimer -= dt;
+    if(bot.flankChangeTimer <= 0){
+      bot.flankAngle    = (Math.random()-.5) * 1.4;
+      bot.flankChangeTimer = 1.8 + Math.random() * 2.2;
+    }
 
-    if(distToPlayer < det){
+    // ── Movement ───────────────────────────────────────────
+    if(bot.alertLevel >= 2){
+      // Choose movement target — steer toward staircase when floors differ
+      let targetX = px, targetZ = pz;
+      if(diffFloor){
+        const wp = heightDiff > 0
+          ? nearestStairEntry(bp, false)
+          : nearestStairEntry(bp, true);
+        targetX = wp.x; targetZ = wp.z;
+      } else if(distToPlayer > BOT_MELEE + 1.5){
+        // Approach with a slight flank offset to avoid head-on rushing
+        const baseAngle = Math.atan2(px-bp.x, pz-bp.z);
+        const fa = baseAngle + bot.flankAngle * 0.5;
+        const flankDist = Math.min(distToPlayer * 0.4, 8);
+        targetX = px + Math.sin(fa + Math.PI) * flankDist;
+        targetZ = pz + Math.cos(fa + Math.PI) * flankDist;
+        // If that target is inside a cover box, fall back to direct
+        if(_inCoverBox(targetX, targetZ, BOT_RADIUS)) { targetX=px; targetZ=pz; }
+      }
+
+      const dx=targetX-bp.x, dz=targetZ-bp.z;
+      const dist=Math.sqrt(dx*dx+dz*dz);
       bot.group.rotation.y = Math.atan2(dx,dz);
-      const mv = (dist<10 ? spd : spd*.55)*dt;
-      if(dist>0.1){ bp.x += (dx/dist)*mv; bp.z += (dz/dist)*mv; }
-      bot.walkClock += dt*spd;
 
+      if(dist > 0.15 && distToPlayer > BOT_MELEE * 0.8){
+        const mv = (distToPlayer > 12 ? spd : spd * 0.75) * dt;
+        bp.x += (dx/dist)*mv; bp.z += (dz/dist)*mv;
+        bot.walkClock += dt*spd;
+      }
+
+      // Melee attack
       if(!diffFloor && distToPlayer<BOT_MELEE && player.hurtTimer<=0){
         player.health -= dmg; player.hurtTimer = BOT_DMG_INT;
         updateHealthHUD(); flashDmg();
         if(player.health<=0) killPlayer();
       }
+
+      // ── Bot shooting ─────────────────────────────────────
+      bot.shootTimer -= dt;
+      if(bot.flashTimer > 0){
+        bot.flashTimer -= dt;
+        if(bot.flashTimer <= 0 && bot.pistol) bot.pistol.userData.flash.visible = false;
+      }
+
+      if(bot.shootTimer <= 0 && los && distToPlayer < BOT_SHOOT_DST && distToPlayer > BOT_MELEE){
+        bot.shootTimer = bot.shootCooldown;
+
+        // Wide spread — ±0.18 on each axis
+        const spread = 0.18;
+        const eyeY = bp.y + 1.4;
+        const ex=bp.x, ez=bp.z;
+        const tx=px+(Math.random()-.5)*spread*distToPlayer*0.22;
+        const tz=pz+(Math.random()-.5)*spread*distToPlayer*0.22;
+        const ty=EYE_H + (Math.random()-.5)*0.35;
+
+        const dir = new THREE.Vector3(tx-ex, ty-eyeY, tz-ez).normalize();
+        const bPos = new THREE.Vector3(ex, eyeY, ez);
+
+        const bMat = new THREE.MeshBasicMaterial({color:0xffcc22});
+        const bMesh= new THREE.Mesh(new THREE.SphereGeometry(0.055,4,4), bMat);
+        bMesh.position.copy(bPos);
+        scene.add(bMesh);
+
+        const maxD = distToPlayer + 4;
+        botBullets.push({ mesh:bMesh, pos:bPos.clone(), vel:dir.clone().multiplyScalar(BOT_BULLET_V), dist:0, maxDist:maxD });
+
+        // Muzzle flash on pistol
+        if(bot.pistol){ bot.pistol.userData.flash.visible=true; bot.flashTimer=0.08; }
+
+        // Raise right arm slightly toward player for aim pose
+        bot.armGroupR.rotation.x = 0.55;
+      } else if(bot.shootTimer > bot.shootCooldown * 0.6){
+        // Gradually return arm to walking pose
+        bot.armGroupR.rotation.x += (1.10 - bot.armGroupR.rotation.x) * dt * 4;
+      }
+
     } else {
-      bot.patrolTimer-=dt;
+      // Patrol
+      bot.patrolTimer -= dt;
       if(bot.patrolTimer<=0){ bot.patrolTarget=rndPos(); bot.patrolTimer=2.5+Math.random()*3.5; }
       const pdx=bot.patrolTarget.x-bp.x, pdz=bot.patrolTarget.z-bp.z;
       const pd=Math.sqrt(pdx*pdx+pdz*pdz);
-      if(pd>.6){
-        const s=spd*.55*dt;
+      if(pd > 0.6){
+        const s=spd*0.52*dt;
         bp.x+=(pdx/pd)*s; bp.z+=(pdz/pd)*s;
         bot.group.rotation.y=Math.atan2(pdx,pdz);
-        bot.walkClock+=dt*spd*.55;
+        bot.walkClock+=dt*spd*0.52;
       } else { bot.patrolTimer=0; }
     }
+
+    // Wall collision — bots can't walk through cover
+    resolveCollision(bp, BOT_RADIUS);
+    bp.x=Math.max(-AW+1,Math.min(AW-1,bp.x));
+    bp.z=Math.max(-AD+1,Math.min(AD-1,bp.z));
 
     // Leg swing animation
     const legSwing = Math.sin(bot.walkClock*2.5)*.32;
@@ -2577,10 +2726,46 @@ function update(dt){
     bot.hpFill.position.x = (f-1)*0.34;
     bot.hpFillMat.color.setHex(f>.66 ? 0x22dd44 : f>.33 ? 0xffaa00 : 0xff2200);
     bot.hpBarGroup.lookAt(camera.position);
-
-    bp.x=Math.max(-AW+1,Math.min(AW-1,bp.x));
-    bp.z=Math.max(-AD+1,Math.min(AD-1,bp.z));
   });
+
+  // ── Bot bullet update ────────────────────────────────────
+  for(let i=botBullets.length-1; i>=0; i--){
+    const b = botBullets[i];
+    const step = b.vel.clone().multiplyScalar(dt);
+    b.pos.add(step);
+    b.dist += step.length();
+    b.mesh.position.copy(b.pos);
+
+    let remove = false;
+
+    // Hit arena boundary
+    if(Math.abs(b.pos.x)>AW||Math.abs(b.pos.z)>AD) remove=true;
+
+    // Hit cover box
+    if(!remove && _inCoverBox(b.pos.x, b.pos.z, 0.05)) remove=true;
+
+    // Max travel distance
+    if(!remove && b.dist > b.maxDist) remove=true;
+
+    // Hit player
+    if(!remove){
+      const dx=b.pos.x-px, dz=b.pos.z-pz, dy=b.pos.y-camera.position.y;
+      if(Math.sqrt(dx*dx+dy*dy+dz*dz)<0.65 && player.hurtTimer<=0){
+        player.health -= BOT_BULLET_DMG;
+        player.hurtTimer = 0.18;
+        updateHealthHUD(); flashDmg();
+        if(player.health<=0) killPlayer();
+        remove=true;
+      }
+    }
+
+    if(remove){
+      scene.remove(b.mesh);
+      b.mesh.geometry.dispose();
+      b.mesh.material.dispose();
+      botBullets.splice(i,1);
+    }
+  }
 
   // ── Remote player interpolation ─────────────────────────────
   remotePlayers.forEach(rp => {
@@ -2727,9 +2912,9 @@ function getLevelConfig(n) {
   return {
     botCount : Math.min(15, 1 + Math.floor(n/7)),
     botHP    : Math.min(15, Math.ceil((3 + Math.floor((n-1)/12)) * 1.5)),
-    speed    : Math.min(7.5, 2.8 + (n-1)*0.042),
+    speed    : Math.min(7.65, (2.8 + (n-1)*0.0428) * 1.02),  // +2% faster
     damage   : Math.min(30, 8  + Math.floor(n/10)*2),
-    detectR  : Math.min(30, 18 + Math.floor(n/20)*2),
+    detectR  : Math.min(32, 18 + Math.floor(n/18)*2),
   };
 }
 
@@ -2750,6 +2935,8 @@ function clearBots() {
   bots.length = 0;
   ammoPickups.forEach(pk => { scene.remove(pk.group); disposeGroup(pk.group); });
   ammoPickups.length = 0;
+  botBullets.forEach(b => { scene.remove(b.mesh); b.mesh.geometry.dispose(); b.mesh.material.dispose(); });
+  botBullets.length = 0;
 }
 
 function spawnBots(cfg) {
@@ -2757,11 +2944,28 @@ function spawnBots(cfg) {
     const r = buildRobot();
     r.group.position.copy(rndPos());
     scene.add(r.group);
+
+    // Attach pistol to right arm wrist/palm region
+    const pistol = buildBotPistol();
+    // armGroupR local space: palm is around y=-1.18, sx=0.09
+    pistol.position.set(0.09, -1.22, -0.06);
+    pistol.rotation.x = -Math.PI * 0.08;
+    r.armGroupR.add(pistol);
+
     bots.push({ ...r,
       hp:cfg.botHP, maxHp:cfg.botHP,
       alive:true,
       speed:cfg.speed, damage:cfg.damage, detectR:cfg.detectR,
       patrolTarget:rndPos(), patrolTimer:Math.random()*3, walkClock:0,
+      pistol,
+      shootTimer: 0.6 + Math.random() * 1.2,  // time until next shot
+      shootCooldown: 1.2 + Math.random() * 0.8,
+      flashTimer: 0,
+      lastPos: new THREE.Vector3(),
+      stuckTimer: 0,
+      flankAngle: (Math.random()-.5) * 1.2,
+      flankChangeTimer: 2 + Math.random() * 2,
+      alertLevel: 0,   // 0=patrol, 1=investigating, 2=chase
     });
   }
 }
@@ -2799,7 +3003,7 @@ function startLevel(n) {
   if (coopIsHost && socket) socket.emit('coopLevelUp', { level: n });
   if (n >= 25)  unlockBadge('pro_gamer');
   if (n >= 50)  unlockBadge('unstoppable');
-  if (n >= 100) unlockBadge('veteran');
+  if (n >= 100) { unlockBadge('veteran'); awardBucks(100); }
 }
 
 function checkLevelComplete() {
@@ -2827,6 +3031,9 @@ function checkLevelComplete() {
     } else {
       const next = currentLevel + 1;
       const cfg  = getLevelConfig(next);
+      const bucksLine = next >= 100
+        ? `<div style="font-size:14px;margin-top:14px;color:#ffd700;letter-spacing:3px;text-shadow:0 0 10px #ffd700">+100 BUCKS AWARDED</div>`
+        : '';
       const intro = `
         <div style="font-size:14px;color:#88ccff;letter-spacing:6px;margin-bottom:8px">
           ENTERING
@@ -2837,14 +3044,14 @@ function checkLevelComplete() {
         <div style="font-size:13px;margin-top:18px;color:#aaa;letter-spacing:4px;line-height:2.2">
           ENEMIES: ${cfg.botCount} &nbsp;&nbsp; HP: ${cfg.botHP}<br>
           SPEED: ${cfg.speed.toFixed(1)} &nbsp;&nbsp; DAMAGE: ${cfg.damage}
-        </div>`;
+        </div>
+        ${bucksLine}`;
       transShow(intro, 2600, () => startLevel(next));
     }
   });
 }
 
 function showVictory() {
-  awardBucks(50);
   transScreen.innerHTML = `
     <div style="font-size:56px;color:#f1c40f;letter-spacing:6px;text-shadow:0 0 24px #f1c40f">
       YOU WIN
@@ -2854,9 +3061,6 @@ function showVictory() {
     </div>
     <div style="font-size:14px;margin-top:10px;color:#888;letter-spacing:3px">
       TOTAL KILLS: ${player.kills}
-    </div>
-    <div style="font-size:13px;margin-top:14px;color:#ffd700;letter-spacing:3px;text-shadow:0 0 10px #ffd700">
-      +50 BUCKS AWARDED
     </div>`;
   transScreen.style.display='flex';
   // Keep showing indefinitely — player can ESC to menu
