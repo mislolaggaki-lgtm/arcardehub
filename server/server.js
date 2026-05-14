@@ -39,6 +39,26 @@ const coopGroups = new Map(); // hostSocketId → Set<guestSocketId>
 const chatUsers  = new Map(); // socketId → { username }
 const voiceUsers = new Map(); // socketId → { username }
 
+// ── Game mode state ───────────────────────────────────────────
+let activeGameMode = 'solo';   // 'solo' | 'ffa' | 'tdm'
+let tdmTeams       = new Map();  // socketId → 'red' | 'blue'
+let tdmScores      = { red: 0, blue: 0 };
+let ffaKills       = new Map();  // socketId → kills this round
+
+function onlinePlayers() { return new Set([...players.values()].map(p => p.username)); }
+
+function buildFFABoard() {
+  return [...players.values()]
+    .map(p => ({ username: p.username, kills: ffaKills.get(p.id) || 0 }))
+    .sort((a, b) => b.kills - a.kills);
+}
+
+function assignTDMTeam() {
+  const r = [...tdmTeams.values()].filter(t => t === 'red').length;
+  const b = [...tdmTeams.values()].filter(t => t === 'blue').length;
+  return r <= b ? 'red' : 'blue';
+}
+
 // ── Auth helper ───────────────────────────────────────────────
 function verifyToken(authHeader) {
   if (!authHeader || !authHeader.startsWith('Bearer '))
@@ -325,8 +345,99 @@ async function start() {
       socket.broadcast.emit('voiceSpeaking', { socketId: socket.id, speaking });
     });
 
+    // ── Game mode ─────────────────────────────────────────────
+    socket.on('setGameMode', ({ token, mode }) => {
+      try {
+        jwt.verify(token, JWT_SECRET);
+        if (!['solo', 'ffa', 'tdm'].includes(mode)) return;
+        activeGameMode = mode;
+        ffaKills.clear();
+        tdmTeams.clear();
+        tdmScores = { red: 0, blue: 0 };
+        if (mode === 'tdm') {
+          let i = 0;
+          for (const sid of players.keys()) tdmTeams.set(sid, i++ % 2 === 0 ? 'red' : 'blue');
+        }
+        io.emit('gameModeChanged', {
+          mode,
+          teams: Object.fromEntries(tdmTeams),
+          tdmScores,
+        });
+      } catch {}
+    });
+
+    socket.on('getGameMode', () => {
+      socket.emit('gameModeChanged', {
+        mode: activeGameMode,
+        teams: Object.fromEntries(tdmTeams),
+        tdmScores,
+      });
+    });
+
+    // ── Stats ─────────────────────────────────────────────────
+    socket.on('statsKill', async ({ token }) => {
+      try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        const { ObjectId } = require('mongodb');
+        await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, { $inc: { kills: 1 } });
+        if (activeGameMode === 'ffa') {
+          ffaKills.set(socket.id, (ffaKills.get(socket.id) || 0) + 1);
+          io.emit('ffaScoreUpdate', buildFFABoard());
+        } else if (activeGameMode === 'tdm') {
+          const team = tdmTeams.get(socket.id);
+          if (team) {
+            tdmScores[team]++;
+            io.emit('tdmScoreUpdate', { scores: tdmScores, teams: Object.fromEntries(tdmTeams) });
+          }
+        }
+      } catch (err) { console.error('statsKill:', err.message); }
+    });
+
+    socket.on('statsDeath', async ({ token }) => {
+      try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        const { ObjectId } = require('mongodb');
+        await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, { $inc: { deaths: 1 } });
+      } catch {}
+    });
+
+    // ── Friends ───────────────────────────────────────────────
+    socket.on('addFriend', async ({ token, targetUsername }) => {
+      try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        const target = await usersCol.findOne({ username: targetUsername });
+        if (!target) { socket.emit('friendResult', { error: 'User not found.' }); return; }
+        if (target.username === payload.username) { socket.emit('friendResult', { error: "Can't add yourself." }); return; }
+        const { ObjectId } = require('mongodb');
+        await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, { $addToSet: { friends: target.username } });
+        socket.emit('friendResult', { success: true, username: target.username });
+      } catch { socket.emit('friendResult', { error: 'Failed.' }); }
+    });
+
+    socket.on('removeFriend', async ({ token, targetUsername }) => {
+      try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        const { ObjectId } = require('mongodb');
+        await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, { $pull: { friends: targetUsername } });
+        socket.emit('friendResult', { removed: targetUsername });
+      } catch {}
+    });
+
+    socket.on('getFriends', async ({ token }) => {
+      try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        const { ObjectId } = require('mongodb');
+        const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { friends: 1 } });
+        const friends = (user && user.friends) || [];
+        const online = onlinePlayers();
+        socket.emit('friendsList', friends.map(f => ({ username: f, online: online.has(f) })));
+      } catch {}
+    });
+
     socket.on('disconnect', () => {
       players.delete(socket.id);
+      ffaKills.delete(socket.id);
+      tdmTeams.delete(socket.id);
       io.emit('playerLeft', { id: socket.id });
       coopGroups.delete(socket.id);
       for (const [, guests] of coopGroups) guests.delete(socket.id);
@@ -365,6 +476,10 @@ async function start() {
         bucks:         0,
         ownedItems:    [],
         equippedItems: [],
+        kills:         0,
+        deaths:        0,
+        bio:           '',
+        friends:       [],
         created_at:    new Date().toISOString(),
       };
 
@@ -408,6 +523,9 @@ async function start() {
         bucks: user.bucks || 0,
         ownedItems: user.ownedItems || [],
         equippedItems: user.equippedItems || [],
+        kills:  user.kills  || 0,
+        deaths: user.deaths || 0,
+        bio:    user.bio    || '',
       });
     } catch (err) {
       console.error('/api/login error:', err);
@@ -600,6 +718,57 @@ async function start() {
   // ── GET /api/users/online ───────────────────────────────────
   app.get('/api/users/online', (_req, res) => {
     res.json({ online: players.size || 3 });
+  });
+
+  // ── GET /api/leaderboard ────────────────────────────────────
+  app.get('/api/leaderboard', async (_req, res) => {
+    try {
+      const top = await usersCol
+        .find({}, { projection: { username:1, kills:1, deaths:1, _id:0 } })
+        .sort({ kills: -1 })
+        .limit(10)
+        .toArray();
+      res.json({ leaderboard: top.map(u => ({
+        username: u.username,
+        kills:    u.kills  || 0,
+        deaths:   u.deaths || 0,
+        kd: (u.deaths || 0) > 0 ? ((u.kills||0)/(u.deaths)).toFixed(1) : String(u.kills || 0),
+      }))});
+    } catch { res.status(500).json({ error: 'Server error.' }); }
+  });
+
+  // ── GET /api/profile/:username ──────────────────────────────
+  app.get('/api/profile/:username', async (req, res) => {
+    try {
+      const user = await usersCol.findOne(
+        { username: req.params.username },
+        { projection: { username:1, kills:1, deaths:1, bio:1, equippedItems:1, created_at:1 } }
+      );
+      if (!user) return res.status(404).json({ error: 'User not found.' });
+      res.json({
+        username:     user.username,
+        kills:        user.kills  || 0,
+        deaths:       user.deaths || 0,
+        bio:          user.bio    || '',
+        equippedItems: user.equippedItems || [],
+        online:       onlinePlayers().has(user.username),
+        memberSince:  user.created_at,
+      });
+    } catch { res.status(500).json({ error: 'Server error.' }); }
+  });
+
+  // ── POST /api/profile/bio ───────────────────────────────────
+  app.post('/api/profile/bio', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const bio = String(req.body.bio || '').trim().slice(0, 200);
+      const { ObjectId } = require('mongodb');
+      await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, { $set: { bio } });
+      res.json({ success: true });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
   });
 
   // ── Catch-all: serve index.html ─────────────────────────────

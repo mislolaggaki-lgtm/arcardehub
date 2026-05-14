@@ -383,8 +383,12 @@
     <div id="ammo-display">30 / 90</div>
     <div id="gun-name">PISTOL</div>
     <div id="kill-count">KILLS: 0</div>
+    <div id="rank-display">BRONZE</div>
+    <div id="mode-display">SOLO</div>
     <div id="level-display">LVL 1</div>
     <div id="enemy-count">ENEMIES: 0/0</div>
+    <div id="ffa-scoreboard" style="display:none"></div>
+    <div id="tdm-scoreboard" style="display:none"></div>
     <div id="hud-bucks">
       <svg width="14" height="14" viewBox="0 0 32 32" style="vertical-align:middle;margin-right:4px"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg><span id="hud-bucks-val">0</span>
     </div>
@@ -455,9 +459,69 @@
       <li><kbd>T</kbd> Pause / switch weapon &nbsp;|&nbsp; <kbd>P</kbd> Toggle PVP</li>
     </ul>
 
-    <button id="play-button">&#9654;&nbsp;&nbsp;PLAY</button>
-    <button id="reset-button">&#8635;&nbsp;&nbsp;RESET PROGRESS</button>
-    <button id="main-menu-btn">&#8962;&nbsp;&nbsp;MAIN MENU</button>
+    <!-- Game mode selector -->
+    <div class="mode-selector-row">
+      <span class="selector-label" style="margin:0 10px 0 0">MODE</span>
+      <button class="mode-btn active" id="mode-btn-solo"  onclick="setModeBtn('solo')">SOLO</button>
+      <button class="mode-btn"        id="mode-btn-ffa"   onclick="setModeBtn('ffa')">FREE FOR ALL</button>
+      <button class="mode-btn"        id="mode-btn-tdm"   onclick="setModeBtn('tdm')">TEAM DEATHMATCH</button>
+    </div>
+
+    <div class="start-action-row">
+      <button id="play-button">&#9654;&nbsp;&nbsp;PLAY</button>
+      <button id="leaderboard-btn" onclick="toggleLeaderboard()">&#127942;&nbsp;LEADERBOARD</button>
+      <button id="friends-btn" onclick="toggleFriendsPanel()">&#128101;&nbsp;FRIENDS</button>
+    </div>
+    <div class="start-action-row-2">
+      <button id="reset-button">&#8635;&nbsp;&nbsp;RESET PROGRESS</button>
+      <button id="main-menu-btn">&#8962;&nbsp;&nbsp;MAIN MENU</button>
+      <button id="my-profile-btn" onclick="showProfileModal(localStorage.getItem('ah_username'))">&#128100;&nbsp;MY PROFILE</button>
+    </div>
+  </div>
+
+  <!-- Leaderboard panel -->
+  <div id="leaderboard-panel" style="display:none">
+    <div class="lb-header">
+      <span>&#127942; LEADERBOARD</span>
+      <button onclick="document.getElementById('leaderboard-panel').style.display='none'">✕</button>
+    </div>
+    <div id="leaderboard-list"><div style="color:#555;font-size:12px;padding:8px">Loading…</div></div>
+  </div>
+
+  <!-- Friends panel -->
+  <div id="friends-panel" style="display:none">
+    <div class="lb-header">
+      <span>&#128101; FRIENDS</span>
+      <button onclick="document.getElementById('friends-panel').style.display='none'">✕</button>
+    </div>
+    <div id="friend-add-row">
+      <input id="friend-add-input" type="text" placeholder="Add friend by username…" maxlength="24" autocomplete="off">
+      <button onclick="addFriend()">ADD</button>
+    </div>
+    <div id="friends-status"></div>
+    <div id="friends-list"><div style="color:#555;font-size:12px;padding:8px">Loading…</div></div>
+  </div>
+
+  <!-- Profile modal -->
+  <div id="profile-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+    <div id="profile-card">
+      <button id="pm-close" onclick="document.getElementById('profile-modal').style.display='none'">✕</button>
+      <div id="pm-header">
+        <div id="pm-username">…</div>
+        <div id="pm-rank-row"><span id="pm-rank">Bronze</span> &nbsp;<span id="pm-online">○ Offline</span></div>
+      </div>
+      <div id="pm-stats">
+        <div class="pm-stat"><div class="pm-stat-val" id="pm-kills">0</div><div class="pm-stat-lbl">KILLS</div></div>
+        <div class="pm-stat"><div class="pm-stat-val" id="pm-deaths">0</div><div class="pm-stat-lbl">DEATHS</div></div>
+        <div class="pm-stat"><div class="pm-stat-val" id="pm-kd">0</div><div class="pm-stat-lbl">K/D</div></div>
+      </div>
+      <div id="pm-bio-label">BIO</div>
+      <div id="pm-bio">No bio set.</div>
+      <div id="pm-bio-edit-row" style="display:none">
+        <input id="pm-bio-input" type="text" placeholder="Set your bio (max 200 chars)…" maxlength="200">
+        <button onclick="saveBio()">SAVE</button>
+      </div>
+    </div>
   </div>
 
   <!-- Co-op panel (shown when paused, in multiplayer) -->
@@ -590,5 +654,30 @@
   <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
   <script src="game.js"></script>
+  <script>
+    function setModeBtn(mode) {
+      ['solo','ffa','tdm'].forEach(m => {
+        const b = document.getElementById('mode-btn-' + m);
+        if (b) b.classList.toggle('active', m === mode);
+      });
+      if (typeof setGameModeAndBroadcast === 'function') setGameModeAndBroadcast(mode);
+    }
+
+    function toggleLeaderboard() {
+      const p = document.getElementById('leaderboard-panel');
+      if (!p) return;
+      const show = p.style.display === 'none';
+      p.style.display = show ? 'block' : 'none';
+      if (show && typeof fetchLeaderboard === 'function') fetchLeaderboard();
+    }
+
+    function toggleFriendsPanel() {
+      const p = document.getElementById('friends-panel');
+      if (!p) return;
+      const show = p.style.display === 'none';
+      p.style.display = show ? 'block' : 'none';
+      if (show && typeof loadFriends === 'function') loadFriends();
+    }
+  </script>
 </body>
 </html>

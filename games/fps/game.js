@@ -60,10 +60,15 @@ function awardBucks(n) {
   }
 }
 
-// Initialise HUD bucks — show cached value immediately, then sync from server
+// Initialise HUD bucks + player stats — show cached value immediately, then sync from server
 (function() {
   const el = document.getElementById('hud-bucks-val');
   if (el) el.textContent = localStorage.getItem('ah_bucks') || '0';
+  // Load cached stats
+  totalKills  = parseInt(localStorage.getItem('ah_kills')  || '0', 10);
+  totalDeaths = parseInt(localStorage.getItem('ah_deaths') || '0', 10);
+  playerBio   = localStorage.getItem('ah_bio') || '';
+
   const token = localStorage.getItem('ah_token');
   if (!token) return;
   fetch(_API_BASE + '/api/shop/profile', {
@@ -75,6 +80,21 @@ function awardBucks(n) {
     localStorage.setItem('ah_equipped',JSON.stringify(d.equippedItems|| []));
     if (el) el.textContent = d.bucks;
   }).catch(() => {});
+
+  // Fetch player stats (kills, deaths, bio)
+  const username = localStorage.getItem('ah_username');
+  if (!username) return;
+  fetch(_API_BASE + '/api/profile/' + encodeURIComponent(username))
+    .then(r => r.ok ? r.json() : null).then(p => {
+      if (!p || p.error) return;
+      totalKills  = p.kills  || 0;
+      totalDeaths = p.deaths || 0;
+      playerBio   = p.bio    || '';
+      localStorage.setItem('ah_kills',  String(totalKills));
+      localStorage.setItem('ah_deaths', String(totalDeaths));
+      localStorage.setItem('ah_bio',    playerBio);
+      updateRankHUD();
+    }).catch(() => {});
 })();
 
 // ── Badge unlock helper ──────────────────────────────────────
@@ -446,6 +466,54 @@ const ch2 = 1.4;
   addBox(w,h,d,x,y,z, new THREE.MeshLambertMaterial({color:0x0a0a1e}),false,false);
 });
 
+// ── Environmental props ──────────────────────────────────────
+const CRATE_MAT  = new THREE.MeshStandardMaterial({ color:0x4a3010, roughness:0.9, metalness:0.05 });
+const CRATE_TRIM = new THREE.MeshStandardMaterial({ color:0x7a5020, emissive:new THREE.Color(0x2a1a08), emissiveIntensity:0.3, roughness:0.5, metalness:0.4 });
+const BARREL_MAT = new THREE.MeshStandardMaterial({ color:0x222244, roughness:0.55, metalness:0.7 });
+const BARREL_RNG = new THREE.MeshStandardMaterial({ color:0xff6600, emissive:new THREE.Color(0xff3300), emissiveIntensity:0.6, roughness:0.3, metalness:0.6 });
+
+function addCrateStack(x, z, count) {
+  for (let i = 0; i < count; i++) {
+    const s = 0.88 - i * 0.04;
+    addBox(s, s, s, x + (Math.random()-.5)*0.1, s/2 + i*s*0.98, z + (Math.random()-.5)*0.1, CRATE_MAT);
+    // corner trim strips
+    [[s/2,0,0],[-(s/2),0,0],[0,0,s/2],[0,0,-(s/2)]].forEach(([ox,oy,oz])=>{
+      addBox(0.06,s,0.06, x+ox, s/2+i*s*0.98, z+oz, CRATE_TRIM, false, false);
+    });
+  }
+}
+
+function addBarrel(x, z, glowing) {
+  const mat = glowing ? BARREL_RNG : BARREL_MAT;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.26, 0.9, 12), mat);
+  body.position.set(x, 0.45, z); body.castShadow = true; scene.add(body);
+  const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.05, 12), BARREL_MAT);
+  lid.position.set(x, 0.92, z); scene.add(lid);
+  if (glowing) {
+    const glow = new THREE.PointLight(0xff3300, 1.2, 4);
+    glow.position.set(x, 1.2, z); scene.add(glow);
+  }
+}
+
+// Crate stacks at strategic positions
+[[12,-8,2],[-12,8,2],[-8,-16,3],[8,16,3],[20,-20,2],[-20,20,2],
+ [-24,0,2],[24,0,2],[0,-24,1],[0,24,1]].forEach(([x,z,n])=> addCrateStack(x,z,n));
+
+// Barrels — mix of normal and glowing hazard barrels
+[[-15,5,false],[15,-5,false],[-5,-22,true],[5,22,true],[22,14,false],
+ [-22,-14,false],[30,-12,false],[-30,12,true],[18,-32,false],[-18,32,false]
+].forEach(([x,z,g]) => addBarrel(x,z,g));
+
+// Overhead colored accent spotlights for atmosphere
+[
+  [0xff0022,  8, 12], [0x0022ff, -8,-12],
+  [0x00ff88, 12, -8], [0xff8800,-12,  8],
+  [0xaa00ff, 22, 22], [0x00aaff,-22,-22],
+].forEach(([col,x,z]) => {
+  const sl = new THREE.PointLight(col, 0.8, 18);
+  sl.position.set(x, WH-1, z); scene.add(sl);
+});
+
 // ============================================================
 //  PLAYER STATE
 // ============================================================
@@ -454,9 +522,38 @@ const P_SPEED = 9, P_RADIUS = 0.45;
 const GRAVITY = -22, JUMP_VEL = 8.5;
 
 const player = {
-  health:100, maxHealth:100, kills:0,
+  health:100, maxHealth:100, kills:0, deaths:0,
   dead:false, hurtTimer:0,
 };
+
+// ── Persistent stats (loaded from server on login) ────────────
+let totalKills  = 0;
+let totalDeaths = 0;
+let playerBio   = '';
+
+// ── Rank system ───────────────────────────────────────────────
+const RANKS = [
+  { name:'Bronze',  min:    0, color:'#cd7f32', glow:'rgba(205,127,50,0.35)'  },
+  { name:'Silver',  min:  100, color:'#c0c0c0', glow:'rgba(192,192,192,0.35)' },
+  { name:'Gold',    min:  500, color:'#ffd700', glow:'rgba(255,215,0,0.35)'   },
+  { name:'Diamond', min: 2000, color:'#88eeff', glow:'rgba(136,238,255,0.4)'  },
+];
+function getRank(kills) {
+  for (let i = RANKS.length - 1; i >= 0; i--) {
+    if (kills >= RANKS[i].min) return RANKS[i];
+  }
+  return RANKS[0];
+}
+
+// ── Game mode ─────────────────────────────────────────────────
+let gameMode  = 'solo';  // 'solo' | 'ffa' | 'tdm'
+let myTeam    = null;    // 'red' | 'blue' for TDM
+let tdmScores = { red: 0, blue: 0 };
+let ffaBoard  = [];
+
+// ── Blood particles ───────────────────────────────────────────
+const bloodParticles = [];
+const BLOOD_MAT = new THREE.MeshBasicMaterial({ color: 0xcc0000 });
 
 camera.position.copy(SPAWN);
 let yaw=0, pitch=0;
@@ -747,17 +844,20 @@ function buildSniper(root) {
 
 const GUN_LABELS = { pistol:'PISTOL', smg:'SMG', minigun:'MINIGUN', sniper:'SNIPER' };
 
-function _drawLabelCanvas(ctx, name, hp, pvpOn, isAdmin, gunId, inCoop=false) {
+function _drawLabelCanvas(ctx, name, hp, pvpOn, isAdmin, gunId, inCoop=false, kills=0, team=null) {
   const W = 256, H = 100;
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  // Team-colored background tint for TDM
+  const bgCol = team === 'red' ? 'rgba(80,0,0,0.72)' : team === 'blue' ? 'rgba(0,20,80,0.72)' : 'rgba(0,0,0,0.65)';
+  ctx.fillStyle = bgCol;
   ctx.fillRect(6, 6, W - 12, H - 12);
 
   // Name (+ hammer badge for admins)
+  const rank = getRank(kills);
   const displayName = isAdmin ? name.slice(0, 16) + ' 🔨' : name.slice(0, 18);
   ctx.font = 'bold 15px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillStyle = isAdmin ? '#3b9ee8' : '#fff';
+  ctx.fillStyle = isAdmin ? '#3b9ee8' : rank.color;
   ctx.fillText(displayName, 128, 26);
 
   // HP bar bg
@@ -2211,24 +2311,46 @@ function shoot(){
 function damageBot(bot){
   if(gun.def && gun.def.oneShot) bot.hp = 0; else bot.hp -= 1;
   bot.allMats.forEach(mat=>{ mat.emissive.setHex(0xff5500); mat.emissiveIntensity=4.0; });
-  setTimeout(()=>{ bot.allMats.forEach(mat=>{ mat.emissive.setHex(0x000000); mat.emissiveIntensity=0; }); },80);
+  setTimeout(()=>{
+    if(!bot.phantomGlowing) bot.allMats.forEach(mat=>{ mat.emissive.setHex(0x000000); mat.emissiveIntensity=0; });
+  },80);
+  // Blood spray on hit
+  spawnBlood(bot.group.position.clone().setY(1.4 + Math.random() * 0.4), 8);
   if(bot.hp<=0) killBot(bot);
 }
 
 function killBot(bot){
-  bot.alive=false;
-  bot.hpBarGroup.visible=false;
+  bot.alive = false;
+  bot.dying = true;
+  bot.deathClock = 0;
+  bot.hpBarGroup.visible = false;
   bot.eyeMatL.color.setHex(0x220000);
   bot.eyeMatR.color.setHex(0x220000);
-  spawnSparks(bot.group.position.clone().setY(1.2));
-  setTimeout(()=>{ bot.group.visible=false; },180);
+  const hitPos = bot.group.position.clone().setY(1.2);
+  spawnSparks(hitPos);
+  spawnBlood(hitPos, 18);
   spawnAmmoPickup(bot.group.position);
   player.kills++;
   updateKillHUD();
+  updateRankHUD();
+  trackKill();
   pushKillFeed('Robot destroyed');
   updateEnemyCountHUD();
   checkLevelComplete();
   if(coopIsHost && socket) socket.emit('coopBotKill', { botIndex: bots.indexOf(bot) });
+}
+
+function trackKill() {
+  totalKills++;
+  const token = localStorage.getItem('ah_token');
+  if (socket && token) socket.emit('statsKill', { token });
+}
+
+function trackDeath() {
+  totalDeaths++;
+  player.deaths++;
+  const token = localStorage.getItem('ah_token');
+  if (socket && token) socket.emit('statsDeath', { token });
 }
 
 function spawnSparks(pos){
@@ -2238,6 +2360,21 @@ function spawnSparks(pos){
     p.position.copy(pos).addScaledVector(
       new THREE.Vector3(Math.random()-.5, Math.random()*.8+.2, Math.random()-.5).normalize(), .5);
     scene.add(p); setTimeout(()=>scene.remove(p),350);
+  }
+}
+
+function spawnBlood(pos, count = 14) {
+  for (let i = 0; i < count; i++) {
+    const size = 0.04 + Math.random() * 0.07;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), BLOOD_MAT);
+    mesh.position.copy(pos);
+    const vel = new THREE.Vector3(
+      (Math.random() - 0.5) * 6,
+      Math.random() * 5 + 1,
+      (Math.random() - 0.5) * 6
+    );
+    scene.add(mesh);
+    bloodParticles.push({ mesh, vel, age: 0 });
   }
 }
 
@@ -2466,6 +2603,48 @@ function updateHealthHUD(){
 }
 function updateAmmoHUD(){ ammoDisplay.textContent=gun.ammo+' / '+gun.reserve; }
 function updateKillHUD(){ killCountEl.textContent='KILLS: '+player.kills; }
+
+function updateRankHUD() {
+  const el = document.getElementById('rank-display');
+  if (!el) return;
+  const rank = getRank(totalKills + player.kills);
+  el.textContent = rank.name.toUpperCase();
+  el.style.color  = rank.color;
+  el.style.textShadow = `0 0 8px ${rank.color}`;
+}
+
+function updateModeHUD() {
+  const el = document.getElementById('mode-display');
+  if (!el) return;
+  el.textContent = gameMode.toUpperCase();
+  el.style.color = gameMode === 'ffa' ? '#ff4444' : gameMode === 'tdm' ? '#44aaff' : '#888';
+}
+
+function updateFFAHUD() {
+  const el = document.getElementById('ffa-scoreboard');
+  if (!el) return;
+  if (gameMode !== 'ffa') { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = '<div class="ffa-title">FREE FOR ALL</div>' +
+    ffaBoard.slice(0, 8).map((r, i) =>
+      `<div class="ffa-row">${i===0?'👑':'#'+(i+1)} <span>${_esc(r.username)}</span> <b>${r.kills}</b></div>`
+    ).join('');
+}
+
+function updateTDMHUD() {
+  const el = document.getElementById('tdm-scoreboard');
+  if (!el) return;
+  if (gameMode !== 'tdm') { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  const teamLabel = myTeam ? `<div class="tdm-myteam" style="color:${myTeam==='red'?'#ff4444':'#4488ff'}">YOUR TEAM: ${myTeam.toUpperCase()}</div>` : '';
+  el.innerHTML = `<div class="tdm-title">TEAM DEATHMATCH</div>
+    ${teamLabel}
+    <div class="tdm-scores">
+      <span style="color:#ff4444">RED ${tdmScores.red}</span>
+      <span style="color:#888">vs</span>
+      <span style="color:#4488ff">${tdmScores.blue} BLUE</span>
+    </div>`;
+}
 function pushKillFeed(msg){
   const d=document.createElement('div'); d.className='kill-entry';
   d.textContent='» '+msg; killFeedEl.prepend(d);
@@ -2489,6 +2668,7 @@ function killPlayer(){
   if(player.dead) return;
   deactivateScope();
   player.dead=true; player.health=0; updateHealthHUD();
+  trackDeath();
   deathScreen.style.display='flex'; hudEl.style.display='none';
   setTimeout(respawnPlayer,2300);
 }
@@ -2589,10 +2769,34 @@ function update(dt){
   // ── Hurt cooldown ───────────────────────────────────────
   if(player.hurtTimer>0) player.hurtTimer-=dt;
 
+  // ── Blood particles ──────────────────────────────────────
+  for(let i=bloodParticles.length-1; i>=0; i--){
+    const p=bloodParticles[i];
+    p.age += dt;
+    p.vel.y -= 18 * dt;
+    p.mesh.position.addScaledVector(p.vel, dt);
+    if(p.age > 0.55){
+      scene.remove(p.mesh);
+      bloodParticles.splice(i,1);
+    }
+  }
+
   // ── Bot AI ──────────────────────────────────────────────
   const px=camera.position.x, pz=camera.position.z;
   const playerGroundY = getGroundY(camera.position);
   bots.forEach(bot=>{
+    // Bot death animation
+    if(bot.dying){
+      bot.deathClock += dt;
+      const t = Math.min(1, bot.deathClock / 0.5);
+      bot.group.rotation.x = t * (Math.PI * 0.5);
+      bot.group.position.y = Math.max(0, getGroundY(bot.group.position) - t * 0.3);
+      if(t >= 1 && !bot.group.userData.fallen){
+        bot.group.userData.fallen = true;
+        setTimeout(() => { if(bot.group.parent) bot.group.visible = false; }, 400);
+      }
+      return;
+    }
     if(!bot.alive) return;
 
     const bp  = bot.group.position;
@@ -2803,6 +3007,7 @@ function update(dt){
         player.health -= BOT_BULLET_DMG;
         player.hurtTimer = 0.18;
         updateHealthHUD(); flashDmg();
+        spawnBlood(b.pos.clone(), 6);
         if(player.health<=0) killPlayer();
         remove=true;
       }
@@ -3173,7 +3378,10 @@ function initSocket() {
 
     // Join chat (logged-in users only)
     const _tok = localStorage.getItem('ah_token');
-    if (_tok) socket.emit('chatJoin', { token: _tok });
+    if (_tok) {
+      socket.emit('chatJoin', { token: _tok });
+      socket.emit('getFriends', { token: _tok });
+    }
   });
 
   // ── Text chat ────────────────────────────────────────────────
@@ -3362,10 +3570,14 @@ function initSocket() {
     const gb = coopGhostBots[botIndex];
     if (gb && gb.alive) {
       gb.alive = false;
-      spawnSparks(gb.group.position.clone().setY(1.2));
+      const hp = gb.group.position.clone().setY(1.2);
+      spawnSparks(hp);
+      spawnBlood(hp, 12);
       setTimeout(() => { if (gb.group.parent) scene.remove(gb.group); }, 180);
       player.kills++;
       updateKillHUD();
+      updateRankHUD();
+      trackKill();
       updateEnemyCountHUD();
       pushKillFeed('Robot destroyed');
     }
@@ -3382,6 +3594,50 @@ function initSocket() {
     startLevel(level);
     pushKillFeed(`Level ${level} — synced with co-op host`);
   });
+
+  // ── Game mode events ─────────────────────────────────────────
+  socket.on('gameModeChanged', ({ mode, teams, tdmScores: scores }) => {
+    gameMode = mode;
+    if (teams && socket.id) myTeam = teams[socket.id] || null;
+    if (scores) tdmScores = scores;
+    updateModeHUD();
+    updateFFAHUD();
+    updateTDMHUD();
+    // Show mode announcement
+    const names = { solo:'SOLO MODE', ffa:'FREE FOR ALL', tdm:'TEAM DEATHMATCH' };
+    if (names[mode]) pushKillFeed('Mode changed: ' + names[mode]);
+  });
+
+  socket.on('ffaScoreUpdate', (board) => {
+    ffaBoard = board;
+    updateFFAHUD();
+  });
+
+  socket.on('tdmScoreUpdate', ({ scores, teams }) => {
+    tdmScores = scores;
+    if (teams && socket.id && teams[socket.id]) myTeam = teams[socket.id];
+    updateTDMHUD();
+  });
+
+  // ── Friends events ────────────────────────────────────────────
+  socket.on('friendsList', (friends) => {
+    renderFriendsList(friends);
+  });
+
+  socket.on('friendResult', ({ success, error, username: fn, removed }) => {
+    const statusEl = document.getElementById('friends-status');
+    if (statusEl) {
+      statusEl.textContent = error ? error : success ? `Added ${fn}!` : removed ? `Removed ${removed}` : '';
+      statusEl.style.color = error ? '#ff5555' : '#22dd88';
+    }
+    if (success || removed) {
+      const tok = localStorage.getItem('ah_token');
+      if (socket && tok) socket.emit('getFriends', { token: tok });
+    }
+  });
+
+  // Request current game mode on connect
+  socket.emit('getGameMode');
 
   // Another player fired
   socket.on('playerShot', data => {
@@ -3423,6 +3679,119 @@ function initSocket() {
     if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
     remotePlayers.forEach((_, id) => removeRemotePlayer(id));
   });
+}
+
+// ════════════════════════════════════════════════════════════
+// LEADERBOARD / PROFILE / FRIENDS / GAME MODE UI
+// ════════════════════════════════════════════════════════════
+
+async function fetchLeaderboard() {
+  try {
+    const res = await fetch('/api/leaderboard');
+    const data = await res.json();
+    renderLeaderboard(data.leaderboard || []);
+  } catch { console.warn('Leaderboard fetch failed'); }
+}
+
+function renderLeaderboard(rows) {
+  const el = document.getElementById('leaderboard-list');
+  if (!el) return;
+  if (!rows.length) { el.innerHTML = '<div style="color:#555;font-size:12px;padding:8px">No data yet.</div>'; return; }
+  el.innerHTML = rows.map((r, i) => {
+    const rank = getRank(r.kills);
+    return `<div class="lb-row">
+      <span class="lb-pos">${i===0?'🏆':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</span>
+      <span class="lb-name" style="color:${rank.color}">${_esc(r.username)}</span>
+      <span class="lb-kills">${r.kills}K</span>
+      <span class="lb-kd" style="color:#888">${r.kd}</span>
+    </div>`;
+  }).join('');
+}
+
+async function showProfileModal(username) {
+  const modal = document.getElementById('profile-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  modal.querySelector('#pm-username').textContent = '…';
+  try {
+    const res = await fetch(`/api/profile/${encodeURIComponent(username)}`);
+    const p = await res.json();
+    if (p.error) { modal.querySelector('#pm-username').textContent = p.error; return; }
+    const rank = getRank(p.kills);
+    const kd = p.deaths > 0 ? (p.kills / p.deaths).toFixed(2) : p.kills;
+    modal.querySelector('#pm-username').textContent  = p.username;
+    modal.querySelector('#pm-rank').textContent      = rank.name;
+    modal.querySelector('#pm-rank').style.color      = rank.color;
+    modal.querySelector('#pm-online').textContent    = p.online ? '● Online' : '○ Offline';
+    modal.querySelector('#pm-online').style.color    = p.online ? '#22dd44' : '#555';
+    modal.querySelector('#pm-kills').textContent     = p.kills;
+    modal.querySelector('#pm-deaths').textContent    = p.deaths;
+    modal.querySelector('#pm-kd').textContent        = kd;
+    modal.querySelector('#pm-bio').textContent       = p.bio || 'No bio set.';
+    const isSelf = username === localStorage.getItem('ah_username');
+    const editRow = modal.querySelector('#pm-bio-edit-row');
+    if (editRow) editRow.style.display = isSelf ? 'flex' : 'none';
+  } catch { modal.querySelector('#pm-username').textContent = 'Error loading profile.'; }
+}
+
+async function saveBio() {
+  const inp = document.getElementById('pm-bio-input');
+  if (!inp) return;
+  const token = localStorage.getItem('ah_token');
+  if (!token) return;
+  try {
+    await fetch('/api/profile/bio', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bio: inp.value }),
+    });
+    playerBio = inp.value;
+    await showProfileModal(localStorage.getItem('ah_username'));
+  } catch {}
+}
+
+function renderFriendsList(friends) {
+  const el = document.getElementById('friends-list');
+  if (!el) return;
+  if (!friends.length) {
+    el.innerHTML = '<div style="color:#555;font-size:12px;padding:8px 0">No friends yet. Add someone!</div>';
+    return;
+  }
+  el.innerHTML = friends.map(f =>
+    `<div class="friend-row ${f.online ? 'online' : ''}">
+      <span class="friend-dot"></span>
+      <span class="friend-name" onclick="showProfileModal('${_esc(f.username)}')">${_esc(f.username)}</span>
+      <button class="friend-remove-btn" onclick="removeFriend('${_esc(f.username)}')">✕</button>
+    </div>`
+  ).join('');
+}
+
+function addFriend() {
+  const inp = document.getElementById('friend-add-input');
+  const token = localStorage.getItem('ah_token');
+  if (!inp || !socket || !token) return;
+  const name = inp.value.trim();
+  if (!name) return;
+  inp.value = '';
+  socket.emit('addFriend', { token, targetUsername: name });
+}
+
+function removeFriend(username) {
+  const token = localStorage.getItem('ah_token');
+  if (!socket || !token) return;
+  socket.emit('removeFriend', { token, targetUsername: username });
+}
+
+function loadFriends() {
+  const token = localStorage.getItem('ah_token');
+  if (!socket || !token) return;
+  socket.emit('getFriends', { token });
+}
+
+function setGameModeAndBroadcast(mode) {
+  const token = localStorage.getItem('ah_token');
+  if (!socket || !token) { gameMode = mode; updateModeHUD(); return; }
+  socket.emit('setGameMode', { token, mode });
 }
 
 // ════════════════════════════════════════════════════════════
@@ -4104,4 +4473,5 @@ if (isMobile) {
 
 // ─── Bootstrap ───────────────────────────────────────────────
 updateHealthHUD(); updateAmmoHUD(); updateKillHUD();
+updateRankHUD(); updateModeHUD();
 animate();
