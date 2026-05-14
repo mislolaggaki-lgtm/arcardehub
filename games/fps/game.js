@@ -60,6 +60,11 @@ function awardBucks(n) {
   }
 }
 
+// ── Persistent stats (pre-declared so the init IIFE below can assign them) ──
+let totalKills  = 0;
+let totalDeaths = 0;
+let playerBio   = '';
+
 // Initialise HUD bucks + player stats — show cached value immediately, then sync from server
 (function() {
   const el = document.getElementById('hud-bucks-val');
@@ -525,11 +530,6 @@ const player = {
   health:100, maxHealth:100, kills:0, deaths:0,
   dead:false, hurtTimer:0,
 };
-
-// ── Persistent stats (loaded from server on login) ────────────
-let totalKills  = 0;
-let totalDeaths = 0;
-let playerBio   = '';
 
 // ── Rank system ───────────────────────────────────────────────
 const RANKS = [
