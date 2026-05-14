@@ -2662,50 +2662,87 @@ function update(dt){
         bot.walkClock += dt*spd;
       }
 
-      // Melee attack
+      // Melee attack — phantom bots deal 30% extra damage
+      const meleeDmg = bot.mode === 'phantom' ? Math.round(dmg * 1.3) : dmg;
       if(!diffFloor && distToPlayer<BOT_MELEE && player.hurtTimer<=0){
-        player.health -= dmg; player.hurtTimer = BOT_DMG_INT;
+        player.health -= meleeDmg; player.hurtTimer = BOT_DMG_INT;
         updateHealthHUD(); flashDmg();
         if(player.health<=0) killPlayer();
       }
 
-      // ── Bot shooting ─────────────────────────────────────
-      bot.shootTimer -= dt;
-      if(bot.flashTimer > 0){
-        bot.flashTimer -= dt;
-        if(bot.flashTimer <= 0 && bot.pistol) bot.pistol.userData.flash.visible = false;
+      // ── Bot shooting (shooter mode only) ─────────────────
+      if(bot.mode === 'shooter'){
+        bot.shootTimer -= dt;
+        if(bot.flashTimer > 0){
+          bot.flashTimer -= dt;
+          if(bot.flashTimer <= 0 && bot.pistol) bot.pistol.userData.flash.visible = false;
+        }
+
+        if(bot.shootTimer <= 0 && los && distToPlayer < BOT_SHOOT_DST && distToPlayer > BOT_MELEE){
+          bot.shootTimer = bot.shootCooldown;
+
+          const spread = 0.18;
+          const eyeY = bp.y + 1.4;
+          const ex=bp.x, ez=bp.z;
+          const tx=px+(Math.random()-.5)*spread*distToPlayer*0.22;
+          const tz=pz+(Math.random()-.5)*spread*distToPlayer*0.22;
+          const ty=EYE_H + (Math.random()-.5)*0.35;
+
+          const dir = new THREE.Vector3(tx-ex, ty-eyeY, tz-ez).normalize();
+          const bPos = new THREE.Vector3(ex, eyeY, ez);
+
+          const bMat = new THREE.MeshBasicMaterial({color:0xffcc22});
+          const bMesh= new THREE.Mesh(new THREE.SphereGeometry(0.055,4,4), bMat);
+          bMesh.position.copy(bPos);
+          scene.add(bMesh);
+
+          const maxD = distToPlayer + 4;
+          botBullets.push({ mesh:bMesh, pos:bPos.clone(), vel:dir.clone().multiplyScalar(BOT_BULLET_V), dist:0, maxDist:maxD });
+
+          if(bot.pistol){ bot.pistol.userData.flash.visible=true; bot.flashTimer=0.08; }
+          bot.armGroupR.rotation.x = 0.55;
+        } else if(bot.shootTimer > bot.shootCooldown * 0.6){
+          bot.armGroupR.rotation.x += (1.10 - bot.armGroupR.rotation.x) * dt * 4;
+        }
       }
 
-      if(bot.shootTimer <= 0 && los && distToPlayer < BOT_SHOOT_DST && distToPlayer > BOT_MELEE){
-        bot.shootTimer = bot.shootCooldown;
+      // ── Phantom mode: glow + teleport behind player ───────
+      if(bot.mode === 'phantom'){
+        if(bot.phantomTpCooldown > 0) bot.phantomTpCooldown -= dt;
 
-        // Wide spread — ±0.18 on each axis
-        const spread = 0.18;
-        const eyeY = bp.y + 1.4;
-        const ex=bp.x, ez=bp.z;
-        const tx=px+(Math.random()-.5)*spread*distToPlayer*0.22;
-        const tz=pz+(Math.random()-.5)*spread*distToPlayer*0.22;
-        const ty=EYE_H + (Math.random()-.5)*0.35;
+        // Check if player is looking at this bot (dot product of camera forward vs direction to bot)
+        const fwdX = -Math.sin(yaw), fwdZ = -Math.cos(yaw);
+        const toDX = bp.x - px, toDZ = bp.z - pz;
+        const toDLen = Math.sqrt(toDX*toDX + toDZ*toDZ);
+        const lookDot = toDLen > 0.1 ? (fwdX*(toDX/toDLen) + fwdZ*(toDZ/toDLen)) : 0;
+        const playerSeesBot = lookDot > 0.60 && los && distToPlayer < det;
 
-        const dir = new THREE.Vector3(tx-ex, ty-eyeY, tz-ez).normalize();
-        const bPos = new THREE.Vector3(ex, eyeY, ez);
+        if(playerSeesBot && bot.phantomTpCooldown <= 0){
+          bot.phantomLookTimer += dt;
+          if(!bot.phantomGlowing){
+            bot.phantomGlowing = true;
+          }
+          // Pulse purple glow intensity
+          const pulse = 1.2 + Math.sin(bot.phantomLookTimer * Math.PI * 3) * 0.5;
+          bot.allMats.forEach(m => { m.emissive.setHex(0x9900ff); m.emissiveIntensity = pulse; });
 
-        const bMat = new THREE.MeshBasicMaterial({color:0xffcc22});
-        const bMesh= new THREE.Mesh(new THREE.SphereGeometry(0.055,4,4), bMat);
-        bMesh.position.copy(bPos);
-        scene.add(bMesh);
-
-        const maxD = distToPlayer + 4;
-        botBullets.push({ mesh:bMesh, pos:bPos.clone(), vel:dir.clone().multiplyScalar(BOT_BULLET_V), dist:0, maxDist:maxD });
-
-        // Muzzle flash on pistol
-        if(bot.pistol){ bot.pistol.userData.flash.visible=true; bot.flashTimer=0.08; }
-
-        // Raise right arm slightly toward player for aim pose
-        bot.armGroupR.rotation.x = 0.55;
-      } else if(bot.shootTimer > bot.shootCooldown * 0.6){
-        // Gradually return arm to walking pose
-        bot.armGroupR.rotation.x += (1.10 - bot.armGroupR.rotation.x) * dt * 4;
+          if(bot.phantomLookTimer >= 2.0){
+            // Teleport directly behind the player
+            bot.phantomLookTimer = 0;
+            bot.phantomTpCooldown = 3.0;
+            bot.phantomGlowing = false;
+            bot.allMats.forEach(m => { m.emissive.setHex(0x000000); m.emissiveIntensity = 0; });
+            // "Behind" = opposite of camera forward direction
+            bp.x = px + Math.sin(yaw) * 1.4;
+            bp.z = pz + Math.cos(yaw) * 1.4;
+            bp.y = getGroundY(bp);
+            bot.alertLevel = 2;
+          }
+        } else if(!playerSeesBot && bot.phantomGlowing){
+          bot.phantomGlowing = false;
+          bot.phantomLookTimer = Math.max(0, bot.phantomLookTimer - dt * 2);
+          bot.allMats.forEach(m => { m.emissive.setHex(0x000000); m.emissiveIntensity = 0; });
+        }
       }
 
     } else {
@@ -2951,7 +2988,15 @@ function clearBots() {
   botBullets.length = 0;
 }
 
+// 'melee' = levels 1-24, 'shooter' = 25-49, 'phantom' = 50-100
+function botModeForLevel(n) {
+  if (n <= 24) return 'melee';
+  if (n <= 49) return 'shooter';
+  return 'phantom';
+}
+
 function spawnBots(cfg) {
+  const mode = botModeForLevel(currentLevel);
   for(let i=0; i<cfg.botCount; i++){
     const r = buildRobot();
     r.group.position.copy(rndPos());
@@ -2959,10 +3004,11 @@ function spawnBots(cfg) {
 
     // Attach pistol to right arm wrist/palm region
     const pistol = buildBotPistol();
-    // armGroupR local space: palm is around y=-1.18, sx=0.09
     pistol.position.set(0.09, -1.22, -0.06);
     pistol.rotation.x = -Math.PI * 0.08;
     r.armGroupR.add(pistol);
+    // Only shooter-mode bots carry a visible gun
+    pistol.visible = (mode === 'shooter');
 
     bots.push({ ...r,
       hp:cfg.botHP, maxHp:cfg.botHP,
@@ -2970,14 +3016,19 @@ function spawnBots(cfg) {
       speed:cfg.speed, damage:cfg.damage, detectR:cfg.detectR,
       patrolTarget:rndPos(), patrolTimer:Math.random()*3, walkClock:0,
       pistol,
-      shootTimer: 0.6 + Math.random() * 1.2,  // time until next shot
+      shootTimer: 0.6 + Math.random() * 1.2,
       shootCooldown: 1.2 + Math.random() * 0.8,
       flashTimer: 0,
       lastPos: new THREE.Vector3(),
       stuckTimer: 0,
       flankAngle: (Math.random()-.5) * 1.2,
       flankChangeTimer: 2 + Math.random() * 2,
-      alertLevel: 0,   // 0=patrol, 1=investigating, 2=chase
+      alertLevel: 0,
+      mode,
+      // phantom-mode state
+      phantomLookTimer: 0,
+      phantomGlowing: false,
+      phantomTpCooldown: 0,
     });
   }
 }
