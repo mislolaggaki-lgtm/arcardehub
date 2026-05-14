@@ -2481,6 +2481,26 @@
       _saveBucksLocal(); _renderShopGrid();
     }
 
+    // ── Chat + voice state (pre-declared so restoreSession → chatConnect can use them) ──
+    let _chatSocket   = null;
+    let _chatOpen     = false;
+    let _chatUnread   = 0;
+    let _chatLoggedIn = false;
+
+    // Voice state
+    let _inVoice    = false;
+    let _micMuted   = false;
+    let _localStream = null;
+    const _peers    = new Map();
+    const _audios   = new Map();
+    const _voiceMap = new Map();
+    let _vadTimer   = null;
+    let _audioCtx   = null;
+    let _analyser   = null;
+    let _vadSource  = null;
+
+    const SOCKET_URL = isLocal ? 'http://localhost:3001' : window.location.origin;
+
     // ── Restore session on page load ──────────────────────────
     (function restoreSession() {
       const token    = localStorage.getItem('ah_token');
@@ -2512,24 +2532,6 @@
     // ═══════════════════════════════════════════════════════════
     // CHAT + VOICE CHAT
     // ═══════════════════════════════════════════════════════════
-    let _chatSocket   = null;
-    let _chatOpen     = false;
-    let _chatUnread   = 0;
-    let _chatLoggedIn = false;
-
-    // Voice state
-    let _inVoice    = false;
-    let _micMuted   = false;
-    let _localStream = null;
-    const _peers    = new Map(); // socketId → RTCPeerConnection
-    const _audios   = new Map(); // socketId → <audio>
-    const _voiceMap = new Map(); // socketId → username
-    let _vadTimer   = null;
-    let _audioCtx   = null;
-    let _analyser   = null;
-    let _vadSource  = null;
-
-    const SOCKET_URL = isLocal ? 'http://localhost:3001' : window.location.origin;
 
     // ── panel toggle ─────────────────────────────────────────
     function chatToggle() {
