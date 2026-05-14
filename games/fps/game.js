@@ -4271,6 +4271,7 @@ function hideGiveBucksPanel() {
     const username = playerInput.value.trim() || sel.value.trim();
     const amount   = parseInt(amountInput.value);
     if (!username) { showStatus('Select or type a username.', true); return; }
+    if (username === localStorage.getItem('ah_username')) { showStatus('Cannot give bucks to yourself.', true); return; }
     if (!amount || amount < 1) { showStatus('Enter a valid amount (≥ 1).', true); return; }
 
     confirmBtn.disabled = true;

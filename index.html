@@ -229,6 +229,88 @@
     }
     footer span { color: #2e2e42; }
 
+    /* ── Admin panel (Stotch only) ────────────────────────── */
+    #admin-section {
+      display: none;
+      background: rgba(4,4,14,0.98);
+      border-top: 1px solid rgba(59,158,232,0.18);
+      border-bottom: 1px solid rgba(59,158,232,0.18);
+      padding: 36px 40px 42px;
+    }
+    .admin-section-label {
+      font-size: 9px; letter-spacing: 5px; font-weight: 700;
+      text-transform: uppercase; color: #3b9ee8; margin-bottom: 24px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .admin-section-label::after {
+      content: ''; flex: 1; height: 1px; background: rgba(59,158,232,0.18);
+    }
+    .admin-cards {
+      display: flex; flex-wrap: wrap; gap: 20px;
+    }
+    .admin-card {
+      background: rgba(10,10,28,0.9);
+      border: 1px solid rgba(59,158,232,0.2);
+      border-radius: 8px; padding: 22px 24px; min-width: 260px; flex: 1;
+    }
+    .admin-card-title {
+      font-size: 10px; letter-spacing: 3px; font-weight: 700;
+      text-transform: uppercase; color: #3b9ee8; margin-bottom: 16px;
+    }
+    .admin-input-row {
+      display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;
+    }
+    .admin-input-row input {
+      flex: 1; min-width: 120px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 5px; color: #c0c0ee; font-family: inherit; font-size: 12px;
+      padding: 7px 10px; outline: none;
+    }
+    .admin-input-row input:focus { border-color: rgba(59,158,232,0.5); }
+    .admin-input-row input[type=number] { max-width: 100px; }
+    .admin-btn {
+      padding: 7px 14px; font-size: 10px; letter-spacing: 2px; font-weight: 700;
+      text-transform: uppercase; font-family: inherit;
+      border-radius: 5px; cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .admin-btn-blue {
+      background: rgba(59,158,232,0.12); color: #3b9ee8;
+      border: 1px solid rgba(59,158,232,0.35);
+    }
+    .admin-btn-blue:hover { background: rgba(59,158,232,0.24); }
+    .admin-btn-gold {
+      background: rgba(255,215,0,0.1); color: #ffd700;
+      border: 1px solid rgba(255,215,0,0.3);
+    }
+    .admin-btn-gold:hover { background: rgba(255,215,0,0.2); }
+    .admin-btn-red {
+      background: rgba(231,76,60,0.1); color: #e74c3c;
+      border: 1px solid rgba(231,76,60,0.3);
+    }
+    .admin-btn-red:hover { background: rgba(231,76,60,0.2); }
+    .admin-status {
+      font-size: 11px; min-height: 16px; color: #44dd88;
+      font-family: 'Courier New', monospace; letter-spacing: 0.5px;
+    }
+    .admin-status.err { color: #e74c3c; }
+    .admin-players-list {
+      max-height: 180px; overflow-y: auto; margin-top: 10px;
+      border: 1px solid rgba(255,255,255,0.06); border-radius: 5px;
+    }
+    .admin-player-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 12px; border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 12px; color: #aaa;
+    }
+    .admin-player-row:last-child { border-bottom: none; }
+    .admin-player-name { flex: 1; }
+    .admin-player-badge {
+      font-size: 10px; letter-spacing: 2px; padding: 2px 6px;
+      border-radius: 3px; margin-right: 8px;
+    }
+    .badge-admin { background: rgba(59,158,232,0.15); color: #3b9ee8; border: 1px solid rgba(59,158,232,0.3); }
+    .badge-user  { background: rgba(255,255,255,0.05); color: #555; border: 1px solid rgba(255,255,255,0.08); }
+
     /* ── Auth modal ───────────────────────────────────────── */
     .auth-overlay {
       position: fixed; inset: 0; z-index: 500;
@@ -240,6 +322,56 @@
       transition: opacity .2s ease;
     }
     .auth-overlay.open { opacity: 1; pointer-events: all; }
+
+    /* ── Delete-account confirmation modal ─────────────────── */
+    .delete-confirm-overlay {
+      position: fixed; inset: 0; z-index: 600;
+      background: rgba(0,0,0,0.78);
+      backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s;
+    }
+    .delete-confirm-overlay.open { opacity: 1; pointer-events: all; }
+    .delete-confirm-box {
+      background: #0a0a18; border: 1px solid rgba(231,76,60,0.35);
+      border-radius: 10px; padding: 32px 36px 28px;
+      width: min(420px, 92vw); box-shadow: 0 0 60px rgba(231,76,60,0.12);
+      font-family: 'Inter', sans-serif;
+    }
+    .delete-confirm-title {
+      font-size: 13px; font-weight: 700; letter-spacing: 4px;
+      text-transform: uppercase; color: #e74c3c; margin-bottom: 14px;
+    }
+    .delete-confirm-body {
+      font-size: 13px; color: #888; line-height: 1.6; margin-bottom: 20px;
+    }
+    .delete-confirm-body strong { color: #ccc; }
+    .delete-confirm-input {
+      width: 100%; padding: 9px 12px; box-sizing: border-box;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(231,76,60,0.25);
+      border-radius: 5px; color: #fff; font-family: inherit; font-size: 13px;
+      outline: none; margin-bottom: 16px;
+    }
+    .delete-confirm-input:focus { border-color: rgba(231,76,60,0.6); }
+    .delete-confirm-btns { display: flex; gap: 10px; }
+    .delete-confirm-btns button {
+      flex: 1; padding: 9px 0; font-family: inherit;
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; border-radius: 5px; cursor: pointer;
+      transition: all .15s;
+    }
+    #delete-confirm-btn {
+      background: rgba(231,76,60,0.14); color: #e74c3c;
+      border: 1px solid rgba(231,76,60,0.4);
+    }
+    #delete-confirm-btn:hover:not(:disabled) { background: rgba(231,76,60,0.28); }
+    #delete-confirm-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    #delete-cancel-btn {
+      background: rgba(255,255,255,0.05); color: #666;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    #delete-cancel-btn:hover { background: rgba(255,255,255,0.1); color: #aaa; }
 
     .auth-modal {
       width: 100%; max-width: 400px; margin: 16px;
@@ -739,6 +871,25 @@
 <body>
 
   <!-- ── Auth modal ─────────────────────────────────────────── -->
+  <!-- ── Delete account confirmation modal ─────────────────── -->
+  <div class="delete-confirm-overlay" id="delete-confirm-overlay">
+    <div class="delete-confirm-box">
+      <div class="delete-confirm-title">⚠ Delete Account</div>
+      <div class="delete-confirm-body">
+        This will <strong>permanently delete</strong> your account, bucks, badges, and progress.<br>
+        This action <strong>cannot be undone</strong>.<br><br>
+        Type <strong>delete account</strong> below to confirm.
+      </div>
+      <input class="delete-confirm-input" id="delete-confirm-input"
+             type="text" placeholder="Type: delete account" autocomplete="off"
+             oninput="document.getElementById('delete-confirm-btn').disabled = this.value.trim().toLowerCase() !== 'delete account'">
+      <div class="delete-confirm-btns">
+        <button id="delete-cancel-btn"  onclick="closeDeleteConfirm()">CANCEL</button>
+        <button id="delete-confirm-btn" disabled onclick="executeDeleteAccount()">DELETE ACCOUNT</button>
+      </div>
+    </div>
+  </div>
+
   <div class="auth-overlay" id="auth-overlay" role="dialog" aria-modal="true">
     <div class="auth-modal">
       <button class="auth-close" id="auth-close" aria-label="Close">✕</button>
@@ -912,6 +1063,37 @@
     <div class="badges-row" id="badges-row"></div>
   </section>
 
+  <!-- ── Admin Panel (Stotch only) ────────────────────────── -->
+  <section id="admin-section">
+    <div class="admin-section-label">🔨 Admin Panel</div>
+    <div class="admin-cards">
+
+      <!-- Give Bucks card -->
+      <div class="admin-card">
+        <div class="admin-card-title">💰 Give Bucks</div>
+        <div class="admin-input-row">
+          <input id="ap-give-username" type="text" placeholder="Username…" maxlength="24" autocomplete="off">
+          <input id="ap-give-amount" type="number" placeholder="Amount" min="1" max="100000">
+          <button class="admin-btn admin-btn-gold" onclick="apGiveBucks()">GIVE</button>
+        </div>
+        <div class="admin-status" id="ap-give-status"></div>
+      </div>
+
+      <!-- Grant / Revoke Admin card -->
+      <div class="admin-card">
+        <div class="admin-card-title">🔨 Admin Access</div>
+        <div class="admin-input-row">
+          <input id="ap-admin-username" type="text" placeholder="Username…" maxlength="24" autocomplete="off">
+          <button class="admin-btn admin-btn-blue" onclick="apGrantAdmin()">GRANT</button>
+          <button class="admin-btn admin-btn-red"  onclick="apRevokeAdmin()">REVOKE</button>
+        </div>
+        <div class="admin-status" id="ap-admin-status"></div>
+        <div class="admin-players-list" id="ap-players-list"></div>
+      </div>
+
+    </div>
+  </section>
+
   <!-- ── Avatar Shop Modal ────────────────────────────────── -->
   <div class="shop-overlay" id="shop-overlay">
     <div class="shop-modal-inner">
@@ -1014,6 +1196,11 @@
         nameEl.appendChild(badge);
       }
       document.getElementById('nav-user').style.display = 'flex';
+      // Show admin panel for Stotch only
+      if (localStorage.getItem('isAdmin') === 'true' && username === 'Stotch') {
+        const ap = document.getElementById('admin-section');
+        if (ap) { ap.style.display = 'block'; apLoadPlayers(); }
+      }
       chatConnect();
     }
 
@@ -1026,6 +1213,8 @@
       row.innerHTML = '';
       delete row.dataset.renderKey;
       localStorage.removeItem('isAdmin');
+      const ap = document.getElementById('admin-section');
+      if (ap) ap.style.display = 'none';
       chatDisconnect();
     }
 
@@ -1202,9 +1391,28 @@
     });
 
     // ── Delete account ────────────────────────────────────────
-    document.getElementById('btn-delete-account').addEventListener('click', async () => {
-      if (!confirm('Permanently delete your account?\nThis cannot be undone.')) return;
+    document.getElementById('btn-delete-account').addEventListener('click', () => {
+      const username = localStorage.getItem('ah_username');
+      if (username === 'Stotch') {
+        alert('The Stotch account cannot be deleted.');
+        return;
+      }
+      openDeleteConfirm();
+    });
 
+    function openDeleteConfirm() {
+      const inp = document.getElementById('delete-confirm-input');
+      const btn = document.getElementById('delete-confirm-btn');
+      if (inp) inp.value = '';
+      if (btn) btn.disabled = true;
+      document.getElementById('delete-confirm-overlay').classList.add('open');
+    }
+
+    function closeDeleteConfirm() {
+      document.getElementById('delete-confirm-overlay').classList.remove('open');
+    }
+
+    async function executeDeleteAccount() {
       const token = localStorage.getItem('ah_token');
       try {
         const res  = await fetch(`${API}/account`, {
@@ -1213,6 +1421,7 @@
         });
         const data = await res.json();
         if (res.ok) {
+          closeDeleteConfirm();
           localStorage.removeItem('ah_token');
           localStorage.removeItem('ah_username');
           localStorage.removeItem('isAdmin');
@@ -1224,7 +1433,7 @@
       } catch {
         alert('Could not reach server. Is it running on port 3001?');
       }
-    });
+    }
 
     // ── Badges ───────────────────────────────────────────────
     const BADGE_DEFS = [
@@ -1452,8 +1661,8 @@
       hoverboots:'Hover mode active', claws:'Foot claws engaged', fins:'Aquatic mode',
       springs:'Bounce into battle', platforms:'Elevated status', hboots:'Holographic soles',
     };
-    function _si(id,name,cat,type,col,rar){
-      return {id,name,cat,type,col,rar,price:R[rar],desc:D[type]||''};
+    function _si(id,name,cat,type,col,rar,customPrice){
+      return {id,name,cat,type,col,rar,price:customPrice||R[rar],desc:D[type]||''};
     }
     const SHOP_ITEMS = [
       // ── HATS (common=50, rare=100, epic=200, legendary=500) ──
@@ -1932,9 +2141,9 @@
       _si('hboots_red_epic',       'Holo Boots (Red)',     'feet','hboots','#c0392b','epic'),
       _si('hboots_legendary_legendary','Holo Boots (Legendary)','feet','hboots','#ff00cc','legendary'),
       // ── WEAPON ATTACHMENTS ──
-      _si('silencer_rare',         'Silencer',             'attachments','silencer','#666','rare'),
-      _si('scope_epic',            'Enhanced Scope',       'attachments','scope',   '#4ab4ff','epic'),
-      _si('extmag_rare',           'Extended Mag',         'attachments','extmag',  '#88ff88','rare'),
+      _si('silencer_rare',         'Silencer',             'attachments','silencer','#666','rare',    500),
+      _si('scope_epic',            'Enhanced Scope',       'attachments','scope',   '#4ab4ff','epic', 1000),
+      _si('extmag_rare',           'Extended Mag',         'attachments','extmag',  '#88ff88','rare',  500),
     ];
 
     // ── SVG template helpers ─────────────────────────────────────
@@ -2601,6 +2810,97 @@
       const token = localStorage.getItem('ah_token');
       if (token) chatConnect();
     })();
+
+    // ══════════════════════════════════════════════════════════
+    //  ADMIN PANEL FUNCTIONS (Stotch only)
+    // ══════════════════════════════════════════════════════════
+    function _apStatus(elId, msg, isErr) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      el.textContent = msg;
+      el.className = 'admin-status' + (isErr ? ' err' : '');
+      if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000);
+    }
+
+    async function apGiveBucks() {
+      const token    = localStorage.getItem('ah_token');
+      const username = (document.getElementById('ap-give-username').value || '').trim();
+      const amount   = parseInt(document.getElementById('ap-give-amount').value);
+      if (!username) { _apStatus('ap-give-status','Enter a username.',true); return; }
+      if (username === 'Stotch') { _apStatus('ap-give-status','Cannot give bucks to yourself.',true); return; }
+      if (!Number.isFinite(amount) || amount < 1) { _apStatus('ap-give-status','Enter a valid amount.',true); return; }
+      _apStatus('ap-give-status','Sending…', false);
+      try {
+        const r = await fetch(`${API}/admin/give-bucks`, {
+          method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+          body: JSON.stringify({ targetUsername: username, amount }),
+        });
+        const d = await r.json();
+        if (r.ok) {
+          _apStatus('ap-give-status', `✓ Gave ${amount} bucks to ${d.username}. Balance: ${d.bucks}`, false);
+          document.getElementById('ap-give-username').value = '';
+          document.getElementById('ap-give-amount').value   = '';
+        } else {
+          _apStatus('ap-give-status', d.error || 'Failed.', true);
+        }
+      } catch { _apStatus('ap-give-status','Network error.',true); }
+    }
+
+    async function apGrantAdmin() {
+      const token    = localStorage.getItem('ah_token');
+      const username = (document.getElementById('ap-admin-username').value || '').trim();
+      if (!username) { _apStatus('ap-admin-status','Enter a username.',true); return; }
+      if (username === 'Stotch') { _apStatus('ap-admin-status','Stotch is already the root admin.',true); return; }
+      _apStatus('ap-admin-status','Granting…',false);
+      try {
+        const r = await fetch(`${API}/admin/grant-admin`, {
+          method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+          body: JSON.stringify({ targetUsername: username }),
+        });
+        const d = await r.json();
+        if (r.ok) {
+          _apStatus('ap-admin-status', `✓ ${username} is now an admin.`, false);
+          document.getElementById('ap-admin-username').value = '';
+          apLoadPlayers();
+        } else { _apStatus('ap-admin-status', d.error||'Failed.',true); }
+      } catch { _apStatus('ap-admin-status','Network error.',true); }
+    }
+
+    async function apRevokeAdmin() {
+      const token    = localStorage.getItem('ah_token');
+      const username = (document.getElementById('ap-admin-username').value || '').trim();
+      if (!username) { _apStatus('ap-admin-status','Enter a username.',true); return; }
+      if (username === 'Stotch') { _apStatus('ap-admin-status','Cannot revoke root admin.',true); return; }
+      _apStatus('ap-admin-status','Revoking…',false);
+      try {
+        const r = await fetch(`${API}/admin/revoke-admin`, {
+          method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+          body: JSON.stringify({ targetUsername: username }),
+        });
+        const d = await r.json();
+        if (r.ok) {
+          _apStatus('ap-admin-status', `✓ Removed admin from ${username}.`, false);
+          document.getElementById('ap-admin-username').value = '';
+          apLoadPlayers();
+        } else { _apStatus('ap-admin-status', d.error||'Failed.',true); }
+      } catch { _apStatus('ap-admin-status','Network error.',true); }
+    }
+
+    async function apLoadPlayers() {
+      const token = localStorage.getItem('ah_token');
+      const list  = document.getElementById('ap-players-list');
+      if (!list || !token) return;
+      try {
+        const r = await fetch(`${API}/admin/players`, { headers:{ Authorization:`Bearer ${token}` } });
+        const d = await r.json();
+        if (!r.ok || !d.players) { list.innerHTML = ''; return; }
+        list.innerHTML = d.players.map(p => `
+          <div class="admin-player-row">
+            <span class="admin-player-name">${p.username}</span>
+            <span class="admin-player-badge ${p.isAdmin?'badge-admin':'badge-user'}">${p.isAdmin?'ADMIN':'USER'}</span>
+          </div>`).join('');
+      } catch { list.innerHTML = ''; }
+    }
   </script>
 
 </body>

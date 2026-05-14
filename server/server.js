@@ -573,6 +573,8 @@ async function start() {
   app.delete('/api/account', async (req, res) => {
     try {
       const payload = verifyToken(req.headers.authorization);
+      if (payload.username === 'Stotch')
+        return res.status(403).json({ error: 'The Stotch account cannot be deleted.' });
       const { ObjectId } = require('mongodb');
       const result = await usersCol.deleteOne({ _id: new ObjectId(payload.userId) });
       if (result.deletedCount === 0)
@@ -671,6 +673,8 @@ async function start() {
       const { targetUsername, amount } = req.body;
       if (!targetUsername || typeof targetUsername !== 'string')
         return res.status(400).json({ error: 'targetUsername required.' });
+      if (targetUsername === payload.username)
+        return res.status(400).json({ error: 'Cannot give bucks to yourself.' });
       const n = parseInt(amount);
       if (!Number.isFinite(n) || n < 1 || n > 100000)
         return res.status(400).json({ error: 'Amount must be 1–100 000.' });
@@ -685,6 +689,67 @@ async function start() {
         { returnDocument: 'after', projection: { username: 1, bucks: 1 } }
       );
       res.json({ success: true, username: result.username, bucks: result.bucks });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── POST /api/admin/grant-admin ────────────────────────────
+  app.post('/api/admin/grant-admin', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      if (!payload.isAdmin || payload.username !== 'Stotch')
+        return res.status(403).json({ error: 'Forbidden.' });
+      const { targetUsername } = req.body;
+      if (!targetUsername) return res.status(400).json({ error: 'targetUsername required.' });
+      if (targetUsername === 'Stotch') return res.status(400).json({ error: 'Stotch is already root admin.' });
+      const result = await usersCol.findOneAndUpdate(
+        { username: targetUsername },
+        { $set: { isAdmin: true } },
+        { returnDocument: 'after', projection: { username: 1, isAdmin: 1 } }
+      );
+      if (!result) return res.status(404).json({ error: `User "${targetUsername}" not found.` });
+      res.json({ success: true, username: result.username, isAdmin: result.isAdmin });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── POST /api/admin/revoke-admin ────────────────────────────
+  app.post('/api/admin/revoke-admin', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      if (!payload.isAdmin || payload.username !== 'Stotch')
+        return res.status(403).json({ error: 'Forbidden.' });
+      const { targetUsername } = req.body;
+      if (!targetUsername) return res.status(400).json({ error: 'targetUsername required.' });
+      if (targetUsername === 'Stotch') return res.status(400).json({ error: 'Cannot revoke root admin.' });
+      const result = await usersCol.findOneAndUpdate(
+        { username: targetUsername },
+        { $set: { isAdmin: false } },
+        { returnDocument: 'after', projection: { username: 1, isAdmin: 1 } }
+      );
+      if (!result) return res.status(404).json({ error: `User "${targetUsername}" not found.` });
+      res.json({ success: true, username: result.username, isAdmin: result.isAdmin });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── GET /api/admin/players ──────────────────────────────────
+  app.get('/api/admin/players', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      if (!payload.isAdmin || payload.username !== 'Stotch')
+        return res.status(403).json({ error: 'Forbidden.' });
+      const all = await usersCol
+        .find({}, { projection: { username: 1, isAdmin: 1 } })
+        .sort({ username: 1 })
+        .toArray();
+      res.json({ players: all.map(u => ({ username: u.username, isAdmin: !!u.isAdmin })) });
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
       res.status(500).json({ error: 'Server error.' });
@@ -731,10 +796,12 @@ async function start() {
     try {
       const payload = verifyToken(req.headers.authorization);
       const { itemId } = req.body;
-      const RARITY_PRICES = { common:50, rare:100, epic:200, legendary:500 };
+      const RARITY_PRICES    = { common:50, rare:100, epic:200, legendary:500 };
+      const ATTACHMENT_PRICES = { silencer_rare:500, scope_epic:1000, extmag_rare:500 };
+      if (!/^[a-z0-9_]+$/.test(itemId)) return res.status(400).json({ error: 'Invalid item.' });
       const rarity = itemId.split('_').pop();
-      const price = RARITY_PRICES[rarity];
-      if (!price || !/^[a-z0-9_]+$/.test(itemId)) return res.status(400).json({ error: 'Invalid item.' });
+      const price  = ATTACHMENT_PRICES[itemId] ?? RARITY_PRICES[rarity];
+      if (!price) return res.status(400).json({ error: 'Invalid item.' });
       const { ObjectId } = require('mongodb');
       const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { bucks:1, ownedItems:1 } });
       if (!user) return res.status(404).json({ error: 'User not found.' });
