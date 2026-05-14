@@ -658,3 +658,43 @@ body {
   background:#1a3a60; color:#88aaff; border:1px solid #2a4a80;
   border-radius:3px; cursor:pointer;
 }
+
+/* ── Report button in co-op panel ────────────────────────── */
+.coop-report-btn {
+  background:none; border:none; color:#444; cursor:pointer;
+  font-size:14px; padding:2px 4px; border-radius:3px;
+  transition:color .15s;
+}
+.coop-report-btn:hover { color:#e74c3c; }
+.coop-report-btn:disabled { opacity:0.4; cursor:default; }
+
+/* ── Reports section in admin ban panel ───────────────────── */
+#reports-section {
+  border-top:1px solid rgba(255,255,255,0.06);
+  padding-top:10px; margin-top:10px;
+}
+#reports-title {
+  font-size:9px; letter-spacing:3px; color:#888;
+  text-transform:uppercase; margin-bottom:8px;
+}
+#report-list {
+  max-height:120px; overflow-y:auto;
+  display:flex; flex-direction:column; gap:6px;
+}
+.report-entry {
+  font-size:10px; color:#aaa; line-height:1.4;
+  border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:4px;
+}
+.report-time  { color:#555; margin-right:4px; }
+.report-reason{ color:#ff8888; }
+
+/* ── Ping / latency indicator ─────────────────────────────── */
+#ping-display {
+  position:absolute; top:18px; right:160px;
+  font-size:10px; font-family:'Courier New',monospace;
+  letter-spacing:1px; pointer-events:none;
+  color:#555; transition:color .3s;
+}
+#ping-display.ping-good { color:#44dd88; }
+#ping-display.ping-ok   { color:#ffd700; }
+#ping-display.ping-bad  { color:#e74c3c; text-shadow:0 0 6px #e74c3c; }

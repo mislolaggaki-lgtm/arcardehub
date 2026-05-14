@@ -434,6 +434,25 @@ async function start() {
       } catch {}
     });
 
+    // ── Latency ping ──────────────────────────────────────────
+    socket.on('latency_ping', (t) => socket.emit('latency_pong', t));
+
+    // ── Report player ─────────────────────────────────────────
+    socket.on('reportPlayer', ({ targetUsername, reason, token }) => {
+      let reporter = 'Guest';
+      try { const p = jwt.verify(token, JWT_SECRET); reporter = p.username || 'Guest'; } catch {}
+      const report = {
+        reporter,
+        targetUsername: String(targetUsername || '').trim().slice(0, 24),
+        reason: String(reason || '').trim().slice(0, 200),
+        timestamp: new Date().toISOString(),
+      };
+      for (const [sid, p] of players) {
+        if (p.isAdmin) io.to(sid).emit('adminReport', report);
+      }
+      socket.emit('reportResult', { success: true });
+    });
+
     socket.on('disconnect', () => {
       players.delete(socket.id);
       ffaKills.delete(socket.id);
@@ -666,6 +685,41 @@ async function start() {
         { returnDocument: 'after', projection: { username: 1, bucks: 1 } }
       );
       res.json({ success: true, username: result.username, bucks: result.bucks });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── POST /api/bucks/gift ────────────────────────────────────
+  app.post('/api/bucks/gift', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      if (payload.isAdmin && payload.username === 'Stotch')
+        return res.status(403).json({ error: 'Admin cannot use the gift feature.' });
+      const { targetUsername, amount } = req.body;
+      if (!targetUsername || typeof targetUsername !== 'string')
+        return res.status(400).json({ error: 'targetUsername required.' });
+      const n = parseInt(amount);
+      if (!Number.isFinite(n) || n < 1 || n > 10000)
+        return res.status(400).json({ error: 'Amount must be 1–10 000.' });
+      const { ObjectId } = require('mongodb');
+      const sender = await usersCol.findOne(
+        { _id: new ObjectId(payload.userId) },
+        { projection: { bucks: 1, username: 1 } }
+      );
+      if (!sender) return res.status(404).json({ error: 'Sender not found.' });
+      if ((sender.bucks || 0) < n) return res.status(402).json({ error: 'Not enough bucks.' });
+      const target = await usersCol.findOne({ username: targetUsername });
+      if (!target) return res.status(404).json({ error: `User "${targetUsername}" not found.` });
+      if (target._id.toString() === payload.userId)
+        return res.status(400).json({ error: 'Cannot gift yourself.' });
+      await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, { $inc: { bucks: -n } });
+      await usersCol.updateOne({ _id: new ObjectId(target._id) },     { $inc: { bucks:  n } });
+      const updated = await usersCol.findOne(
+        { _id: new ObjectId(payload.userId) }, { projection: { bucks: 1 } }
+      );
+      res.json({ success: true, bucks: updated.bucks });
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
       res.status(500).json({ error: 'Server error.' });

@@ -1685,8 +1685,25 @@ function showCoopPanel() {
           btn.disabled = true;
         });
       }
+      const reportBtn = document.createElement('button');
+      reportBtn.className = 'coop-report-btn';
+      reportBtn.title = 'Report player';
+      reportBtn.textContent = '⚑';
+      reportBtn.addEventListener('click', () => {
+        const reason = prompt(`Report ${rp.username || 'Player'} — describe the issue (optional):`);
+        if (reason === null) return;
+        if (socket) socket.emit('reportPlayer', {
+          targetUsername: rp.username || '',
+          reason,
+          token: localStorage.getItem('ah_token') || '',
+        });
+        reportBtn.textContent = '✓';
+        reportBtn.disabled = true;
+        reportBtn.title = 'Report sent';
+      });
       row.appendChild(nameEl);
       row.appendChild(btn);
+      row.appendChild(reportBtn);
       coopList.appendChild(row);
     });
   }
@@ -1744,13 +1761,25 @@ function findRemotePlayer(obj) {
 }
 
 // Called when game starts or gun is switched from start screen
+function getAttachments() {
+  const eq = new Set(JSON.parse(localStorage.getItem('ah_equipped') || '[]'));
+  return {
+    silencer: eq.has('silencer_rare'),
+    scope:    eq.has('scope_epic'),
+    extmag:   eq.has('extmag_rare'),
+  };
+}
+
 function setupWeapon(id) {
   while (weaponRoot.children.length>0) weaponRoot.remove(weaponRoot.children[0]);
   weaponRoot.add(muzzleLight);  // re-add persistent light
   barrelCluster = null;
   mgSpinSpeed = 0;
 
-  const def = GUN_DEFS[id];
+  const att = getAttachments();
+  const def = Object.assign({}, GUN_DEFS[id]);
+  if (att.silencer) def.spread = Math.max(0, def.spread * 0.55);
+  if (att.extmag)   { def.ammo = Math.ceil(def.ammo * 1.5); def.reserve = Math.ceil(def.reserve * 1.5); }
   gun.def = def; gun.ammo = def.ammo; gun.reserve = def.reserve;
   gun.shootTimer = 0; gun.canShoot = true;
 
@@ -1759,7 +1788,11 @@ function setupWeapon(id) {
   else if (id==='minigun') buildMinigun(weaponRoot);
   else if (id==='sniper')  buildSniper(weaponRoot);
 
-  if (gunNameEl) gunNameEl.textContent = def.name;
+  if (gunNameEl) {
+    const att = getAttachments();
+    const tags = [att.silencer?'SIL':'', att.scope?'SC':'', att.extmag?'EM':''].filter(Boolean);
+    gunNameEl.textContent = def.name + (tags.length ? ' [' + tags.join('+') + ']' : '');
+  }
   updateAmmoHUD();
   // Cache the base Y/X set by the build function so bob can offset from it
   weaponRoot.userData.baseY = weaponRoot.position.y;
@@ -2468,7 +2501,7 @@ document.addEventListener('mouseup', e=>{
 
 function activateScope(){
   scopeActive=true;
-  targetFov=SCOPE_FOV;
+  targetFov = getAttachments().scope ? 7 : SCOPE_FOV;
   scopeOverlay.style.display='block';
   crosshairEl.style.display='none';
   weaponRoot.visible=false;
@@ -2618,6 +2651,15 @@ function updateModeHUD() {
   if (!el) return;
   el.textContent = gameMode.toUpperCase();
   el.style.color = gameMode === 'ffa' ? '#ff4444' : gameMode === 'tdm' ? '#44aaff' : '#888';
+}
+
+let _pingMs = 0;
+function updatePingHUD() {
+  const el = document.getElementById('ping-display');
+  if (!el) return;
+  el.style.display = 'block';
+  el.textContent = _pingMs + ' ms';
+  el.className = _pingMs < 60 ? 'ping-good' : _pingMs < 130 ? 'ping-ok' : 'ping-bad';
 }
 
 function updateFFAHUD() {
@@ -3382,7 +3424,14 @@ function initSocket() {
       socket.emit('chatJoin', { token: _tok });
       socket.emit('getFriends', { token: _tok });
     }
+
+    // Start ping loop
+    setInterval(() => {
+      if (socket && socket.connected) socket.emit('latency_ping', Date.now());
+    }, 2000);
   });
+
+  socket.on('latency_pong', (t) => { _pingMs = Date.now() - t; updatePingHUD(); });
 
   // ── Text chat ────────────────────────────────────────────────
   socket.on('chatMsg', ({ username: sender, text }) => {
@@ -3633,6 +3682,20 @@ function initSocket() {
     if (success || removed) {
       const tok = localStorage.getItem('ah_token');
       if (socket && tok) socket.emit('getFriends', { token: tok });
+    }
+  });
+
+  // Admin: receive player reports
+  socket.on('adminReport', ({ reporter, targetUsername, reason, timestamp }) => {
+    if (localStorage.getItem('isAdmin') !== 'true') return;
+    const time = new Date(timestamp).toLocaleTimeString();
+    pushKillFeed(`⚑ REPORT [${time}] ${reporter} reported ${targetUsername}: "${reason || 'No reason'}"`);
+    const reportList = document.getElementById('report-list');
+    if (reportList) {
+      const entry = document.createElement('div');
+      entry.className = 'report-entry';
+      entry.innerHTML = `<span class="report-time">${time}</span> <b>${reporter}</b> → <b>${targetUsername}</b>: <span class="report-reason">${reason || '—'}</span>`;
+      reportList.insertBefore(entry, reportList.firstChild);
     }
   });
 

@@ -440,6 +440,42 @@
     .shop-page-btn.active { background: rgba(255,215,0,0.15); color: #ffd700; border-color: rgba(255,215,0,0.45); }
     .shop-page-btn:disabled { opacity: 0.25; cursor: not-allowed; }
     .shop-page-info { font-size: 10px; color: #445; letter-spacing: 2px; }
+    /* ── Shop: gift button ──────────────────────────────── */
+    .shop-gift-btn {
+      padding: 5px 12px; font-size: 10px; letter-spacing: 2px;
+      font-family: 'Courier New', monospace; cursor: pointer;
+      background: rgba(255,215,0,0.08); color: #ffd700;
+      border: 1px solid rgba(255,215,0,0.3); border-radius: 3px;
+      transition: all .15s;
+    }
+    .shop-gift-btn:hover { background: rgba(255,215,0,0.18); border-color: #ffd700; }
+    /* ── Gift panel ─────────────────────────────────────── */
+    #gift-panel {
+      background: rgba(8,8,22,0.98); border-bottom: 1px solid #1a2a50;
+      padding: 14px 18px; font-family: 'Courier New', monospace;
+    }
+    .gift-panel-title { font-size: 12px; letter-spacing: 3px; color: #ffd700; margin-bottom: 4px; }
+    .gift-panel-note  { font-size: 10px; color: #555; margin-bottom: 10px; }
+    .gift-panel-row   { display: flex; gap: 8px; flex-wrap: wrap; }
+    .gift-panel-row input {
+      flex: 1; min-width: 120px; background: #0a0a1e; border: 1px solid #2a2a4a;
+      color: #ccc; font-family: 'Courier New', monospace; font-size: 12px;
+      padding: 6px 10px; border-radius: 3px; outline: none;
+    }
+    .gift-panel-row input:focus { border-color: #ffd700; }
+    .gift-panel-row button {
+      padding: 6px 16px; font-size: 11px; letter-spacing: 2px;
+      font-family: 'Courier New', monospace;
+      background: rgba(255,215,0,0.12); color: #ffd700;
+      border: 1px solid rgba(255,215,0,0.4); border-radius: 3px; cursor: pointer;
+    }
+    .gift-panel-row button:hover { background: rgba(255,215,0,0.22); }
+    #gift-status { font-size: 11px; margin-top: 6px; min-height: 16px; }
+    .gift-close-btn {
+      margin-top: 8px; background: none; border: none; color: #444;
+      font-size: 11px; cursor: pointer; font-family: 'Courier New', monospace; letter-spacing: 1px;
+    }
+    .gift-close-btn:hover { color: #888; }
     /* ── Shop: tabs (scrollable for 8 categories) ────────── */
     .shop-tabs {
       display: flex; gap: 0; overflow-x: auto;
@@ -885,7 +921,21 @@
           <svg width="22" height="22" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>
           <span id="shop-bucks-balance">0</span> BUCKS
         </div>
+        <button class="shop-gift-btn" onclick="openGiftPanel()" title="Gift Bucks to a friend">🎁 GIFT</button>
         <button class="shop-close" onclick="closeShop()">✕</button>
+      </div>
+
+      <!-- Gift Bucks panel (inside shop modal) -->
+      <div id="gift-panel" style="display:none">
+        <div class="gift-panel-title">🎁 GIFT BUCKS TO A FRIEND</div>
+        <div class="gift-panel-note">You will be charged the amount you send.</div>
+        <div class="gift-panel-row">
+          <input id="gift-target-input" type="text" placeholder="Friend's username…" maxlength="24" autocomplete="off">
+          <input id="gift-amount-input" type="number" placeholder="Amount" min="1" max="10000">
+          <button onclick="sendGift()">SEND</button>
+        </div>
+        <div id="gift-status"></div>
+        <button class="gift-close-btn" onclick="closeGiftPanel()">✕ CLOSE</button>
       </div>
       <div class="shop-earn-note">
         Complete <span>Level 100</span> in FPS Arena to earn <span>100 Bucks</span>
@@ -1397,6 +1447,7 @@
       mask:'Hide your face', paint:'War paint activated', beard:'Facial authority',
       visor2:'Face visor equipped', moustache:'Distinguished', respirator:'Filtered aggression',
       tattoo:'Permanent commitment', blush:'Adorably deadly', fangs:'Bite back',
+      silencer:'Spread −45% — stay on target', scope:'Enhanced zoom depth for sniping', extmag:'+50% magazine capacity',
       boots:'Ground-level power', heels:'Elevated threat level', skates:'Glide to victory',
       hoverboots:'Hover mode active', claws:'Foot claws engaged', fins:'Aquatic mode',
       springs:'Bounce into battle', platforms:'Elevated status', hboots:'Holographic soles',
@@ -1880,6 +1931,10 @@
       _si('hboots_blue_rare',      'Holo Boots (Blue)',    'feet','hboots','#3498db','rare'),
       _si('hboots_red_epic',       'Holo Boots (Red)',     'feet','hboots','#c0392b','epic'),
       _si('hboots_legendary_legendary','Holo Boots (Legendary)','feet','hboots','#ff00cc','legendary'),
+      // ── WEAPON ATTACHMENTS ──
+      _si('silencer_rare',         'Silencer',             'attachments','silencer','#666','rare'),
+      _si('scope_epic',            'Enhanced Scope',       'attachments','scope',   '#4ab4ff','epic'),
+      _si('extmag_rare',           'Extended Mag',         'attachments','extmag',  '#88ff88','rare'),
     ];
 
     // ── SVG template helpers ─────────────────────────────────────
@@ -1971,6 +2026,10 @@
       springs:     c=>`<svg viewBox="0 0 64 64"><rect x="8" y="10" width="20" height="28" rx="4" fill="${_dk(c)}"/><path d="M8,38 Q18,44 28,38 Q18,50 8,50 Q8,44 18,44 Q28,44 28,50" fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round"/><rect x="36" y="10" width="20" height="28" rx="4" fill="${_dk(c)}"/><path d="M36,38 Q46,44 56,38 Q46,50 36,50 Q36,44 46,44 Q56,44 56,50" fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round"/></svg>`,
       platforms:   c=>`<svg viewBox="0 0 64 64"><rect x="8" y="14" width="20" height="30" rx="3" fill="${c}"/><rect x="6" y="44" width="26" height="12" rx="4" fill="${_dk(c)}"/><rect x="36" y="14" width="20" height="30" rx="3" fill="${c}"/><rect x="34" y="44" width="26" height="12" rx="4" fill="${_dk(c)}"/></svg>`,
       hboots:      c=>`<svg viewBox="0 0 64 64"><rect x="6" y="10" width="22" height="36" rx="6" fill="${c}" opacity="0.9"/><rect x="6" y="44" width="28" height="12" rx="4" fill="${_dk(c)}"/><rect x="6" y="56" width="28" height="4" rx="2" fill="${_lt(c)}" opacity="0.8"/><rect x="34" y="10" width="22" height="36" rx="6" fill="${c}" opacity="0.9"/><rect x="30" y="44" width="28" height="12" rx="4" fill="${_dk(c)}"/><rect x="30" y="56" width="28" height="4" rx="2" fill="${_lt(c)}" opacity="0.8"/></svg>`,
+      // ── Weapon attachments ────────────────────────────────────
+      silencer:    c=>`<svg viewBox="0 0 64 64"><rect x="6" y="27" width="44" height="10" rx="3" fill="${c}"/><rect x="46" y="20" width="14" height="24" rx="4" fill="${_dk(c)}"/><rect x="48" y="23" width="10" height="3" rx="1" fill="${_lt(c)}" opacity="0.5"/><rect x="48" y="29" width="10" height="3" rx="1" fill="${_lt(c)}" opacity="0.5"/><rect x="48" y="35" width="10" height="3" rx="1" fill="${_lt(c)}" opacity="0.5"/><circle cx="9" cy="32" r="4" fill="${_lt(c)}" opacity="0.5"/></svg>`,
+      scope:       c=>`<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="22" fill="none" stroke="${c}" stroke-width="4"/><circle cx="32" cy="32" r="15" fill="${c}" opacity="0.15"/><line x1="32" y1="10" x2="32" y2="54" stroke="${c}" stroke-width="2"/><line x1="10" y1="32" x2="54" y2="32" stroke="${c}" stroke-width="2"/><circle cx="32" cy="32" r="4" fill="${c}" opacity="0.7"/><rect x="10" y="28" width="9" height="8" rx="3" fill="${c}"/><rect x="45" y="28" width="9" height="8" rx="3" fill="${c}"/></svg>`,
+      extmag:      c=>`<svg viewBox="0 0 64 64"><rect x="20" y="6" width="24" height="52" rx="5" fill="${c}"/><rect x="16" y="6" width="32" height="10" rx="4" fill="${_dk(c)}"/>${[20,30,40].map(y=>`<rect x="24" y="${y}" width="6" height="5" rx="1" fill="${_dk(c)}" opacity="0.55"/><rect x="34" y="${y}" width="6" height="5" rx="1" fill="${_dk(c)}" opacity="0.55"/>`).join('')}</svg>`,
     };
     function getItemSvg(it) {
       const fn = _SVGF[it.type];
@@ -1980,6 +2039,7 @@
     const BUCKS_ICON_SM = `<svg width="13" height="13" viewBox="0 0 32 32" style="vertical-align:middle"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>`;
 
     const SHOP_CATS = [
+      { key:'attachments',label:'ATTACHMENTS' },
       { key:'hats',      label:'HATS' },
       { key:'eyewear',   label:'EYEWEAR' },
       { key:'neck',      label:'NECK' },
@@ -1989,11 +2049,11 @@
       { key:'face',      label:'FACE' },
       { key:'feet',      label:'FEET' },
     ];
+    let _shopTab = 'attachments';
 
     let _bucks        = parseInt(localStorage.getItem('ah_bucks') || '0');
     let _ownedItems   = new Set(JSON.parse(localStorage.getItem('ah_owned')    || '[]'));
     let _equippedItems= new Set(JSON.parse(localStorage.getItem('ah_equipped') || '[]'));
-    let _shopTab      = 'hats';
     let _shopSearch   = '';
     let _shopPage     = 0;
     const _PAGE_SIZE  = 24;
@@ -2035,8 +2095,48 @@
       _renderShopGrid();
       document.getElementById('shop-overlay').classList.add('open');
     }
-    function closeShop() { document.getElementById('shop-overlay').classList.remove('open'); }
+    function closeShop() { closeGiftPanel(); document.getElementById('shop-overlay').classList.remove('open'); }
     document.getElementById('shop-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeShop(); });
+
+    function openGiftPanel() {
+      const token = localStorage.getItem('ah_token');
+      const p = document.getElementById('gift-panel');
+      if (!p) return;
+      if (!token) { alert('You must be logged in to gift bucks.'); return; }
+      p.style.display = 'block';
+      document.getElementById('gift-status').textContent = '';
+    }
+    function closeGiftPanel() {
+      const p = document.getElementById('gift-panel');
+      if (p) p.style.display = 'none';
+    }
+    async function sendGift() {
+      const token = localStorage.getItem('ah_token');
+      if (!token) { alert('Log in to gift bucks.'); return; }
+      const target = (document.getElementById('gift-target-input').value || '').trim();
+      const amount = parseInt(document.getElementById('gift-amount-input').value);
+      const statusEl = document.getElementById('gift-status');
+      if (!target) { statusEl.style.color='#e74c3c'; statusEl.textContent = 'Enter a username.'; return; }
+      if (!Number.isFinite(amount) || amount < 1) { statusEl.style.color='#e74c3c'; statusEl.textContent = 'Enter a valid amount.'; return; }
+      if (amount > _bucks) { statusEl.style.color='#e74c3c'; statusEl.textContent = 'Not enough bucks.'; return; }
+      statusEl.style.color='#ffd700'; statusEl.textContent = 'Sending…';
+      try {
+        const r = await fetch(`${API}/bucks/gift`, {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+          body: JSON.stringify({ targetUsername: target, amount }),
+        });
+        const d = await r.json();
+        if (!r.ok) { statusEl.style.color='#e74c3c'; statusEl.textContent = d.error || 'Failed.'; return; }
+        _bucks = d.bucks;
+        localStorage.setItem('ah_bucks', String(_bucks));
+        updateBucksDisplay();
+        statusEl.style.color='#44dd88';
+        statusEl.textContent = `✓ Sent ${amount} bucks to ${target}!`;
+        document.getElementById('gift-target-input').value = '';
+        document.getElementById('gift-amount-input').value = '';
+      } catch { statusEl.style.color='#e74c3c'; statusEl.textContent = 'Network error.'; }
+    }
 
     function _renderShopTabs() {
       document.getElementById('shop-tabs').innerHTML = SHOP_CATS.map(c =>
@@ -2126,13 +2226,26 @@
     async function equipItem(id) {
       const it = SHOP_ITEMS.find(x => x.id === id);
       if (!it || !_ownedItems.has(id)) return;
-      // Unequip others in same category
+      const token = localStorage.getItem('ah_token');
+      if (it.cat === 'attachments') {
+        // Attachments: each type (silencer/scope/extmag) is its own slot — allow all 3 equipped
+        SHOP_ITEMS.filter(x => x.cat === 'attachments' && x.type === it.type).forEach(x => _equippedItems.delete(x.id));
+        _equippedItems.add(id);
+        if (token) {
+          try {
+            await Promise.all(SHOP_ITEMS.filter(x => x.cat==='attachments' && x.type===it.type && x.id!==id).map(x =>
+              fetch(`${API}/shop/equip`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({itemId:x.id,equipped:false})}).catch(()=>{})
+            ));
+            await fetch(`${API}/shop/equip`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({itemId:id,equipped:true})});
+          } catch {}
+        }
+        _saveBucksLocal(); _renderShopGrid(); return;
+      }
+      // Cosmetics: one item per category
       SHOP_ITEMS.filter(x => x.cat === it.cat).forEach(x => _equippedItems.delete(x.id));
       _equippedItems.add(id);
-      const token = localStorage.getItem('ah_token');
       if (token) {
         try {
-          // Unequip same-category items on server
           await Promise.all(SHOP_ITEMS.filter(x => x.cat===it.cat && x.id!==id).map(x =>
             fetch(`${API}/shop/equip`,{ method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({itemId:x.id,equipped:false}) }).catch(()=>{})
           ));
