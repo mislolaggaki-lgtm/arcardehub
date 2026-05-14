@@ -533,7 +533,7 @@
     <div id="fps-chat-msgs"></div>
     <div id="fps-chat-input-row">
       <input id="fps-chat-input" placeholder="Say something…" maxlength="200" autocomplete="off"
-             onkeydown="if(event.key==='Enter'){event.preventDefault();fpsChatSend();}">
+             onkeydown="if(event.key==='Enter'){event.preventDefault();fpsChatSend();}else if(event.key==='Escape'){event.preventDefault();_closeChatTyping();}">
       <button id="fps-chat-send" onclick="fpsChatSend()" title="Send">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="white"
              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

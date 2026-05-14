@@ -2287,19 +2287,30 @@ function togglePvp() {
 if (pvpBtnEl) pvpBtnEl.addEventListener('click', togglePvp);
 
 const keys={};
+let _chatTyping = false;
 document.addEventListener('keydown',e=>{
+  // While typing in chat: block all game keys; Escape cancels chat
+  if(_chatTyping){
+    if(e.key==='Escape'){ e.preventDefault(); _closeChatTyping(); }
+    return;
+  }
   keys[e.code]=true;
   if(e.code==='KeyR') reloadGun();
   if(e.code==='KeyT' && pointerLocked()) { deactivateScope(); document.exitPointerLock(); }
   if(e.code==='KeyP') togglePvp();
+  // Press / while in-game to open chat without unpausing
+  if(e.code==='Slash' && pointerLocked() && !isMobile){
+    e.preventDefault();
+    _openChatTyping();
+  }
 });
-document.addEventListener('keyup', e=>{ keys[e.code]=false; });
+document.addEventListener('keyup', e=>{ if(!_chatTyping) keys[e.code]=false; });
 
 document.addEventListener('mousedown', e=>{
   if(isMobile) return;
   if(e.button!==0) return;
   mouseHeld=true;
-  if(!pointerLocked()||!gun.def) return;
+  if(!pointerLocked()||!gun.def||_chatTyping) return;
   if(gun.def.oneShot){
     // Sniper: hold to scope in, release to fire
     if(gun.ammo>0) activateScope();
@@ -2337,7 +2348,7 @@ function deactivateScope(){
 
 const SENS = 0.0055;  // high sensitivity as requested
 document.addEventListener('mousemove',e=>{
-  if(!pointerLocked()) return;
+  if(!pointerLocked() || _chatTyping) return;
   yaw   -= e.movementX * SENS;
   pitch -= e.movementY * SENS;
   pitch = Math.max(-1.35, Math.min(1.35, pitch));
@@ -2537,7 +2548,7 @@ function update(dt){
   }
 
   // ── Auto fire ───────────────────────────────────────────
-  if((mouseHeld || touchFireHeld) && gun.def && gun.def.auto) shoot();
+  if((mouseHeld || touchFireHeld) && gun.def && gun.def.auto && !_chatTyping) shoot();
 
   // ── Shoot cooldown ──────────────────────────────────────
   if(!gun.canShoot){ gun.shootTimer-=dt; if(gun.shootTimer<=0) gun.canShoot=true; }
@@ -3442,6 +3453,36 @@ function _showSpeechBubble(rp, text) {
 let _fpsChatOpen  = false;
 let _fpsUnread    = 0;
 
+function _openChatTyping() {
+  _chatTyping = true;
+  _fpsChatOpen = true;
+  const panel = document.getElementById('fps-chat-panel');
+  if (panel) panel.style.display = 'block';
+  _fpsUnread = 0;
+  const dot = document.getElementById('chat-unread-dot');
+  if (dot) dot.style.display = 'none';
+  const msgs = document.getElementById('fps-chat-msgs');
+  if (msgs) msgs.scrollTop = msgs.scrollHeight;
+  setTimeout(() => {
+    const inp = document.getElementById('fps-chat-input');
+    if (inp) inp.focus();
+  }, 30);
+}
+
+function _closeChatTyping() {
+  _chatTyping = false;
+  _fpsChatOpen = false;
+  const panel = document.getElementById('fps-chat-panel');
+  if (panel) panel.style.display = 'none';
+  const inp = document.getElementById('fps-chat-input');
+  if (inp) { inp.blur(); inp.value = ''; }
+  // Clear any keys that were down so movement doesn't stick
+  Object.keys(keys).forEach(k => { keys[k] = false; });
+  // Re-lock pointer if game is active
+  const canvas = document.getElementById('fps-canvas');
+  if (canvas && !isMobile) canvas.requestPointerLock();
+}
+
 function fpsChatToggle() {
   _fpsChatOpen = !_fpsChatOpen;
   const panel = document.getElementById('fps-chat-panel');
@@ -3466,9 +3507,10 @@ function fpsChatSend() {
   const inp = document.getElementById('fps-chat-input');
   if (!inp) return;
   const text = inp.value.trim();
-  if (!text) return;
+  if (!text) { _closeChatTyping(); return; }
   socket.emit('chatMsg', { text });
   inp.value = '';
+  if (_chatTyping) _closeChatTyping();
 }
 
 function _fpsChatAppend(sender, text, isSelf, isSystem) {
@@ -3553,7 +3595,7 @@ async function _fpsVoiceOn_fn() {
   // Unlock audio playback while still inside the user-gesture handler (iOS Safari)
   try {
     if (!_fpsAudioCtx)
-      _fpsAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      _fpsAudioCtx = new (window.AudioContext || (window).webkitAudioContext)();
     if (_fpsAudioCtx.state === 'suspended') await _fpsAudioCtx.resume();
   } catch {}
 
