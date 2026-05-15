@@ -698,3 +698,96 @@ body {
 #ping-display.ping-good { color:#44dd88; }
 #ping-display.ping-ok   { color:#ffd700; }
 #ping-display.ping-bad  { color:#e74c3c; text-shadow:0 0 6px #e74c3c; }
+
+/* ── Killcam overlay ──────────────────────────────────────── */
+#killcam-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 70;
+  flex-direction: column; align-items: center; justify-content: flex-start;
+  padding-top: 28px;
+  pointer-events: all;
+  background: rgba(0,0,0,0.25);
+}
+#killcam-label {
+  font-size: 11px; letter-spacing: 8px; font-weight: 700;
+  color: #e74c3c; font-family: 'Courier New', monospace;
+  text-shadow: 0 0 14px rgba(231,76,60,0.7);
+  animation: killcam-pulse 1s ease-in-out infinite;
+}
+@keyframes killcam-pulse {
+  0%,100% { opacity:1; }
+  50%      { opacity:0.55; }
+}
+#killcam-countdown {
+  font-size: 56px; font-weight: 900;
+  color: #fff; font-family: 'Courier New', monospace;
+  margin-top: 6px; line-height: 1;
+  text-shadow: 0 0 24px rgba(231,76,60,0.6);
+}
+#killcam-skip {
+  position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; letter-spacing: 3px; color: rgba(255,255,255,0.35);
+  font-family: 'Courier New', monospace;
+}
+
+/* ── Emote wheel ──────────────────────────────────────────── */
+#emote-wheel {
+  display: none;
+  position: fixed; inset: 0; z-index: 150;
+  align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.45);
+  pointer-events: all;
+  cursor: default;
+}
+#emote-wheel-ring {
+  position: relative;
+  width: 340px; height: 340px;
+  flex-shrink: 0;
+}
+.emote-seg {
+  position: absolute;
+  width: 88px; height: 88px;
+  background: rgba(14,14,30,0.92);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: background .12s, transform .12s, border-color .12s;
+  user-select: none;
+}
+.emote-seg:hover {
+  background: rgba(60,50,120,0.96);
+  border-color: rgba(160,120,255,0.5);
+  transform: scale(1.13);
+}
+.emote-seg-emoji { font-size: 34px; line-height: 1; }
+.emote-seg-label {
+  font-size: 8px; letter-spacing: 2px; text-transform: uppercase;
+  color: rgba(255,255,255,0.5); font-family: 'Courier New', monospace;
+}
+.emote-seg-locked {
+  opacity: 0.35; filter: grayscale(1); cursor: not-allowed;
+}
+#emote-wheel-hint {
+  position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; letter-spacing: 3px; color: rgba(255,255,255,0.3);
+  font-family: 'Courier New', monospace; pointer-events: none;
+}
+#emote-wheel-none {
+  color: rgba(255,255,255,0.45); font-size: 13px;
+  font-family: 'Courier New', monospace; letter-spacing: 2px;
+  text-align: center;
+}
+
+/* ── Emote self-display ───────────────────────────────────── */
+#emote-self-display {
+  display: none;
+  position: fixed; top: 38%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 72px; z-index: 130;
+  pointer-events: none;
+  transition: opacity 0.4s;
+  filter: drop-shadow(0 4px 18px rgba(0,0,0,0.7));
+}

@@ -373,6 +373,110 @@
     }
     #delete-cancel-btn:hover { background: rgba(255,255,255,0.1); color: #aaa; }
 
+    /* ── Password reset inline form ─────────────────────────── */
+    #form-reset { gap: 12px; }
+    .reset-step { display: none; flex-direction: column; gap: 10px; width: 100%; }
+    .reset-step.active { display: flex; }
+    .reset-code-display {
+      background: rgba(0,255,170,0.06); border: 1px solid rgba(0,255,170,0.25);
+      border-radius: 6px; padding: 10px 14px; text-align: center;
+      font-size: 22px; font-family: 'Courier New', monospace;
+      letter-spacing: 6px; color: #00ffaa; font-weight: 700;
+    }
+    .reset-code-note {
+      font-size: 11px; color: #666; text-align: center; letter-spacing: 1px;
+    }
+    .reset-back-link {
+      font-size: 11px; color: #555; text-align: center;
+      cursor: pointer; letter-spacing: 1px;
+      margin-top: 4px;
+    }
+    .reset-back-link:hover { color: #aaa; }
+
+    /* ── Trade modal ─────────────────────────────────────────── */
+    #trade-overlay {
+      display: none; position: fixed; inset: 0; z-index: 700;
+      background: rgba(0,0,0,0.72); align-items: center; justify-content: center;
+    }
+    #trade-overlay.open { display: flex; }
+    #trade-box {
+      background: #0d0d1a; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px; padding: 30px 28px 26px; width: 100%; max-width: 500px;
+      margin: 16px;
+    }
+    #trade-title {
+      font-size: 10px; letter-spacing: 5px; font-weight: 700;
+      text-transform: uppercase; color: #aaa; margin-bottom: 20px;
+    }
+    .trade-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .trade-row label {
+      font-size: 10px; letter-spacing: 2px; color: #555;
+      text-transform: uppercase; margin-bottom: 4px; display: block;
+    }
+    .trade-col { display: flex; flex-direction: column; flex: 1; min-width: 180px; }
+    .trade-select {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px; color: #ddd; font-family: inherit;
+      font-size: 13px; padding: 8px 10px; width: 100%;
+    }
+    .trade-select:focus { outline: none; border-color: rgba(0,200,120,0.4); }
+    .trade-input {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px; color: #ddd; font-family: inherit;
+      font-size: 13px; padding: 8px 10px; width: 100%;
+    }
+    .trade-input:focus { outline: none; border-color: rgba(0,200,120,0.4); }
+    .trade-msg { font-size: 11px; letter-spacing: 1px; min-height: 16px; margin: 6px 0; }
+    .trade-msg.err { color: #e74c3c; }
+    .trade-msg.ok  { color: #00ffaa; }
+    .trade-btns { display: flex; gap: 10px; margin-top: 16px; }
+    .trade-btn {
+      flex: 1; padding: 10px 0; font-family: inherit;
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; border-radius: 6px; cursor: pointer;
+      transition: all .15s;
+    }
+    #trade-send-btn {
+      background: rgba(0,200,120,0.12); color: #00c878;
+      border: 1px solid rgba(0,200,120,0.35);
+    }
+    #trade-send-btn:hover:not(:disabled) { background: rgba(0,200,120,0.24); }
+    #trade-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    #trade-cancel-btn {
+      background: rgba(255,255,255,0.04); color: #555;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    #trade-cancel-btn:hover { color: #aaa; background: rgba(255,255,255,0.08); }
+    .incoming-trade-banner {
+      position: fixed; bottom: 80px; right: 24px; z-index: 600;
+      background: rgba(14,14,30,0.96); border: 1px solid rgba(0,200,120,0.35);
+      border-radius: 10px; padding: 14px 18px; min-width: 260px; max-width: 320px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+      animation: slide-in-right .25s ease;
+    }
+    @keyframes slide-in-right {
+      from { transform: translateX(120%); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+    .itb-title { font-size: 9px; letter-spacing: 4px; color: #00c878; margin-bottom: 8px; }
+    .itb-body  { font-size: 12px; color: #ccc; line-height: 1.5; margin-bottom: 12px; }
+    .itb-btns  { display: flex; gap: 8px; }
+    .itb-btn   {
+      flex: 1; padding: 7px 0; font-family: inherit; font-size: 10px;
+      font-weight: 700; letter-spacing: 2px; border-radius: 5px;
+      cursor: pointer; text-transform: uppercase; transition: all .15s;
+    }
+    .itb-accept {
+      background: rgba(0,200,120,0.12); color: #00c878;
+      border: 1px solid rgba(0,200,120,0.3);
+    }
+    .itb-accept:hover { background: rgba(0,200,120,0.25); }
+    .itb-decline {
+      background: rgba(255,255,255,0.04); color: #555;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .itb-decline:hover { color: #aaa; background: rgba(255,255,255,0.08); }
+
     .auth-modal {
       width: 100%; max-width: 400px; margin: 16px;
       background: #0d0d1a;
@@ -912,7 +1016,39 @@
         </div>
         <div class="auth-msg" id="login-msg"></div>
         <button type="submit" class="auth-submit">Sign In</button>
+        <div class="reset-back-link" onclick="switchTab('reset')" style="margin-top:8px">Forgot password?</div>
       </form>
+
+      <!-- Password reset form -->
+      <div class="auth-form" id="form-reset" style="display:none;flex-direction:column;gap:12px">
+        <!-- Step 1: enter username -->
+        <div class="reset-step active" id="reset-step1">
+          <div class="auth-field">
+            <label for="reset-username">Your username</label>
+            <input id="reset-username" type="text" placeholder="Enter your username" autocomplete="username">
+          </div>
+          <div class="auth-msg" id="reset-msg1"></div>
+          <button class="auth-submit" onclick="resetRequest()">GET RESET CODE</button>
+          <div class="reset-back-link" onclick="switchTab('login')">← Back to login</div>
+        </div>
+        <!-- Step 2: enter code + new password -->
+        <div class="reset-step" id="reset-step2">
+          <div class="reset-code-note">Your reset code:</div>
+          <div class="reset-code-display" id="reset-code-display">------</div>
+          <div class="reset-code-note" style="color:#444">Save this code — it expires in 15 minutes</div>
+          <div class="auth-field" style="margin-top:8px">
+            <label for="reset-code-input">Reset code</label>
+            <input id="reset-code-input" type="text" placeholder="Enter the code above" maxlength="6" autocomplete="off">
+          </div>
+          <div class="auth-field">
+            <label for="reset-new-pw">New password</label>
+            <input id="reset-new-pw" type="password" placeholder="New password (min 6 chars)" autocomplete="new-password">
+          </div>
+          <div class="auth-msg" id="reset-msg2"></div>
+          <button class="auth-submit" onclick="resetConfirm()">SET NEW PASSWORD</button>
+          <div class="reset-back-link" onclick="switchTab('login')">← Back to login</div>
+        </div>
+      </div>
 
       <!-- Register form -->
       <form class="auth-form" id="form-register" style="display:none">
@@ -948,6 +1084,7 @@
           <span id="bucks-balance">0</span>
         </div>
         <button class="btn-shop" onclick="openShop()">SHOP</button>
+        <button class="btn-shop" onclick="openTrade()" title="Trade accessories with other players" style="background:rgba(0,200,120,0.08);border-color:rgba(0,200,120,0.3);color:#00c878">TRADE</button>
         <button class="btn-logout" id="btn-logout">LOGOUT</button>
         <button class="btn-delete-account" id="btn-delete-account">DELETE ACCOUNT</button>
       </div>
@@ -1094,6 +1231,34 @@
     </div>
   </section>
 
+  <!-- ── Trade Modal ──────────────────────────────────────── -->
+  <div id="trade-overlay" onclick="if(event.target===this)closeTrade()">
+    <div id="trade-box">
+      <div id="trade-title">⇄ Propose a Trade</div>
+      <div class="trade-row">
+        <div class="trade-col">
+          <label>Their username</label>
+          <input class="trade-input" id="trade-target" type="text" placeholder="Username…" maxlength="24" autocomplete="off">
+        </div>
+      </div>
+      <div class="trade-row">
+        <div class="trade-col">
+          <label>You offer (your item)</label>
+          <select class="trade-select" id="trade-offer"></select>
+        </div>
+        <div class="trade-col">
+          <label>You want (their item ID)</label>
+          <input class="trade-input" id="trade-request" type="text" placeholder="e.g. cap_red_common" maxlength="40" autocomplete="off">
+        </div>
+      </div>
+      <div class="trade-msg" id="trade-msg"></div>
+      <div class="trade-btns">
+        <button class="trade-btn" id="trade-cancel-btn" onclick="closeTrade()">CANCEL</button>
+        <button class="trade-btn" id="trade-send-btn" onclick="sendTrade()">SEND OFFER</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Avatar Shop Modal ────────────────────────────────── -->
   <div class="shop-overlay" id="shop-overlay">
     <div class="shop-modal-inner">
@@ -1238,8 +1403,16 @@
       document.querySelectorAll('.auth-tab').forEach(t =>
         t.classList.toggle('active', t.dataset.tab === tab)
       );
-      document.getElementById('form-login').style.display     = tab === 'login'    ? 'flex' : 'none';
-      document.getElementById('form-register').style.display  = tab === 'register' ? 'flex' : 'none';
+      document.getElementById('form-login').style.display    = tab === 'login'    ? 'flex' : 'none';
+      document.getElementById('form-register').style.display = tab === 'register' ? 'flex' : 'none';
+      document.getElementById('form-reset').style.display    = tab === 'reset'    ? 'flex' : 'none';
+      if (tab === 'reset') {
+        // Reset back to step 1 each time
+        document.getElementById('reset-step1').classList.add('active');
+        document.getElementById('reset-step2').classList.remove('active');
+        document.getElementById('reset-username').value = '';
+        clearMsg('reset-msg1');
+      }
     }
 
     function showMsg(id, text, type) {
@@ -2144,6 +2317,15 @@
       _si('silencer_rare',         'Silencer',             'attachments','silencer','#666','rare',    500),
       _si('scope_epic',            'Enhanced Scope',       'attachments','scope',   '#4ab4ff','epic', 1000),
       _si('extmag_rare',           'Extended Mag',         'attachments','extmag',  '#88ff88','rare',  500),
+      // ── EMOTES ──
+      _si('emote_wave',   'Wave',   'emotes','emote_wave',   '#64b5f6','common', 300),
+      _si('emote_dance',  'Dance',  'emotes','emote_dance',  '#ba68c8','rare',   400),
+      _si('emote_salute', 'Salute', 'emotes','emote_salute', '#81c784','common', 300),
+      _si('emote_point',  'Point',  'emotes','emote_point',  '#ffb74d','common', 300),
+      _si('emote_laugh',  'Laugh',  'emotes','emote_laugh',  '#f06292','rare',   400),
+      _si('emote_taunt',  'Taunt',  'emotes','emote_taunt',  '#ff5722','epic',   500),
+      _si('emote_bow',    'Bow',    'emotes','emote_bow',    '#4db6ac','common', 300),
+      _si('emote_flex',   'Flex',   'emotes','emote_flex',   '#ffd54f','rare',   400),
     ];
 
     // ── SVG template helpers ─────────────────────────────────────
@@ -2239,6 +2421,14 @@
       silencer:    c=>`<svg viewBox="0 0 64 64"><rect x="6" y="27" width="44" height="10" rx="3" fill="${c}"/><rect x="46" y="20" width="14" height="24" rx="4" fill="${_dk(c)}"/><rect x="48" y="23" width="10" height="3" rx="1" fill="${_lt(c)}" opacity="0.5"/><rect x="48" y="29" width="10" height="3" rx="1" fill="${_lt(c)}" opacity="0.5"/><rect x="48" y="35" width="10" height="3" rx="1" fill="${_lt(c)}" opacity="0.5"/><circle cx="9" cy="32" r="4" fill="${_lt(c)}" opacity="0.5"/></svg>`,
       scope:       c=>`<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="22" fill="none" stroke="${c}" stroke-width="4"/><circle cx="32" cy="32" r="15" fill="${c}" opacity="0.15"/><line x1="32" y1="10" x2="32" y2="54" stroke="${c}" stroke-width="2"/><line x1="10" y1="32" x2="54" y2="32" stroke="${c}" stroke-width="2"/><circle cx="32" cy="32" r="4" fill="${c}" opacity="0.7"/><rect x="10" y="28" width="9" height="8" rx="3" fill="${c}"/><rect x="45" y="28" width="9" height="8" rx="3" fill="${c}"/></svg>`,
       extmag:      c=>`<svg viewBox="0 0 64 64"><rect x="20" y="6" width="24" height="52" rx="5" fill="${c}"/><rect x="16" y="6" width="32" height="10" rx="4" fill="${_dk(c)}"/>${[20,30,40].map(y=>`<rect x="24" y="${y}" width="6" height="5" rx="1" fill="${_dk(c)}" opacity="0.55"/><rect x="34" y="${y}" width="6" height="5" rx="1" fill="${_dk(c)}" opacity="0.55"/>`).join('')}</svg>`,
+      emote_wave:   c=>`<svg viewBox="0 0 64 64"><text x="32" y="46" text-anchor="middle" font-size="40">👋</text><rect x="10" y="52" width="44" height="6" rx="3" fill="${c}" opacity="0.3"/></svg>`,
+      emote_dance:  c=>`<svg viewBox="0 0 64 64"><text x="32" y="46" text-anchor="middle" font-size="40">💃</text><rect x="10" y="52" width="44" height="6" rx="3" fill="${c}" opacity="0.3"/></svg>`,
+      emote_salute: c=>`<svg viewBox="0 0 64 64"><text x="32" y="46" text-anchor="middle" font-size="40">🫡</text><rect x="10" y="52" width="44" height="6" rx="3" fill="${c}" opacity="0.3"/></svg>`,
+      emote_point:  c=>`<svg viewBox="0 0 64 64"><text x="32" y="46" text-anchor="middle" font-size="40">👆</text><rect x="10" y="52" width="44" height="6" rx="3" fill="${c}" opacity="0.3"/></svg>`,
+      emote_laugh:  c=>`<svg viewBox="0 0 64 64"><text x="32" y="46" text-anchor="middle" font-size="40">😂</text><rect x="10" y="52" width="44" height="6" rx="3" fill="${c}" opacity="0.3"/></svg>`,
+      emote_taunt:  c=>`<svg viewBox="0 0 64 64"><text x="32" y="46" text-anchor="middle" font-size="40">😏</text><rect x="10" y="52" width="44" height="6" rx="3" fill="${c}" opacity="0.3"/></svg>`,
+      emote_bow:    c=>`<svg viewBox="0 0 64 64"><text x="32" y="46" text-anchor="middle" font-size="40">🙇</text><rect x="10" y="52" width="44" height="6" rx="3" fill="${c}" opacity="0.3"/></svg>`,
+      emote_flex:   c=>`<svg viewBox="0 0 64 64"><text x="32" y="46" text-anchor="middle" font-size="40">💪</text><rect x="10" y="52" width="44" height="6" rx="3" fill="${c}" opacity="0.3"/></svg>`,
     };
     function getItemSvg(it) {
       const fn = _SVGF[it.type];
@@ -2249,6 +2439,7 @@
 
     const SHOP_CATS = [
       { key:'attachments',label:'ATTACHMENTS' },
+      { key:'emotes',    label:'EMOTES' },
       { key:'hats',      label:'HATS' },
       { key:'eyewear',   label:'EYEWEAR' },
       { key:'neck',      label:'NECK' },
@@ -2386,7 +2577,9 @@
         const owned    = _ownedItems.has(it.id);
         const equipped = _equippedItems.has(it.id);
         let btn = '';
-        if (equipped) {
+        if (it.cat === 'emotes' && owned) {
+          btn = `<button class="shop-btn equipped" style="cursor:default">OWNED ✓</button>`;
+        } else if (equipped) {
           btn = `<button class="shop-btn equipped" onclick="unequipItem('${it.id}')">EQUIPPED ✓</button>`;
         } else if (owned) {
           btn = `<button class="shop-btn owned" onclick="equipItem('${it.id}')">EQUIP</button>`;
@@ -2618,6 +2811,11 @@
         const chip = document.querySelector(`.voice-user-chip[data-sid="${socketId}"]`);
         if (chip) chip.classList.toggle('speaking', speaking);
       });
+
+      // Trade events
+      _chatSocket.on('tradeOffer',   (trade)               => _showIncomingTrade(trade));
+      _chatSocket.on('tradeAccepted',({ withUsername })     => { loadShopProfile(); _toastMsg(`✓ ${withUsername} accepted your trade`); });
+      _chatSocket.on('tradeDeclined',({ byUsername })       => _toastMsg(`✗ ${byUsername} declined your trade`));
 
       // Show logged-in UI
       document.getElementById('chat-guest-note').style.display = 'none';
@@ -2886,6 +3084,138 @@
           apLoadPlayers();
         } else { _apStatus('ap-admin-status', d.error||'Failed.',true); }
       } catch { _apStatus('ap-admin-status','Network error.',true); }
+    }
+
+    // ── Toast notification ───────────────────────────────────────
+    function _toastMsg(text) {
+      const el = document.createElement('div');
+      el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(14,14,30,0.96);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 20px;font-size:12px;letter-spacing:1px;color:#ccc;z-index:800;pointer-events:none;transition:opacity .3s';
+      el.textContent = text;
+      document.body.appendChild(el);
+      setTimeout(() => { el.style.opacity='0'; setTimeout(()=>el.remove(), 300); }, 2500);
+    }
+
+    // ── Password Reset ───────────────────────────────────────────
+    let _resetUsername = '';
+    async function resetRequest() {
+      const username = document.getElementById('reset-username').value.trim();
+      if (!username) return;
+      const btn = document.querySelector('#reset-step1 .auth-submit');
+      btn.disabled = true; btn.textContent = 'SENDING…';
+      try {
+        const r = await fetch(`${API}/auth/reset-request`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ username }),
+        });
+        const d = await r.json();
+        if (!r.ok) { showMsg('reset-msg1', d.error || 'Error.', 'error'); }
+        else {
+          _resetUsername = d.username;
+          document.getElementById('reset-code-display').textContent = d.code;
+          document.getElementById('reset-step1').classList.remove('active');
+          document.getElementById('reset-step2').classList.add('active');
+        }
+      } catch { showMsg('reset-msg1', 'Could not reach server.', 'error'); }
+      btn.disabled = false; btn.textContent = 'GET RESET CODE';
+    }
+    async function resetConfirm() {
+      const code        = document.getElementById('reset-code-input').value.trim();
+      const newPassword = document.getElementById('reset-new-pw').value;
+      if (!code || !newPassword) return;
+      const btn = document.querySelector('#reset-step2 .auth-submit');
+      btn.disabled = true; btn.textContent = 'SAVING…';
+      try {
+        const r = await fetch(`${API}/auth/reset-confirm`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ username: _resetUsername, code, newPassword }),
+        });
+        const d = await r.json();
+        if (!r.ok) { showMsg('reset-msg2', d.error || 'Error.', 'error'); }
+        else {
+          showMsg('reset-msg2', 'Password updated! Please log in.', 'success');
+          setTimeout(() => switchTab('login'), 1400);
+        }
+      } catch { showMsg('reset-msg2', 'Could not reach server.', 'error'); }
+      btn.disabled = false; btn.textContent = 'SET NEW PASSWORD';
+    }
+
+    // ── Trade Modal ──────────────────────────────────────────────
+    function openTrade() {
+      const sel = document.getElementById('trade-offer');
+      sel.innerHTML = [..._ownedItems]
+        .filter(id => !id.startsWith('emote_'))  // can't trade emotes
+        .map(id => {
+          const it = SHOP_ITEMS.find(x => x.id === id);
+          return `<option value="${id}">${it ? it.name : id}</option>`;
+        }).join('');
+      if (!sel.options.length) {
+        sel.innerHTML = '<option value="">No tradeable items owned</option>';
+      }
+      document.getElementById('trade-msg').textContent = '';
+      document.getElementById('trade-overlay').classList.add('open');
+    }
+    function closeTrade() {
+      document.getElementById('trade-overlay').classList.remove('open');
+    }
+    async function sendTrade() {
+      const toUsername    = document.getElementById('trade-target').value.trim();
+      const offerItemId   = document.getElementById('trade-offer').value;
+      const requestItemId = document.getElementById('trade-request').value.trim();
+      const msgEl = document.getElementById('trade-msg');
+      if (!toUsername || !offerItemId || !requestItemId) {
+        msgEl.className = 'trade-msg err'; msgEl.textContent = 'All fields required.'; return;
+      }
+      const token = localStorage.getItem('ah_token');
+      const btn = document.getElementById('trade-send-btn');
+      btn.disabled = true;
+      try {
+        const r = await fetch(`${API}/trade/offer`, {
+          method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+          body: JSON.stringify({ toUsername, offerItemId, requestItemId }),
+        });
+        const d = await r.json();
+        if (!r.ok) { msgEl.className='trade-msg err'; msgEl.textContent = d.error||'Error.'; }
+        else {
+          msgEl.className='trade-msg ok'; msgEl.textContent='Trade offer sent!';
+          setTimeout(closeTrade, 1500);
+        }
+      } catch { msgEl.className='trade-msg err'; msgEl.textContent='Could not reach server.'; }
+      btn.disabled = false;
+    }
+    function _showIncomingTrade(trade) {
+      const offerItem   = SHOP_ITEMS.find(x => x.id === trade.offerItemId);
+      const requestItem = SHOP_ITEMS.find(x => x.id === trade.requestItemId);
+      const banner = document.createElement('div');
+      banner.className = 'incoming-trade-banner';
+      banner.id = 'itb-' + trade.id;
+      banner.innerHTML = `
+        <div class="itb-title">⇄ INCOMING TRADE OFFER</div>
+        <div class="itb-body">
+          <b>${trade.fromUsername}</b> offers <b>${offerItem?.name||trade.offerItemId}</b><br>
+          and wants your <b>${requestItem?.name||trade.requestItemId}</b>
+        </div>
+        <div class="itb-btns">
+          <button class="itb-btn itb-decline" onclick="_respondTrade('${trade.id}',false)">DECLINE</button>
+          <button class="itb-btn itb-accept"  onclick="_respondTrade('${trade.id}',true)">ACCEPT</button>
+        </div>`;
+      document.body.appendChild(banner);
+      setTimeout(() => banner.remove(), 90000);
+    }
+    async function _respondTrade(tradeId, accept) {
+      const banner = document.getElementById('itb-' + tradeId);
+      if (banner) banner.remove();
+      const token = localStorage.getItem('ah_token');
+      try {
+        const r = await fetch(`${API}/trade/respond`, {
+          method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+          body: JSON.stringify({ tradeId, accept }),
+        });
+        const d = await r.json();
+        if (d.success && d.accepted) {
+          // Refresh owned/equipped items from server
+          loadShopProfile();
+        }
+      } catch {}
     }
 
     async function apLoadPlayers() {

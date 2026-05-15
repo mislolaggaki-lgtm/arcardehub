@@ -2465,6 +2465,9 @@ document.addEventListener('keydown',e=>{
     return;
   }
   keys[e.code]=true;
+  if(e.code==='Space' && killcamActive) { exitKillcam(); return; }
+  if(e.code==='KeyB' && (pointerLocked() || mobileGameActive) && !player.dead && !killcamActive) { toggleEmoteWheel(); return; }
+  if(e.code==='Escape' && emoteWheelOpen) { hideEmoteWheel(); return; }
   if(e.code==='KeyR') reloadGun();
   if(e.code==='KeyT' && pointerLocked()) { deactivateScope(); document.exitPointerLock(); }
   if(e.code==='KeyP') togglePvp();
@@ -2706,13 +2709,154 @@ deathScreen.style.cssText='position:fixed;inset:0;background:rgba(120,0,0,.65);d
 deathScreen.innerHTML='<div style="font-size:72px;color:#e74c3c;letter-spacing:6px;text-shadow:0 0 20px #e74c3c">YOU DIED</div><div style="font-size:18px;margin-top:18px;color:#bbb;letter-spacing:4px">RESPAWNING...</div>';
 document.body.appendChild(deathScreen);
 
-function killPlayer(){
+// ── Killcam ─────────────────────────────────────────────────────
+let killcamActive   = false;
+let killcamKiller   = null;   // bot reference that killed the player
+let killcamDeathPos = null;   // camera position at moment of death
+let _killcamTimer   = null;
+let _killcamCountdown = null;
+
+function enterKillcam(killerRef) {
+  killcamActive = true;
+  killcamKiller = killerRef || null;
+  killcamDeathPos = camera.position.clone();
+
+  const overlay = document.getElementById('killcam-overlay');
+  if (overlay) overlay.style.display = 'flex';
+
+  // Position camera at killer's head, face toward player's death spot
+  if (killcamKiller && killcamKiller.group) {
+    const kp = killcamKiller.group.position;
+    camera.position.set(kp.x, kp.y + 1.65, kp.z);
+    const lookDir = killcamDeathPos.clone().sub(camera.position).normalize();
+    yaw   = Math.atan2(-lookDir.x, -lookDir.z);
+    pitch = Math.asin(Math.max(-1, Math.min(1, lookDir.y)));
+    camera.rotation.order = 'YXZ';
+    camera.rotation.y = yaw;
+    camera.rotation.x = pitch;
+  }
+
+  let remaining = 5;
+  const countEl = document.getElementById('killcam-countdown');
+  if (countEl) countEl.textContent = remaining;
+  _killcamCountdown = setInterval(() => {
+    remaining--;
+    if (countEl) countEl.textContent = remaining;
+    if (remaining <= 0) exitKillcam();
+  }, 1000);
+}
+
+function exitKillcam() {
+  if (!killcamActive) return;
+  clearInterval(_killcamCountdown);
+  _killcamCountdown = null;
+  killcamActive = false;
+  const overlay = document.getElementById('killcam-overlay');
+  if (overlay) overlay.style.display = 'none';
+  deathScreen.style.display = 'flex';
+  hudEl.style.display = 'none';
+  setTimeout(respawnPlayer, 2300);
+}
+
+// ── Emote wheel ─────────────────────────────────────────────────
+const EMOTE_DEFS = [
+  { id:'emote_wave',   emoji:'👋', label:'Wave'   },
+  { id:'emote_dance',  emoji:'💃', label:'Dance'  },
+  { id:'emote_salute', emoji:'🫡', label:'Salute' },
+  { id:'emote_point',  emoji:'👆', label:'Point'  },
+  { id:'emote_laugh',  emoji:'😂', label:'Laugh'  },
+  { id:'emote_taunt',  emoji:'😏', label:'Taunt'  },
+  { id:'emote_bow',    emoji:'🙇', label:'Bow'    },
+  { id:'emote_flex',   emoji:'💪', label:'Flex'   },
+];
+let emoteWheelOpen = false;
+
+function toggleEmoteWheel() {
+  emoteWheelOpen ? hideEmoteWheel() : showEmoteWheel();
+}
+
+function showEmoteWheel() {
+  const owned = new Set(JSON.parse(localStorage.getItem('ah_owned') || '[]'));
+  const ring  = document.getElementById('emote-wheel-ring');
+  if (!ring) return;
+  ring.innerHTML = '';
+  const available = EMOTE_DEFS.filter(e => owned.has(e.id));
+  if (available.length === 0) {
+    ring.innerHTML = '<div id="emote-wheel-none">No emotes owned.<br>Buy some in the shop!</div>';
+  } else {
+    const n = available.length;
+    const r = 128, cx = 170, cy = 170, w = 88, h = 88;
+    available.forEach((em, i) => {
+      const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+      const x = cx + r * Math.cos(angle) - w / 2;
+      const y = cy + r * Math.sin(angle) - h / 2;
+      const seg = document.createElement('div');
+      seg.className = 'emote-seg';
+      seg.style.left = x + 'px';
+      seg.style.top  = y + 'px';
+      seg.innerHTML  = `<div class="emote-seg-emoji">${em.emoji}</div><div class="emote-seg-label">${em.label}</div>`;
+      seg.addEventListener('click', () => selectEmote(em));
+      ring.appendChild(seg);
+    });
+  }
+  document.getElementById('emote-wheel').style.display = 'flex';
+  document.exitPointerLock();
+  emoteWheelOpen = true;
+}
+
+function hideEmoteWheel() {
+  document.getElementById('emote-wheel').style.display = 'none';
+  emoteWheelOpen = false;
+  document.getElementById('gameCanvas').requestPointerLock();
+}
+
+function selectEmote(em) {
+  hideEmoteWheel();
+  playEmote(em);
+}
+
+function playEmote(em) {
+  // Show on own screen
+  const el = document.getElementById('emote-self-display');
+  if (el) {
+    el.textContent = em.emoji;
+    el.style.display = 'block';
+    el.style.opacity = '1';
+    clearTimeout(el._hideTimer);
+    el._hideTimer = setTimeout(() => {
+      el.style.opacity = '0';
+      setTimeout(() => { el.style.display = 'none'; }, 400);
+    }, 1600);
+  }
+  // Broadcast to others
+  const token = localStorage.getItem('ah_token');
+  if (socket && socket.connected && token) {
+    socket.emit('emotePlay', { token, emoteId: em.id });
+  }
+}
+
+function showRemoteEmote(rp, emoji) {
+  if (!rp || !rp.group) return;
+  const worldPos = rp.group.position.clone().setY(rp.group.position.y + 2.6);
+  const v = worldPos.project(camera);
+  if (v.z > 1) return; // behind camera
+  const x = (v.x *  0.5 + 0.5) * window.innerWidth;
+  const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;left:${x}px;top:${y}px;transform:translate(-50%,-50%);font-size:38px;z-index:120;pointer-events:none;transition:opacity 0.35s;filter:drop-shadow(0 2px 8px #000)`;
+  el.textContent = emoji;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; }, 1300);
+  setTimeout(() => el.remove(), 1650);
+}
+
+function killPlayer(killerRef) {
   if(player.dead) return;
   deactivateScope();
   player.dead=true; player.health=0; updateHealthHUD();
   trackDeath();
-  deathScreen.style.display='flex'; hudEl.style.display='none';
-  setTimeout(respawnPlayer,2300);
+  hudEl.style.display='none';
+  enterKillcam(killerRef || null);
 }
 function respawnPlayer(){
   player.health=player.maxHealth; player.dead=false;
@@ -2743,7 +2887,22 @@ function update(dt){
   if(camera.position.y <= _floorY){ camera.position.y = _floorY; velY=0; grounded=true; }
   if(camera.position.y >= WH-.6){ camera.position.y=WH-.6; velY=Math.min(0,velY); }
 
-  if((!pointerLocked() && !mobileGameActive)||player.dead) return;
+  // During killcam: track killer bot, keep bots alive, skip player movement
+  if (killcamActive) {
+    if (killcamKiller && killcamKiller.group) {
+      const kp = killcamKiller.group.position;
+      camera.position.set(kp.x, kp.y + 1.65, kp.z);
+      if (killcamDeathPos) {
+        const d = killcamDeathPos.clone().sub(camera.position).normalize();
+        yaw   = Math.atan2(-d.x, -d.z);
+        pitch = Math.asin(Math.max(-1, Math.min(1, d.y)));
+        camera.rotation.y = yaw;
+        camera.rotation.x = pitch;
+      }
+    }
+    // Fall through to bot AI below (skip player movement via dead-check)
+  }
+  if((!pointerLocked() && !mobileGameActive && !killcamActive)||player.dead) return;
 
   // ── Jump input ──────────────────────────────────────────
   if(keys['Space']&&grounded){ velY=JUMP_VEL; grounded=false; }
@@ -2913,7 +3072,7 @@ function update(dt){
       if(!diffFloor && distToPlayer<BOT_MELEE && player.hurtTimer<=0){
         player.health -= meleeDmg; player.hurtTimer = BOT_DMG_INT;
         updateHealthHUD(); flashDmg();
-        if(player.health<=0) killPlayer();
+        if(player.health<=0) killPlayer(bot);
       }
 
       // ── Bot shooting (shooter mode only) ─────────────────
@@ -2943,7 +3102,7 @@ function update(dt){
           scene.add(bMesh);
 
           const maxD = distToPlayer + 4;
-          botBullets.push({ mesh:bMesh, pos:bPos.clone(), vel:dir.clone().multiplyScalar(BOT_BULLET_V), dist:0, maxDist:maxD });
+          botBullets.push({ mesh:bMesh, pos:bPos.clone(), vel:dir.clone().multiplyScalar(BOT_BULLET_V), dist:0, maxDist:maxD, sourceBot:bot });
 
           if(bot.pistol){ bot.pistol.userData.flash.visible=true; bot.flashTimer=0.08; }
           bot.armGroupR.rotation.x = 0.55;
@@ -3050,7 +3209,7 @@ function update(dt){
         player.hurtTimer = 0.18;
         updateHealthHUD(); flashDmg();
         spawnBlood(b.pos.clone(), 6);
-        if(player.health<=0) killPlayer();
+        if(player.health<=0) killPlayer(b.sourceBot || null);
         remove=true;
       }
     }
@@ -3443,6 +3602,27 @@ function initSocket() {
         if (rp.username === sender) { _showSpeechBubble(rp, text); break; }
       }
     }
+  });
+
+  // ── Emote from remote player ─────────────────────────────────
+  socket.on('remoteEmote', ({ socketId, emoteId }) => {
+    const em = EMOTE_DEFS.find(e => e.id === emoteId);
+    if (!em) return;
+    const rp = remotePlayers.get(socketId);
+    if (rp) showRemoteEmote(rp, em.emoji);
+    else pushKillFeed(`${em.emoji}`);
+  });
+
+  // ── Trade notifications ───────────────────────────────────────
+  socket.on('tradeOffer', (trade) => {
+    pushKillFeed(`⇄ TRADE OFFER from ${trade.fromUsername}`);
+    // The main page handles accept/decline via its own socket
+  });
+  socket.on('tradeAccepted', ({ withUsername }) => {
+    pushKillFeed(`✓ ${withUsername} accepted your trade`);
+  });
+  socket.on('tradeDeclined', ({ byUsername }) => {
+    pushKillFeed(`✗ ${byUsername} declined your trade`);
   });
 
   // ── Voice signaling ──────────────────────────────────────────
