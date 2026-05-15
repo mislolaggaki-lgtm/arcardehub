@@ -24,7 +24,8 @@ const pvpBtnEl      = document.getElementById('pvp-btn');
 // ─── Multiplayer state ────────────────────────────────────────
 let socket       = null;
 let moveInterval = null;
-const remotePlayers = new Map();   // socketId → { group, legL, legR, allMats, targetPos, targetRotY, walkClock, ... }
+const remotePlayers  = new Map();   // socketId → { group, legL, legR, allMats, targetPos, targetRotY, walkClock, ... }
+const _emoteBodyMap  = new Map();   // socketId → { em, elapsed, _pyOffset, _spinY, _isSpin, _restoreTimer }
 let pvpMode      = true;
 
 // ── Co-op state ──────────────────────────────────────────────
@@ -1613,6 +1614,8 @@ function addRemotePlayer(data) {
 function removeRemotePlayer(id) {
   const rp = remotePlayers.get(id);
   if (!rp) return;
+  const ea = _emoteBodyMap.get(id);
+  if (ea) { clearTimeout(ea._restoreTimer); _emoteBodyMap.delete(id); }
   scene.remove(rp.group);
   disposeGroup(rp.group);
   remotePlayers.delete(id);
@@ -2926,7 +2929,7 @@ function playEmote(em) {
     socket.emit('emotePlay', { token, emoteId: em.id });
 }
 
-function showRemoteEmote(rp, em) {
+function showRemoteEmote(socketId, rp, em) {
   if (!rp || !rp.group) return;
   const worldPos = rp.group.position.clone().setY(rp.group.position.y + 2.6);
   const v = worldPos.project(camera);
@@ -2941,6 +2944,264 @@ function showRemoteEmote(rp, em) {
   document.body.appendChild(el);
   setTimeout(() => { el.style.opacity = '0'; }, dur - 400);
   setTimeout(() => el.remove(), dur);
+  _startEmoteBody(socketId, rp, em);
+}
+
+function _restoreEmoteBody(rp) {
+  rp.armGroupR.rotation.x =  1.10;
+  rp.armGroupL.rotation.x =  1.10;
+  rp.armGroupR.rotation.z = -0.32;
+  rp.armGroupL.rotation.z =  0.32;
+  rp.legL.rotation.x      =  0;
+  rp.legR.rotation.x      =  0;
+  rp.group.rotation.x     =  0;
+  rp.group.rotation.z     =  0;
+  rp.group.scale.setScalar(1);
+}
+
+function _startEmoteBody(socketId, rp, em) {
+  const existing = _emoteBodyMap.get(socketId);
+  if (existing) clearTimeout(existing._restoreTimer);
+  const spinAnims = new Set(['ea-spin','ea-breakdance']);
+  const dur = (em.dur || 5) * 1000;
+  const ea = { em, elapsed: 0, _pyOffset: 0, _spinY: rp.group.rotation.y, _isSpin: spinAnims.has(em.anim) };
+  ea._restoreTimer = setTimeout(() => {
+    _emoteBodyMap.delete(socketId);
+    _restoreEmoteBody(rp);
+  }, dur + 400);
+  _emoteBodyMap.set(socketId, ea);
+}
+
+function _tickEmoteBody(ea, rp, dt) {
+  ea.elapsed += dt;
+  const t = ea.elapsed;
+  ea._pyOffset = 0;
+  const anim = ea.em.anim;
+
+  switch (anim) {
+    case 'ea-wave': {
+      rp.armGroupR.rotation.x = 1.10 + Math.sin(t * 4) * 0.8;
+      rp.armGroupR.rotation.z = -0.32 + Math.sin(t * 4) * 0.3;
+      rp.armGroupL.rotation.x = 1.10;
+      rp.armGroupL.rotation.z = 0.32;
+      break;
+    }
+    case 'ea-dance': {
+      const s = Math.sin(t * 3);
+      rp.armGroupR.rotation.x = 1.10 + s * 0.6;
+      rp.armGroupL.rotation.x = 1.10 - s * 0.6;
+      rp.armGroupR.rotation.z = -0.32 - s * 0.2;
+      rp.armGroupL.rotation.z =  0.32 + s * 0.2;
+      rp.group.rotation.z     = s * 0.08;
+      ea._pyOffset = Math.abs(Math.sin(t * 3)) * 0.15;
+      break;
+    }
+    case 'ea-bow': {
+      const b = Math.sin(t * 1.5);
+      rp.group.rotation.x     = b * 0.35;
+      rp.armGroupL.rotation.x = 1.10 + b * 0.4;
+      rp.armGroupR.rotation.x = 1.10 + b * 0.4;
+      break;
+    }
+    case 'ea-salute': {
+      rp.armGroupR.rotation.x = 1.70 + Math.sin(t * 2) * 0.1;
+      rp.armGroupR.rotation.z = -0.72;
+      rp.armGroupL.rotation.x = 1.10;
+      rp.armGroupL.rotation.z =  0.32;
+      break;
+    }
+    case 'ea-pulse':
+    case 'ea-heartbeat': {
+      rp.group.scale.setScalar(1 + Math.sin(t * 5) * 0.06);
+      break;
+    }
+    case 'ea-shake':
+    case 'ea-wiggle': {
+      rp.group.rotation.z     = Math.sin(t * 8) * 0.12;
+      rp.armGroupR.rotation.z = -0.32 + Math.sin(t * 8) * 0.15;
+      rp.armGroupL.rotation.z =  0.32 + Math.sin(t * 8) * 0.15;
+      break;
+    }
+    case 'ea-swing': {
+      const sw = Math.sin(t * 3);
+      rp.armGroupR.rotation.x = 1.10 + sw * 0.7;
+      rp.armGroupL.rotation.x = 1.10 - sw * 0.7;
+      break;
+    }
+    case 'ea-zoom':
+    case 'ea-explode': {
+      rp.group.scale.setScalar(Math.max(0.8, 1 + Math.sin(t * 2) * 0.15));
+      break;
+    }
+    case 'ea-bounce':
+    case 'ea-jump': {
+      ea._pyOffset       = Math.max(0, Math.sin(t * 4) * 0.5);
+      rp.legL.rotation.x =  Math.sin(t * 4) * 0.25;
+      rp.legR.rotation.x = -Math.sin(t * 4) * 0.25;
+      break;
+    }
+    case 'ea-float': {
+      ea._pyOffset        = Math.sin(t * 1.5) * 0.3 + 0.35;
+      rp.armGroupL.rotation.x = 1.10 - 0.3 + Math.sin(t * 1.5) * 0.1;
+      rp.armGroupR.rotation.x = 1.10 - 0.3 + Math.sin(t * 1.5) * 0.1;
+      rp.armGroupL.rotation.z =  0.52;
+      rp.armGroupR.rotation.z = -0.52;
+      break;
+    }
+    case 'ea-spin': {
+      ea._spinY += dt * 4;
+      rp.group.rotation.y = ea._spinY;
+      rp.armGroupL.rotation.z =  0.82;
+      rp.armGroupR.rotation.z = -0.82;
+      rp.armGroupL.rotation.x =  0.70;
+      rp.armGroupR.rotation.x =  0.70;
+      break;
+    }
+    case 'ea-sparkle':
+    case 'ea-rainbow':
+    case 'ea-flash': {
+      rp.armGroupL.rotation.x = 1.10 + 0.7;
+      rp.armGroupR.rotation.x = 1.10 + 0.7;
+      rp.armGroupL.rotation.z =  0.32 + Math.sin(t * 6) * 0.25;
+      rp.armGroupR.rotation.z = -0.32 - Math.sin(t * 6) * 0.25;
+      break;
+    }
+    case 'ea-robot': {
+      const step = Math.round(Math.sin(t * 2) * 2) / 2;
+      rp.armGroupR.rotation.x = 1.10 + step * 0.5;
+      rp.armGroupL.rotation.x = 1.10 - step * 0.5;
+      rp.group.rotation.z     = Math.round(Math.sin(t * 1.5) * 2) / 2 * 0.06;
+      break;
+    }
+    case 'ea-zombie': {
+      rp.armGroupL.rotation.x = 1.80;
+      rp.armGroupR.rotation.x = 1.80;
+      rp.armGroupL.rotation.z =  0.32;
+      rp.armGroupR.rotation.z = -0.32;
+      rp.group.rotation.x     = -0.15 + Math.sin(t * 1.2) * 0.05;
+      break;
+    }
+    case 'ea-swagger': {
+      rp.group.rotation.z     = Math.sin(t * 2) * 0.15;
+      rp.armGroupR.rotation.z = -0.32 + Math.sin(t * 2) * 0.25;
+      rp.armGroupL.rotation.z =  0.32 + Math.sin(t * 2) * 0.25;
+      ea._pyOffset = Math.abs(Math.sin(t * 2)) * 0.1;
+      break;
+    }
+    case 'ea-rofl': {
+      rp.group.rotation.x     = 0.30 + Math.sin(t * 4) * 0.10;
+      rp.armGroupL.rotation.x = 1.10 + Math.sin(t * 4) * 0.3;
+      rp.armGroupR.rotation.x = 1.10 + Math.sin(t * 4) * 0.3;
+      ea._pyOffset = -0.1;
+      break;
+    }
+    case 'ea-headbang': {
+      rp.group.rotation.x     = Math.sin(t * 8) * 0.25;
+      rp.armGroupL.rotation.x = 1.10 + Math.sin(t * 8) * 0.3;
+      rp.armGroupR.rotation.x = 1.10 + Math.sin(t * 8) * 0.3;
+      break;
+    }
+    case 'ea-moonwalk': {
+      rp.group.rotation.x     = -0.1;
+      rp.legL.rotation.x      =  Math.sin(t * 3) * 0.3;
+      rp.legR.rotation.x      = -Math.sin(t * 3) * 0.3;
+      rp.armGroupL.rotation.z =  0.17;
+      rp.armGroupR.rotation.z = -0.17;
+      break;
+    }
+    case 'ea-floss': {
+      const f = Math.sin(t * 4);
+      rp.armGroupR.rotation.z = -0.32 + f * 0.8;
+      rp.armGroupL.rotation.z =  0.32 + f * 0.8;
+      rp.armGroupR.rotation.x =  1.30;
+      rp.armGroupL.rotation.x =  1.30;
+      rp.group.rotation.z     =  f * 0.07;
+      break;
+    }
+    case 'ea-worm': {
+      rp.group.rotation.x = Math.sin(t * 3) * 0.3;
+      ea._pyOffset = (Math.sin(t * 3) + 1) * 0.15;
+      break;
+    }
+    case 'ea-dab': {
+      rp.armGroupR.rotation.x = 2.00;
+      rp.armGroupR.rotation.z = -0.82;
+      rp.armGroupL.rotation.x = 1.40;
+      rp.armGroupL.rotation.z =  0.52;
+      rp.group.rotation.z     = -0.12;
+      break;
+    }
+    case 'ea-run': {
+      rp.legL.rotation.x      =  Math.sin(t * 7) * 0.5;
+      rp.legR.rotation.x      = -Math.sin(t * 7) * 0.5;
+      rp.armGroupL.rotation.x = 1.10 + Math.sin(t * 7 + Math.PI) * 0.5;
+      rp.armGroupR.rotation.x = 1.10 + Math.sin(t * 7) * 0.5;
+      ea._pyOffset = Math.abs(Math.sin(t * 7)) * 0.15;
+      break;
+    }
+    case 'ea-breakdance': {
+      ea._spinY += dt * 6;
+      rp.group.rotation.y = ea._spinY;
+      const bd = Math.sin(t * 5);
+      rp.armGroupL.rotation.x = 1.10 + bd * 0.7;
+      rp.armGroupR.rotation.x = 1.10 - bd * 0.7;
+      rp.armGroupL.rotation.z =  0.72;
+      rp.armGroupR.rotation.z = -0.72;
+      ea._pyOffset = Math.abs(bd) * 0.2;
+      break;
+    }
+    case 'ea-splits': {
+      rp.legL.rotation.x      = -0.4;
+      rp.legR.rotation.x      = -0.4;
+      rp.armGroupL.rotation.z =  0.82;
+      rp.armGroupR.rotation.z = -0.82;
+      ea._pyOffset = -0.2;
+      break;
+    }
+    case 'ea-airguitar': {
+      const ag = Math.sin(t * 5);
+      rp.armGroupR.rotation.x = 1.10 + ag * 0.5;
+      rp.armGroupL.rotation.x = 1.40;
+      rp.armGroupL.rotation.z = 0.12;
+      rp.group.rotation.z     = Math.sin(t * 2.5) * 0.1;
+      ea._pyOffset = Math.abs(Math.sin(t * 2.5)) * 0.12;
+      break;
+    }
+    case 'ea-party': {
+      const p = Math.sin(t * 4);
+      rp.armGroupL.rotation.x = 1.70 + p * 0.3;
+      rp.armGroupR.rotation.x = 1.70 - p * 0.3;
+      rp.armGroupL.rotation.z =  0.32 + p * 0.4;
+      rp.armGroupR.rotation.z = -0.32 - p * 0.4;
+      rp.group.rotation.z     = p * 0.07;
+      ea._pyOffset = Math.abs(p) * 0.2;
+      break;
+    }
+    case 'ea-peek': {
+      rp.group.rotation.z     = Math.sin(t * 1.5) * 0.25;
+      rp.armGroupL.rotation.x = 1.10 + Math.sin(t * 1.5) * 0.2;
+      rp.armGroupR.rotation.x = 1.10 - Math.sin(t * 1.5) * 0.2;
+      break;
+    }
+    case 'ea-cry': {
+      rp.group.rotation.x     = 0.15 + Math.sin(t * 3) * 0.05;
+      rp.armGroupL.rotation.x = 1.60;
+      rp.armGroupR.rotation.x = 1.60;
+      rp.armGroupL.rotation.z = 0.02;
+      rp.armGroupR.rotation.z = -0.02;
+      break;
+    }
+    case 'ea-headtilt': {
+      rp.group.rotation.z     = Math.sin(t * 2) * 0.2;
+      rp.armGroupL.rotation.z =  0.32 + Math.sin(t * 2) * 0.15;
+      rp.armGroupR.rotation.z = -0.32 - Math.sin(t * 2) * 0.15;
+      break;
+    }
+    default: {
+      rp.armGroupR.rotation.x = 1.10 + Math.sin(t * 3) * 0.4;
+      break;
+    }
+  }
 }
 
 function killPlayer(killerRef) {
@@ -3316,19 +3577,33 @@ function update(dt){
   }
 
   // ── Remote player interpolation ─────────────────────────────
-  remotePlayers.forEach(rp => {
+  remotePlayers.forEach((rp, _rpId) => {
+    const ea     = _emoteBodyMap.get(_rpId);
     const moving = rp.group.position.distanceTo(rp.targetPos) > 0.02;
     rp.group.position.lerp(rp.targetPos, 0.18);
-    // Smooth yaw: find shortest angle delta
-    let dy = rp.targetRotY - rp.group.rotation.y;
-    if(dy >  Math.PI) dy -= Math.PI*2;
-    if(dy < -Math.PI) dy += Math.PI*2;
-    rp.group.rotation.y += dy * 0.2;
-    // Leg swing when moving
-    if(moving) {
-      rp.walkClock += 0.1;
-      rp.legL.rotation.x =  Math.sin(rp.walkClock * 2.5) * 0.32;
-      rp.legR.rotation.x = -Math.sin(rp.walkClock * 2.5) * 0.32;
+
+    if (ea) {
+      _tickEmoteBody(ea, rp, dt);
+      rp.group.position.y += ea._pyOffset;
+      // Spin animations drive yaw themselves; skip normal lerp
+      if (!ea._isSpin) {
+        let dy = rp.targetRotY - rp.group.rotation.y;
+        if (dy >  Math.PI) dy -= Math.PI * 2;
+        if (dy < -Math.PI) dy += Math.PI * 2;
+        rp.group.rotation.y += dy * 0.2;
+      }
+    } else {
+      // Smooth yaw: find shortest angle delta
+      let dy = rp.targetRotY - rp.group.rotation.y;
+      if(dy >  Math.PI) dy -= Math.PI*2;
+      if(dy < -Math.PI) dy += Math.PI*2;
+      rp.group.rotation.y += dy * 0.2;
+      // Leg swing when moving
+      if(moving) {
+        rp.walkClock += 0.1;
+        rp.legL.rotation.x =  Math.sin(rp.walkClock * 2.5) * 0.32;
+        rp.legR.rotation.x = -Math.sin(rp.walkClock * 2.5) * 0.32;
+      }
     }
     // Muzzle flash fade
     if(rp.remoteGun.flashTimer > 0) {
@@ -3702,7 +3977,7 @@ function initSocket() {
     const em = EMOTE_DEFS.find(e => e.id === emoteId);
     if (!em) return;
     const rp = remotePlayers.get(socketId);
-    if (rp) showRemoteEmote(rp, em);
+    if (rp) showRemoteEmote(socketId, rp, em);
     else pushKillFeed(`${em.emoji}`);
   });
 
