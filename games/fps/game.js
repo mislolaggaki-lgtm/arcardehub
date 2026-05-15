@@ -2835,8 +2835,8 @@ function toggleEmoteWheel() {
 }
 
 function showEmoteWheel() {
-  const owned     = new Set(JSON.parse(localStorage.getItem('ah_owned') || '[]'));
-  const available = EMOTE_DEFS.filter(e => owned.has(e.id));
+  const equipped  = new Set(JSON.parse(localStorage.getItem('ah_equipped') || '[]'));
+  const available = EMOTE_DEFS.filter(e => equipped.has(e.id));
   _emotePage      = 0;
   _renderEmoteWheelPage(available, 0);
   document.getElementById('emote-wheel').style.display = 'flex';
@@ -2849,7 +2849,7 @@ function _renderEmoteWheelPage(available, page) {
   if (!ring) return;
   ring.innerHTML = '';
   if (available.length === 0) {
-    ring.innerHTML = '<div id="emote-wheel-none">No emotes owned.<br>Buy some in the shop!</div>';
+    ring.innerHTML = '<div id="emote-wheel-none">No emotes in wheel.<br>Equip some in the shop!</div>';
     return;
   }
   const PAGE  = 12;
@@ -2890,8 +2890,8 @@ function _renderEmoteWheelPage(available, page) {
 }
 
 function _emotePageNav(dir) {
-  const owned     = new Set(JSON.parse(localStorage.getItem('ah_owned') || '[]'));
-  const available = EMOTE_DEFS.filter(e => owned.has(e.id));
+  const equipped  = new Set(JSON.parse(localStorage.getItem('ah_equipped') || '[]'));
+  const available = EMOTE_DEFS.filter(e => equipped.has(e.id));
   const total     = Math.ceil(available.length / 12);
   _emotePage      = (_emotePage + dir + total) % total;
   _renderEmoteWheelPage(available, _emotePage);
