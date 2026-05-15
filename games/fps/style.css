@@ -378,6 +378,22 @@ body {
 }
 #touch-pause-btn:active { background: rgba(255,255,255,0.18); }
 
+#touch-emote-btn {
+  position: absolute;
+  top: 76px; left: 18px;
+  width: 46px; height: 46px;
+  background: rgba(0,0,0,0.52);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 8px;
+  font-size: 22px;
+  pointer-events: all;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+#touch-emote-btn:active { background: rgba(255,255,255,0.18); }
+
 /* ── Mobile responsive — push buttons above system nav bar ───── */
 @media (max-width: 900px) {
   /* FIRE — lift above Android nav bar / iPhone home indicator */

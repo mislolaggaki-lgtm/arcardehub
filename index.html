@@ -1429,6 +1429,26 @@
     .dot-offline { background: #444; }
     .friend-remove-btn { background: none; border: none; color: #333; cursor: pointer; font-size: 13px; padding: 4px 6px; }
     .friend-remove-btn:hover { color: #e74c3c; }
+    .friend-profile-popup {
+      position: absolute; left: 12px; right: 12px;
+      background: #16162e; border: 1px solid rgba(59,158,232,0.25);
+      border-radius: 12px; padding: 20px 18px 18px;
+      z-index: 10; box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .friend-pp-close {
+      position: absolute; top: 10px; right: 12px;
+      background: none; border: none; color: #555; cursor: pointer; font-size: 15px;
+    }
+    .friend-pp-close:hover { color: #fff; }
+    .friend-pp-avatar {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: rgba(255,255,255,0.07); border: 2px solid rgba(59,158,232,0.3);
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    .friend-pp-username { font-size: 16px; font-weight: 700; color: #c0c0ee; }
+    .friend-pp-status   { font-size: 12px; color: #666; display: flex; align-items: center; gap: 6px; }
+    .friend-pp-bio      { font-size: 12px; color: #888; text-align: center; line-height: 1.5; margin-top: 4px; max-width: 240px; word-break: break-word; }
 
     /* ── Profile sections ──────────────────────────────────── */
     .profile-section { margin-bottom: 20px; }
@@ -4099,6 +4119,7 @@
     function closeFriends() {
       document.getElementById('friends-panel').classList.remove('open');
       document.getElementById('friends-overlay').style.cssText = '';
+      const p = document.getElementById('friend-profile-popup'); if (p) p.remove();
     }
 
     function _renderFriends(list) {
@@ -4116,15 +4137,46 @@
         const dot = f.status === 'in-game' ? 'dot-ingame' : f.status === 'online' ? 'dot-online' : 'dot-offline';
         const label = f.status === 'in-game' ? 'In Game' : f.status === 'online' ? 'Online' : 'Offline';
         const av = f.avatar ? `<img src="${f.avatar}" alt="">` : f.username.slice(0,2).toUpperCase();
-        return `<div class="friend-row">
+        const bioAttr    = (f.bio    || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+        const avatarAttr = (f.avatar || '').replace(/"/g,'&quot;');
+        const userAttr   = (f.username).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+        return `<div class="friend-row" onclick="_showFriendProfile(this)"
+            data-username="${userAttr}" data-bio="${bioAttr}"
+            data-status="${f.status}" data-avatar="${avatarAttr}">
           <div class="friend-avatar">${av}</div>
           <div class="friend-info">
             <div class="friend-name">${_esc(f.username)}</div>
             <div class="friend-status"><span class="friend-dot ${dot}"></span>${label}</div>
           </div>
-          <button class="friend-remove-btn" onclick="removeFriend('${f.username}')" title="Remove friend">✕</button>
+          <button class="friend-remove-btn" onclick="event.stopPropagation();removeFriend('${_esc(f.username)}')" title="Remove friend">✕</button>
         </div>`;
       }).join('');
+    }
+
+    function _showFriendProfile(rowEl) {
+      const existing = document.getElementById('friend-profile-popup');
+      if (existing) existing.remove();
+      const username = rowEl.dataset.username || '';
+      const bio      = rowEl.dataset.bio      || '';
+      const status   = rowEl.dataset.status   || 'offline';
+      const avatar   = rowEl.dataset.avatar   || '';
+      const dot   = status === 'in-game' ? 'dot-ingame' : status === 'online' ? 'dot-online' : 'dot-offline';
+      const label = status === 'in-game' ? 'In Game'   : status === 'online'  ? 'Online'     : 'Offline';
+      const avHtml = avatar
+        ? `<img src="${avatar}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+        : `<span style="font-size:22px;font-weight:700;color:#888">${_esc(username.slice(0,2).toUpperCase())}</span>`;
+      const popup = document.createElement('div');
+      popup.id = 'friend-profile-popup';
+      popup.className = 'friend-profile-popup';
+      popup.innerHTML = `
+        <button class="friend-pp-close" onclick="document.getElementById('friend-profile-popup').remove()">✕</button>
+        <div class="friend-pp-avatar">${avHtml}</div>
+        <div class="friend-pp-username">${_esc(username)}</div>
+        <div class="friend-pp-status"><span class="friend-dot ${dot}" style="display:inline-block"></span> ${label}</div>
+        ${bio ? `<div class="friend-pp-bio">${_esc(bio)}</div>` : '<div class="friend-pp-bio" style="color:#444;font-style:italic">No bio set</div>'}
+      `;
+      popup.addEventListener('click', e => e.stopPropagation());
+      document.getElementById('friends-list').appendChild(popup);
     }
 
     async function sendFriendRequest() {

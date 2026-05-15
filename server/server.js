@@ -209,10 +209,20 @@ async function start() {
     const friends = user?.friends || [];
     const onlineSet = new Set([...chatUsers.values()].map(u => u.username));
     const inGameSet = new Set([...players.values()].map(p => p.username));
-    return friends.map(f => ({
-      username: f,
-      status: inGameSet.has(f) ? 'in-game' : onlineSet.has(f) ? 'online' : 'offline',
-    }));
+    if (friends.length === 0) return [];
+    const friendDocs = await usersCol
+      .find({ username: { $in: friends } }, { projection: { username:1, bio:1, avatar:1 } })
+      .toArray();
+    const docMap = new Map(friendDocs.map(d => [d.username, d]));
+    return friends.map(f => {
+      const doc = docMap.get(f) || {};
+      return {
+        username: f,
+        status:   inGameSet.has(f) ? 'in-game' : onlineSet.has(f) ? 'online' : 'offline',
+        bio:      doc.bio    || '',
+        avatar:   doc.avatar || null,
+      };
+    });
   }
 
   // ── Socket.io connection handler ────────────────────────────
