@@ -42,13 +42,14 @@ const tradeSessions = new Map(); // sessionId → live trade session
 
 function _broadcastTradeState(session) {
   const base = {
-    sessionId:         session.id,
-    initiatorUsername: session.initiatorUsername,
-    targetUsername:    session.targetUsername,
-    initiatorItems:    session.initiatorItems,
-    targetItems:       session.targetItems,
-    confirmed:         session.confirmed,
-    countdownStart:    session.countdownStart,
+    sessionId:           session.id,
+    initiatorUsername:   session.initiatorUsername,
+    targetUsername:      session.targetUsername,
+    initiatorItems:      session.initiatorItems,
+    targetItems:         session.targetItems,
+    initiatorConfirmed:  session.initiatorConfirmed,
+    targetConfirmed:     session.targetConfirmed,
+    countdownStart:      session.countdownStart,
   };
   io.to(session.initiatorSocketId).emit('tradeUpdate', { ...base, myRole: 'initiator' });
   io.to(session.targetSocketId).emit('tradeUpdate',   { ...base, myRole: 'target'    });
@@ -546,7 +547,8 @@ async function start() {
           targetUsername: toUsername,
           initiatorItems: [],
           targetItems: [],
-          confirmed: false,
+          initiatorConfirmed: false,
+          targetConfirmed: false,
           countdownStart: null,
           countdown: null,
           expires: Date.now() + 10 * 60 * 1000,
@@ -591,9 +593,9 @@ async function start() {
         } else {
           if (!session.targetItems.includes(itemId)) session.targetItems.push(itemId);
         }
-        if (session.confirmed) {
-          session.confirmed = false; clearTimeout(session.countdown);
-          session.countdown = null; session.countdownStart = null;
+        if (session.initiatorConfirmed || session.targetConfirmed || session.countdownStart) {
+          session.initiatorConfirmed = false; session.targetConfirmed = false;
+          clearTimeout(session.countdown); session.countdown = null; session.countdownStart = null;
         }
         _broadcastTradeState(session);
       } catch { socket.emit('tradeError', 'Server error.'); }
@@ -607,24 +609,33 @@ async function start() {
       if (!isInit && !isTgt) return;
       if (isInit) session.initiatorItems = session.initiatorItems.filter(i => i !== itemId);
       else        session.targetItems    = session.targetItems.filter(i => i !== itemId);
-      if (session.confirmed) {
-        session.confirmed = false; clearTimeout(session.countdown);
-        session.countdown = null; session.countdownStart = null;
+      if (session.initiatorConfirmed || session.targetConfirmed || session.countdownStart) {
+        session.initiatorConfirmed = false; session.targetConfirmed = false;
+        clearTimeout(session.countdown); session.countdown = null; session.countdownStart = null;
       }
       _broadcastTradeState(session);
     });
 
     socket.on('tradeConfirm', ({ sessionId }) => {
       const session = tradeSessions.get(sessionId);
-      if (!session || session.confirmed) return;
-      if (session.initiatorSocketId !== socket.id && session.targetSocketId !== socket.id) return;
-      session.confirmed = true;
-      session.countdownStart = Date.now();
-      _broadcastTradeState(session);
-      session.countdown = setTimeout(() => {
-        if (!tradeSessions.has(sessionId)) return;
-        _executeTrade(session);
-      }, 5000);
+      if (!session || session.countdownStart) return; // countdown already running
+      const isInit = session.initiatorSocketId === socket.id;
+      const isTgt  = session.targetSocketId    === socket.id;
+      if (!isInit && !isTgt) return;
+      // Toggle this player's confirm
+      if (isInit) session.initiatorConfirmed = !session.initiatorConfirmed;
+      if (isTgt)  session.targetConfirmed    = !session.targetConfirmed;
+      // Both confirmed → start countdown
+      if (session.initiatorConfirmed && session.targetConfirmed) {
+        session.countdownStart = Date.now();
+        _broadcastTradeState(session);
+        session.countdown = setTimeout(() => {
+          if (!tradeSessions.has(sessionId)) return;
+          _executeTrade(session);
+        }, 5000);
+      } else {
+        _broadcastTradeState(session);
+      }
     });
 
     socket.on('tradeCancel', ({ sessionId }) => {

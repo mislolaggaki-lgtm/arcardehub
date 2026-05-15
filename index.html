@@ -474,6 +474,12 @@
       padding-top: 26px; flex-shrink: 0;
     }
 
+    .ts-confirm-status {
+      font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+      color: #444; margin-top: 8px; text-align: center; padding: 3px 0;
+    }
+    .ts-confirm-status.ready { color: #00c878; }
+
     /* Countdown bar */
     .ts-countdown-bar {
       background: rgba(255,200,0,0.08); border: 1px solid rgba(255,200,0,0.25);
@@ -1329,11 +1335,13 @@
               <select class="ts-add-select" id="tr-add-select"></select>
               <button class="ts-add-btn" onclick="_addTradeItem()">ADD</button>
             </div>
+            <div class="ts-confirm-status" id="tr-my-status">NOT CONFIRMED</div>
           </div>
           <div class="ts-divider">⇄</div>
           <div class="ts-col">
             <div class="ts-col-hdr" id="tr-their-hdr">THEIR OFFER</div>
             <div class="ts-items" id="tr-their-items"><div class="ts-items-empty">Nothing added yet</div></div>
+            <div class="ts-confirm-status" id="tr-their-status">NOT CONFIRMED</div>
           </div>
         </div>
         <div class="ts-countdown-bar" id="tr-countdown-bar" style="display:none">
@@ -2927,11 +2935,18 @@
       _chatSocket.on('tradeSessionOpened', ({ sessionId, partnerUsername, myRole }) => {
         _tradeSessionId = sessionId;
         _tradeMyRole    = myRole;
-        document.getElementById('tr-room-partner').textContent = partnerUsername;
-        document.getElementById('tr-their-hdr').textContent    = partnerUsername.toUpperCase() + "'S OFFER";
-        document.getElementById('tr-room-msg').textContent     = '';
-        document.getElementById('tr-countdown-bar').style.display = 'none';
-        document.getElementById('tr-room-confirm-btn').style.display = '';
+        document.getElementById('tr-room-partner').textContent      = partnerUsername;
+        document.getElementById('tr-their-hdr').textContent         = partnerUsername.toUpperCase() + "'S OFFER";
+        document.getElementById('tr-room-msg').textContent          = '';
+        document.getElementById('tr-countdown-bar').style.display   = 'none';
+        document.getElementById('tr-my-items').innerHTML            = '<div class="ts-items-empty">Nothing added yet</div>';
+        document.getElementById('tr-their-items').innerHTML         = '<div class="ts-items-empty">Nothing added yet</div>';
+        document.getElementById('tr-my-status').textContent         = 'NOT CONFIRMED';
+        document.getElementById('tr-my-status').className           = 'ts-confirm-status';
+        document.getElementById('tr-their-status').textContent      = 'NOT CONFIRMED';
+        document.getElementById('tr-their-status').className        = 'ts-confirm-status';
+        const btn = document.getElementById('tr-room-confirm-btn');
+        btn.style.display = ''; btn.textContent = 'CONFIRM TRADE';
         document.getElementById('trade-overlay').classList.add('open');
         _setTradeState('room');
       });
@@ -3374,13 +3389,26 @@
           : '<option value="">No items to add</option>';
       }
 
+      // Confirm statuses
+      const myConfirmed    = _tradeMyRole === 'initiator' ? data.initiatorConfirmed : data.targetConfirmed;
+      const theirConfirmed = _tradeMyRole === 'initiator' ? data.targetConfirmed    : data.initiatorConfirmed;
+      const myStatusEl    = document.getElementById('tr-my-status');
+      const theirStatusEl = document.getElementById('tr-their-status');
+      if (myStatusEl) {
+        myStatusEl.textContent = myConfirmed ? '✓ CONFIRMED' : 'NOT CONFIRMED';
+        myStatusEl.className   = 'ts-confirm-status' + (myConfirmed ? ' ready' : '');
+      }
+      if (theirStatusEl) {
+        theirStatusEl.textContent = theirConfirmed ? '✓ CONFIRMED' : 'NOT CONFIRMED';
+        theirStatusEl.className   = 'ts-confirm-status' + (theirConfirmed ? ' ready' : '');
+      }
+
       _clearTradeCountdown();
       const bar        = document.getElementById('tr-countdown-bar');
-      const btns       = document.getElementById('tr-room-btns');
       const confirmBtn = document.getElementById('tr-room-confirm-btn');
-      if (data.confirmed && data.countdownStart) {
-        if (bar)  bar.style.display  = 'flex';
-        if (btns) { confirmBtn.style.display = 'none'; }
+      if (data.countdownStart) {
+        if (bar) bar.style.display = 'flex';
+        if (confirmBtn) confirmBtn.style.display = 'none';
         const endTime = data.countdownStart + 5000;
         const tick = () => {
           const left = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
@@ -3390,8 +3418,11 @@
         tick();
         _tradeCountdownInterval = setInterval(tick, 200);
       } else {
-        if (bar)  bar.style.display  = 'none';
-        if (confirmBtn) confirmBtn.style.display = '';
+        if (bar) bar.style.display = 'none';
+        if (confirmBtn) {
+          confirmBtn.style.display = '';
+          confirmBtn.textContent   = myConfirmed ? 'UNCONFIRM' : 'CONFIRM TRADE';
+        }
       }
     }
     function _showIncomingTrade(data) {
