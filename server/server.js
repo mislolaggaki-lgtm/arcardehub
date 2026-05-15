@@ -38,7 +38,28 @@ const players       = new Map();
 const coopGroups    = new Map();
 const chatUsers     = new Map();
 const voiceUsers    = new Map();
-const pendingTrades = new Map(); // tradeId → trade object
+const tradeSessions = new Map(); // sessionId → live trade session
+
+function _broadcastTradeState(session) {
+  const base = {
+    sessionId:         session.id,
+    initiatorUsername: session.initiatorUsername,
+    targetUsername:    session.targetUsername,
+    initiatorItems:    session.initiatorItems,
+    targetItems:       session.targetItems,
+    confirmed:         session.confirmed,
+    countdownStart:    session.countdownStart,
+  };
+  io.to(session.initiatorSocketId).emit('tradeUpdate', { ...base, myRole: 'initiator' });
+  io.to(session.targetSocketId).emit('tradeUpdate',   { ...base, myRole: 'target'    });
+}
+
+function _cancelSession(session, byUsername) {
+  clearTimeout(session.countdown);
+  tradeSessions.delete(session.id);
+  io.to(session.initiatorSocketId).emit('tradeCancelled', { sessionId: session.id, byUsername });
+  io.to(session.targetSocketId).emit('tradeCancelled',   { sessionId: session.id, byUsername });
+}
 
 // ── Game mode state ───────────────────────────────────────────
 let activeGameMode = 'solo';   // 'solo' | 'ffa' | 'tdm'
@@ -120,6 +141,48 @@ async function start() {
         { username: 'Stotch', $or: [{ bucks: { $exists: false } }, { bucks: { $lt: 2500 } }] },
         { $set: { bucks: 2500 } }
       );
+    }
+  }
+
+  // ── Trade execution helper (needs usersCol) ─────────────────
+  async function _executeTrade(session) {
+    tradeSessions.delete(session.id);
+    try {
+      const { ObjectId } = require('mongodb');
+      const [initiator, target] = await Promise.all([
+        usersCol.findOne({ username: session.initiatorUsername }, { projection: { ownedItems:1 } }),
+        usersCol.findOne({ username: session.targetUsername },    { projection: { ownedItems:1 } }),
+      ]);
+      if (!initiator || !target) {
+        io.to(session.initiatorSocketId).emit('tradeCancelled', { sessionId: session.id, byUsername: 'System' });
+        io.to(session.targetSocketId).emit('tradeCancelled',   { sessionId: session.id, byUsername: 'System' });
+        return;
+      }
+      const initiatorOwns = session.initiatorItems.every(id => (initiator.ownedItems||[]).includes(id));
+      const targetOwns    = session.targetItems.every(id => (target.ownedItems||[]).includes(id));
+      if (!initiatorOwns || !targetOwns) {
+        io.to(session.initiatorSocketId).emit('tradeCancelled', { sessionId: session.id, byUsername: 'System' });
+        io.to(session.targetSocketId).emit('tradeCancelled',   { sessionId: session.id, byUsername: 'System' });
+        return;
+      }
+      if (session.initiatorItems.length) {
+        await usersCol.updateOne({ username: session.initiatorUsername },
+          { $pull: { ownedItems: { $in: session.initiatorItems }, equippedItems: { $in: session.initiatorItems } } });
+        await usersCol.updateOne({ username: session.targetUsername },
+          { $addToSet: { ownedItems: { $each: session.initiatorItems } } });
+      }
+      if (session.targetItems.length) {
+        await usersCol.updateOne({ username: session.targetUsername },
+          { $pull: { ownedItems: { $in: session.targetItems }, equippedItems: { $in: session.targetItems } } });
+        await usersCol.updateOne({ username: session.initiatorUsername },
+          { $addToSet: { ownedItems: { $each: session.targetItems } } });
+      }
+      io.to(session.initiatorSocketId).emit('tradeCompleted', { sessionId: session.id });
+      io.to(session.targetSocketId).emit('tradeCompleted',   { sessionId: session.id });
+    } catch (err) {
+      console.error('Trade execution error:', err);
+      io.to(session.initiatorSocketId).emit('tradeCancelled', { sessionId: session.id, byUsername: 'System' });
+      io.to(session.targetSocketId).emit('tradeCancelled',   { sessionId: session.id, byUsername: 'System' });
     }
   }
 
@@ -463,6 +526,116 @@ async function start() {
       socket.broadcast.emit('remoteEmote', { socketId: socket.id, username, emoteId });
     });
 
+    // ── Trade (socket-based) ──────────────────────────────────
+    socket.on('tradeRequest', ({ token, toUsername }) => {
+      try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        const fromUsername = payload.username;
+        if (fromUsername === toUsername) return socket.emit('tradeError', 'Cannot trade with yourself.');
+        let targetSocketId = null;
+        for (const [sid, u] of chatUsers) {
+          if (u.username === toUsername) { targetSocketId = sid; break; }
+        }
+        if (!targetSocketId) return socket.emit('tradeError', `${toUsername} is not online.`);
+        const sessionId = Math.random().toString(36).slice(2, 10);
+        const session = {
+          id: sessionId,
+          initiatorSocketId: socket.id,
+          initiatorUsername: fromUsername,
+          targetSocketId,
+          targetUsername: toUsername,
+          initiatorItems: [],
+          targetItems: [],
+          confirmed: false,
+          countdownStart: null,
+          countdown: null,
+          expires: Date.now() + 10 * 60 * 1000,
+        };
+        tradeSessions.set(sessionId, session);
+        socket.emit('tradeRequestSent', { sessionId, toUsername });
+        io.to(targetSocketId).emit('tradeIncoming', { sessionId, fromUsername });
+      } catch { socket.emit('tradeError', 'Authentication failed.'); }
+    });
+
+    socket.on('tradeRespond', ({ sessionId, accept }) => {
+      const session = tradeSessions.get(sessionId);
+      if (!session || session.targetSocketId !== socket.id) return;
+      if (!accept) {
+        tradeSessions.delete(sessionId);
+        io.to(session.initiatorSocketId).emit('tradeRequestDeclined', { byUsername: session.targetUsername });
+        return;
+      }
+      io.to(session.initiatorSocketId).emit('tradeSessionOpened', {
+        sessionId, partnerUsername: session.targetUsername, myRole: 'initiator',
+      });
+      io.to(session.targetSocketId).emit('tradeSessionOpened', {
+        sessionId, partnerUsername: session.initiatorUsername, myRole: 'target',
+      });
+      _broadcastTradeState(session);
+    });
+
+    socket.on('tradeAddItem', async ({ token, sessionId, itemId }) => {
+      const session = tradeSessions.get(sessionId);
+      if (!session) return;
+      const isInit = session.initiatorSocketId === socket.id;
+      const isTgt  = session.targetSocketId    === socket.id;
+      if (!isInit && !isTgt) return;
+      try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        const { ObjectId } = require('mongodb');
+        const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { ownedItems:1 } });
+        if (!(user?.ownedItems||[]).includes(itemId)) return socket.emit('tradeError', 'You do not own that item.');
+        if (itemId.startsWith('emote_')) return socket.emit('tradeError', 'Emotes cannot be traded.');
+        if (isInit) {
+          if (!session.initiatorItems.includes(itemId)) session.initiatorItems.push(itemId);
+        } else {
+          if (!session.targetItems.includes(itemId)) session.targetItems.push(itemId);
+        }
+        if (session.confirmed) {
+          session.confirmed = false; clearTimeout(session.countdown);
+          session.countdown = null; session.countdownStart = null;
+        }
+        _broadcastTradeState(session);
+      } catch { socket.emit('tradeError', 'Server error.'); }
+    });
+
+    socket.on('tradeRemoveItem', ({ sessionId, itemId }) => {
+      const session = tradeSessions.get(sessionId);
+      if (!session) return;
+      const isInit = session.initiatorSocketId === socket.id;
+      const isTgt  = session.targetSocketId    === socket.id;
+      if (!isInit && !isTgt) return;
+      if (isInit) session.initiatorItems = session.initiatorItems.filter(i => i !== itemId);
+      else        session.targetItems    = session.targetItems.filter(i => i !== itemId);
+      if (session.confirmed) {
+        session.confirmed = false; clearTimeout(session.countdown);
+        session.countdown = null; session.countdownStart = null;
+      }
+      _broadcastTradeState(session);
+    });
+
+    socket.on('tradeConfirm', ({ sessionId }) => {
+      const session = tradeSessions.get(sessionId);
+      if (!session || session.confirmed) return;
+      if (session.initiatorSocketId !== socket.id && session.targetSocketId !== socket.id) return;
+      session.confirmed = true;
+      session.countdownStart = Date.now();
+      _broadcastTradeState(session);
+      session.countdown = setTimeout(() => {
+        if (!tradeSessions.has(sessionId)) return;
+        _executeTrade(session);
+      }, 5000);
+    });
+
+    socket.on('tradeCancel', ({ sessionId }) => {
+      const session = tradeSessions.get(sessionId);
+      if (!session) return;
+      if (session.initiatorSocketId !== socket.id && session.targetSocketId !== socket.id) return;
+      const byUsername = socket.id === session.initiatorSocketId
+        ? session.initiatorUsername : session.targetUsername;
+      _cancelSession(session, byUsername);
+    });
+
     socket.on('disconnect', () => {
       players.delete(socket.id);
       ffaKills.delete(socket.id);
@@ -475,6 +648,13 @@ async function start() {
         io.emit('chatOnline', [...chatUsers.values()].map(u => u.username));
       if (voiceUsers.delete(socket.id))
         io.emit('voiceUserLeft', { socketId: socket.id });
+      // Cancel any active trade sessions
+      const tradesToCancel = [...tradeSessions.values()].filter(s =>
+        s.initiatorSocketId === socket.id || s.targetSocketId === socket.id);
+      for (const s of tradesToCancel) {
+        const by = socket.id === s.initiatorSocketId ? s.initiatorUsername : s.targetUsername;
+        _cancelSession(s, by);
+      }
     });
   });
 
@@ -939,88 +1119,6 @@ async function start() {
       await usersCol.updateOne({ _id: user._id }, { $set: { password: hash }, $unset: { resetCode: '', resetExpiry: '' } });
       res.json({ success: true });
     } catch (err) { res.status(500).json({ error: 'Server error.' }); }
-  });
-
-  // ── POST /api/trade/offer ────────────────────────────────────
-  app.post('/api/trade/offer', async (req, res) => {
-    try {
-      const payload = verifyToken(req.headers.authorization);
-      const { toUsername, offerItemId, requestItemId } = req.body;
-      if (!toUsername || !offerItemId || !requestItemId)
-        return res.status(400).json({ error: 'toUsername, offerItemId, requestItemId required.' });
-      if (toUsername === payload.username)
-        return res.status(400).json({ error: 'Cannot trade with yourself.' });
-      const { ObjectId } = require('mongodb');
-      const sender = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { username:1, ownedItems:1 } });
-      if (!sender) return res.status(404).json({ error: 'Sender not found.' });
-      if (!(sender.ownedItems || []).includes(offerItemId))
-        return res.status(400).json({ error: 'You do not own the item you are offering.' });
-      const recipient = await usersCol.findOne({ username: toUsername }, { projection: { _id:1, username:1, ownedItems:1 } });
-      if (!recipient) return res.status(404).json({ error: `User "${toUsername}" not found.` });
-      if (!(recipient.ownedItems || []).includes(requestItemId))
-        return res.status(400).json({ error: `${toUsername} does not own that item.` });
-      const tradeId = Math.random().toString(36).slice(2, 10);
-      const trade = { id:tradeId, fromUserId:payload.userId, fromUsername:sender.username, toUserId:recipient._id.toString(), toUsername, offerItemId, requestItemId, expires: Date.now() + 5*60*1000 };
-      pendingTrades.set(tradeId, trade);
-      for (const [sid, p] of players) {
-        if (p.username === toUsername) io.to(sid).emit('tradeOffer', trade);
-      }
-      res.json({ success: true, tradeId });
-    } catch (err) {
-      if (err.status) return res.status(err.status).json({ error: err.message });
-      res.status(500).json({ error: 'Server error.' });
-    }
-  });
-
-  // ── POST /api/trade/respond ──────────────────────────────────
-  app.post('/api/trade/respond', async (req, res) => {
-    try {
-      const payload = verifyToken(req.headers.authorization);
-      const { tradeId, accept } = req.body;
-      const trade = pendingTrades.get(tradeId);
-      if (!trade) return res.status(404).json({ error: 'Trade not found or expired.' });
-      if (trade.toUserId !== payload.userId) return res.status(403).json({ error: 'Not your trade.' });
-      if (Date.now() > trade.expires) { pendingTrades.delete(tradeId); return res.status(400).json({ error: 'Trade expired.' }); }
-      pendingTrades.delete(tradeId);
-      if (!accept) {
-        for (const [sid, p] of players) {
-          if (p.username === trade.fromUsername) io.to(sid).emit('tradeDeclined', { tradeId, byUsername: payload.username });
-        }
-        return res.json({ success: true, accepted: false });
-      }
-      const { ObjectId } = require('mongodb');
-      const sender    = await usersCol.findOne({ _id: new ObjectId(trade.fromUserId) });
-      const recipient = await usersCol.findOne({ _id: new ObjectId(trade.toUserId) });
-      if (!(sender?.ownedItems||[]).includes(trade.offerItemId))
-        return res.status(400).json({ error: 'Sender no longer owns the offered item.' });
-      if (!(recipient?.ownedItems||[]).includes(trade.requestItemId))
-        return res.status(400).json({ error: 'You no longer own the requested item.' });
-      await usersCol.updateOne({ _id: new ObjectId(trade.fromUserId) },
-        { $pull: { ownedItems: trade.offerItemId, equippedItems: trade.offerItemId }, $addToSet: { ownedItems: trade.requestItemId } });
-      await usersCol.updateOne({ _id: new ObjectId(trade.toUserId) },
-        { $pull: { ownedItems: trade.requestItemId, equippedItems: trade.requestItemId }, $addToSet: { ownedItems: trade.offerItemId } });
-      for (const [sid, p] of players) {
-        if (p.username === trade.fromUsername) io.to(sid).emit('tradeAccepted', { tradeId, withUsername: payload.username });
-      }
-      res.json({ success: true, accepted: true });
-    } catch (err) {
-      if (err.status) return res.status(err.status).json({ error: err.message });
-      res.status(500).json({ error: 'Server error.' });
-    }
-  });
-
-  // ── GET /api/trade/pending ───────────────────────────────────
-  app.get('/api/trade/pending', async (req, res) => {
-    try {
-      const payload = verifyToken(req.headers.authorization);
-      const now = Date.now();
-      for (const [id, t] of pendingTrades) { if (t.expires < now) pendingTrades.delete(id); }
-      const mine = [...pendingTrades.values()].filter(t => t.fromUserId === payload.userId || t.toUserId === payload.userId);
-      res.json({ trades: mine });
-    } catch (err) {
-      if (err.status) return res.status(err.status).json({ error: err.message });
-      res.status(500).json({ error: 'Server error.' });
-    }
   });
 
   // ── Catch-all: serve index.html ─────────────────────────────

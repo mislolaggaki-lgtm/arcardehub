@@ -393,66 +393,130 @@
     }
     .reset-back-link:hover { color: #aaa; }
 
-    /* ── Trade modal ─────────────────────────────────────────── */
+    /* ── Trade modal (redesigned) ───────────────────────────────── */
     #trade-overlay {
       display: none; position: fixed; inset: 0; z-index: 700;
-      background: rgba(0,0,0,0.72); align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.75); align-items: center; justify-content: center;
     }
     #trade-overlay.open { display: flex; }
     #trade-box {
       background: #0d0d1a; border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 14px; padding: 30px 28px 26px; width: 100%; max-width: 500px;
-      margin: 16px;
+      border-radius: 14px; padding: 28px 26px 24px; width: 100%; max-width: 580px;
+      margin: 16px; position: relative;
     }
-    #trade-title {
+    .trade-title-bar {
       font-size: 10px; letter-spacing: 5px; font-weight: 700;
       text-transform: uppercase; color: #aaa; margin-bottom: 20px;
     }
-    .trade-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-    .trade-row label {
-      font-size: 10px; letter-spacing: 2px; color: #555;
-      text-transform: uppercase; margin-bottom: 4px; display: block;
-    }
-    .trade-col { display: flex; flex-direction: column; flex: 1; min-width: 180px; }
-    .trade-select {
+    .trade-state { display: none; }
+    .trade-state.active { display: block; }
+
+    /* State: request */
+    .ts-req-body { display: flex; flex-direction: column; gap: 12px; }
+    .ts-req-body label { font-size: 10px; letter-spacing: 2px; color: #555; text-transform: uppercase; }
+    .ts-req-body input {
       background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
       border-radius: 6px; color: #ddd; font-family: inherit;
-      font-size: 13px; padding: 8px 10px; width: 100%;
+      font-size: 13px; padding: 9px 12px; width: 100%; box-sizing: border-box;
     }
-    .trade-select:focus { outline: none; border-color: rgba(0,200,120,0.4); }
-    .trade-input {
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 6px; color: #ddd; font-family: inherit;
-      font-size: 13px; padding: 8px 10px; width: 100%;
+    .ts-req-body input:focus { outline: none; border-color: rgba(0,200,120,0.4); }
+
+    /* State: waiting */
+    .ts-wait-body { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 10px 0 6px; }
+    .trade-spinner {
+      width: 34px; height: 34px; border: 3px solid rgba(255,255,255,0.06);
+      border-top-color: #00c878; border-radius: 50%;
+      animation: ts-spin .8s linear infinite;
     }
-    .trade-input:focus { outline: none; border-color: rgba(0,200,120,0.4); }
-    .trade-msg { font-size: 11px; letter-spacing: 1px; min-height: 16px; margin: 6px 0; }
-    .trade-msg.err { color: #e74c3c; }
-    .trade-msg.ok  { color: #00ffaa; }
-    .trade-btns { display: flex; gap: 10px; margin-top: 16px; }
+    @keyframes ts-spin { to { transform: rotate(360deg); } }
+    .ts-wait-text { font-size: 13px; color: #888; text-align: center; }
+    .ts-wait-text b { color: #ddd; }
+
+    /* State: room */
+    .ts-room-cols { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
+    .ts-col { flex: 1; min-width: 0; }
+    .ts-col-hdr {
+      font-size: 9px; letter-spacing: 3px; color: #555;
+      text-transform: uppercase; margin-bottom: 8px;
+    }
+    .ts-items {
+      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 8px; min-height: 72px; padding: 7px;
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .ts-item-chip {
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,255,255,0.05); border-radius: 5px;
+      padding: 5px 8px; font-size: 12px; color: #ccc;
+    }
+    .ts-item-remove {
+      background: none; border: none; color: #e74c3c; cursor: pointer;
+      font-size: 14px; padding: 0 0 0 8px; line-height: 1;
+    }
+    .ts-item-remove:hover { color: #ff6b6b; }
+    .ts-items-empty { color: #444; font-size: 11px; text-align: center; padding: 14px 0; }
+    .ts-add-row { display: flex; gap: 6px; margin-top: 8px; }
+    .ts-add-select {
+      flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px; color: #ccc; font-family: inherit; font-size: 12px;
+      padding: 6px 8px; min-width: 0;
+    }
+    .ts-add-select:focus { outline: none; border-color: rgba(0,200,120,0.3); }
+    .ts-add-btn {
+      background: rgba(0,200,120,0.08); border: 1px solid rgba(0,200,120,0.25);
+      color: #00c878; border-radius: 6px; padding: 6px 12px;
+      font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: 1px;
+      cursor: pointer; white-space: nowrap;
+    }
+    .ts-add-btn:hover { background: rgba(0,200,120,0.18); }
+    .ts-divider {
+      display: flex; align-items: center; color: #333; font-size: 18px;
+      padding-top: 26px; flex-shrink: 0;
+    }
+
+    /* Countdown bar */
+    .ts-countdown-bar {
+      background: rgba(255,200,0,0.08); border: 1px solid rgba(255,200,0,0.25);
+      border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 10px; font-size: 13px; color: #ffd700;
+    }
+    .ts-countdown-bar b { font-size: 22px; min-width: 24px; text-align: center; }
+    .ts-cd-cancel {
+      margin-left: auto; background: rgba(231,76,60,0.15);
+      border: 1px solid rgba(231,76,60,0.35); color: #e74c3c;
+      border-radius: 5px; padding: 5px 12px; font-family: inherit;
+      font-size: 10px; font-weight: 700; letter-spacing: 2px;
+      cursor: pointer; text-transform: uppercase;
+    }
+    .ts-cd-cancel:hover { background: rgba(231,76,60,0.28); }
+
+    /* Shared */
+    .trade-msg { font-size: 11px; letter-spacing: 1px; min-height: 16px; color: #e74c3c; margin-bottom: 4px; }
+    .trade-msg.ok { color: #00ffaa; }
+    .trade-btns { display: flex; gap: 10px; margin-top: 14px; }
     .trade-btn {
       flex: 1; padding: 10px 0; font-family: inherit;
       font-size: 11px; font-weight: 700; letter-spacing: 2px;
-      text-transform: uppercase; border-radius: 6px; cursor: pointer;
-      transition: all .15s;
+      text-transform: uppercase; border-radius: 6px; cursor: pointer; transition: all .15s;
     }
-    #trade-send-btn {
+    .trade-btn-green {
       background: rgba(0,200,120,0.12); color: #00c878;
       border: 1px solid rgba(0,200,120,0.35);
     }
-    #trade-send-btn:hover:not(:disabled) { background: rgba(0,200,120,0.24); }
-    #trade-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-    #trade-cancel-btn {
+    .trade-btn-green:hover:not(:disabled) { background: rgba(0,200,120,0.24); }
+    .trade-btn-green:disabled { opacity: 0.35; cursor: not-allowed; }
+    .trade-btn-cancel {
       background: rgba(255,255,255,0.04); color: #555;
       border: 1px solid rgba(255,255,255,0.1);
     }
-    #trade-cancel-btn:hover { color: #aaa; background: rgba(255,255,255,0.08); }
+    .trade-btn-cancel:hover { color: #aaa; background: rgba(255,255,255,0.08); }
+
+    /* Incoming trade request banner */
     .incoming-trade-banner {
-      position: fixed; bottom: 80px; right: 24px; z-index: 600;
+      position: fixed; bottom: 80px; right: 24px; z-index: 800;
       background: rgba(14,14,30,0.96); border: 1px solid rgba(0,200,120,0.35);
       border-radius: 10px; padding: 14px 18px; min-width: 260px; max-width: 320px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.7);
-      animation: slide-in-right .25s ease;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.7); animation: slide-in-right .25s ease;
     }
     @keyframes slide-in-right {
       from { transform: translateX(120%); opacity: 0; }
@@ -466,15 +530,9 @@
       font-weight: 700; letter-spacing: 2px; border-radius: 5px;
       cursor: pointer; text-transform: uppercase; transition: all .15s;
     }
-    .itb-accept {
-      background: rgba(0,200,120,0.12); color: #00c878;
-      border: 1px solid rgba(0,200,120,0.3);
-    }
+    .itb-accept  { background: rgba(0,200,120,0.12); color: #00c878; border: 1px solid rgba(0,200,120,0.3); }
     .itb-accept:hover { background: rgba(0,200,120,0.25); }
-    .itb-decline {
-      background: rgba(255,255,255,0.04); color: #555;
-      border: 1px solid rgba(255,255,255,0.1);
-    }
+    .itb-decline { background: rgba(255,255,255,0.04); color: #555; border: 1px solid rgba(255,255,255,0.1); }
     .itb-decline:hover { color: #aaa; background: rgba(255,255,255,0.08); }
 
     .auth-modal {
@@ -1234,28 +1292,61 @@
   <!-- ── Trade Modal ──────────────────────────────────────── -->
   <div id="trade-overlay" onclick="if(event.target===this)closeTrade()">
     <div id="trade-box">
-      <div id="trade-title">⇄ Propose a Trade</div>
-      <div class="trade-row">
-        <div class="trade-col">
-          <label>Their username</label>
-          <input class="trade-input" id="trade-target" type="text" placeholder="Username…" maxlength="24" autocomplete="off">
+
+      <!-- STATE: REQUEST -->
+      <div class="trade-state active" id="ts-request">
+        <div class="trade-title-bar">⇄ TRADE</div>
+        <div class="ts-req-body">
+          <label>Enter player username</label>
+          <input id="tr-username" type="text" placeholder="Username…" maxlength="24" autocomplete="off"
+            onkeydown="if(event.key==='Enter')_sendTradeRequest()">
+          <div class="trade-msg" id="tr-req-msg"></div>
+          <div class="trade-btns">
+            <button class="trade-btn trade-btn-cancel" onclick="closeTrade()">CANCEL</button>
+            <button class="trade-btn trade-btn-green" id="tr-req-send-btn" onclick="_sendTradeRequest()">SEND REQUEST</button>
+          </div>
         </div>
       </div>
-      <div class="trade-row">
-        <div class="trade-col">
-          <label>You offer (your item)</label>
-          <select class="trade-select" id="trade-offer"></select>
-        </div>
-        <div class="trade-col">
-          <label>You want (their item ID)</label>
-          <input class="trade-input" id="trade-request" type="text" placeholder="e.g. cap_red_common" maxlength="40" autocomplete="off">
+
+      <!-- STATE: WAITING -->
+      <div class="trade-state" id="ts-waiting">
+        <div class="trade-title-bar">⇄ REQUEST SENT</div>
+        <div class="ts-wait-body">
+          <div class="trade-spinner"></div>
+          <div class="ts-wait-text">Waiting for <b id="tr-wait-name"></b> to respond…</div>
+          <button class="trade-btn trade-btn-cancel" style="max-width:200px;margin-top:4px" onclick="closeTrade()">CANCEL</button>
         </div>
       </div>
-      <div class="trade-msg" id="trade-msg"></div>
-      <div class="trade-btns">
-        <button class="trade-btn" id="trade-cancel-btn" onclick="closeTrade()">CANCEL</button>
-        <button class="trade-btn" id="trade-send-btn" onclick="sendTrade()">SEND OFFER</button>
+
+      <!-- STATE: ROOM -->
+      <div class="trade-state" id="ts-room">
+        <div class="trade-title-bar">⇄ TRADING WITH <span id="tr-room-partner" style="color:#ddd"></span></div>
+        <div class="ts-room-cols">
+          <div class="ts-col">
+            <div class="ts-col-hdr">YOUR OFFER</div>
+            <div class="ts-items" id="tr-my-items"><div class="ts-items-empty">Nothing added yet</div></div>
+            <div class="ts-add-row">
+              <select class="ts-add-select" id="tr-add-select"></select>
+              <button class="ts-add-btn" onclick="_addTradeItem()">ADD</button>
+            </div>
+          </div>
+          <div class="ts-divider">⇄</div>
+          <div class="ts-col">
+            <div class="ts-col-hdr" id="tr-their-hdr">THEIR OFFER</div>
+            <div class="ts-items" id="tr-their-items"><div class="ts-items-empty">Nothing added yet</div></div>
+          </div>
+        </div>
+        <div class="ts-countdown-bar" id="tr-countdown-bar" style="display:none">
+          Trade executing in <b id="tr-cd-num">5</b>s
+          <button class="ts-cd-cancel" onclick="closeTrade()">CANCEL</button>
+        </div>
+        <div class="trade-msg" id="tr-room-msg"></div>
+        <div class="trade-btns" id="tr-room-btns">
+          <button class="trade-btn trade-btn-cancel" onclick="closeTrade()">CANCEL TRADE</button>
+          <button class="trade-btn trade-btn-green" id="tr-room-confirm-btn" onclick="_confirmTrade()">CONFIRM TRADE</button>
+        </div>
       </div>
+
     </div>
   </div>
 
@@ -2812,10 +2903,59 @@
         if (chip) chip.classList.toggle('speaking', speaking);
       });
 
-      // Trade events
-      _chatSocket.on('tradeOffer',   (trade)               => _showIncomingTrade(trade));
-      _chatSocket.on('tradeAccepted',({ withUsername })     => { loadShopProfile(); _toastMsg(`✓ ${withUsername} accepted your trade`); });
-      _chatSocket.on('tradeDeclined',({ byUsername })       => _toastMsg(`✗ ${byUsername} declined your trade`));
+      // Trade events (socket-based)
+      _chatSocket.on('tradeRequestSent', ({ sessionId, toUsername }) => {
+        _tradeSessionId = sessionId;
+        document.getElementById('tr-req-send-btn').disabled = false;
+        document.getElementById('tr-wait-name').textContent = toUsername;
+        _setTradeState('waiting');
+      });
+      _chatSocket.on('tradeError', (msg) => {
+        const msgEl = document.getElementById('tr-req-msg');
+        if (msgEl) msgEl.textContent = msg;
+        const btn = document.getElementById('tr-req-send-btn');
+        if (btn) btn.disabled = false;
+        _toastMsg(`Trade: ${msg}`);
+      });
+      _chatSocket.on('tradeIncoming', (data) => _showIncomingTrade(data));
+      _chatSocket.on('tradeRequestDeclined', ({ byUsername }) => {
+        _tradeSessionId = null; _tradeMyRole = null;
+        _setTradeState('request');
+        document.getElementById('trade-overlay').classList.remove('open');
+        _toastMsg(`✗ ${byUsername} declined your trade request`);
+      });
+      _chatSocket.on('tradeSessionOpened', ({ sessionId, partnerUsername, myRole }) => {
+        _tradeSessionId = sessionId;
+        _tradeMyRole    = myRole;
+        document.getElementById('tr-room-partner').textContent = partnerUsername;
+        document.getElementById('tr-their-hdr').textContent    = partnerUsername.toUpperCase() + "'S OFFER";
+        document.getElementById('tr-room-msg').textContent     = '';
+        document.getElementById('tr-countdown-bar').style.display = 'none';
+        document.getElementById('tr-room-confirm-btn').style.display = '';
+        document.getElementById('trade-overlay').classList.add('open');
+        _setTradeState('room');
+      });
+      _chatSocket.on('tradeUpdate', (data) => {
+        if (data.sessionId !== _tradeSessionId) return;
+        _renderTradeRoom(data);
+      });
+      _chatSocket.on('tradeCancelled', ({ sessionId, byUsername }) => {
+        const banner = document.getElementById('itb-' + sessionId);
+        if (banner) banner.remove();
+        _clearTradeCountdown();
+        _tradeSessionId = null; _tradeMyRole = null;
+        document.getElementById('trade-overlay').classList.remove('open');
+        _setTradeState('request');
+        _toastMsg(`Trade cancelled by ${byUsername}`);
+      });
+      _chatSocket.on('tradeCompleted', () => {
+        _clearTradeCountdown();
+        _tradeSessionId = null; _tradeMyRole = null;
+        document.getElementById('trade-overlay').classList.remove('open');
+        _setTradeState('request');
+        loadShopProfile();
+        _toastMsg('✓ Trade completed!');
+      });
 
       // Show logged-in UI
       document.getElementById('chat-guest-note').style.display = 'none';
@@ -3140,82 +3280,138 @@
     }
 
     // ── Trade Modal ──────────────────────────────────────────────
+    // ── Trade (socket-based, redesigned) ─────────────────────────
+    let _tradeSessionId = null;
+    let _tradeMyRole    = null; // 'initiator' | 'target'
+    let _tradeCountdownInterval = null;
+
     function openTrade() {
-      const sel = document.getElementById('trade-offer');
-      sel.innerHTML = [..._ownedItems]
-        .filter(id => !id.startsWith('emote_'))  // can't trade emotes
-        .map(id => {
-          const it = SHOP_ITEMS.find(x => x.id === id);
-          return `<option value="${id}">${it ? it.name : id}</option>`;
-        }).join('');
-      if (!sel.options.length) {
-        sel.innerHTML = '<option value="">No tradeable items owned</option>';
-      }
-      document.getElementById('trade-msg').textContent = '';
+      if (!_chatLoggedIn) { _toastMsg('Log in to trade.'); return; }
+      document.getElementById('tr-username').value = '';
+      document.getElementById('tr-req-msg').textContent = '';
+      document.getElementById('tr-req-send-btn').disabled = false;
+      _setTradeState('request');
       document.getElementById('trade-overlay').classList.add('open');
     }
     function closeTrade() {
-      document.getElementById('trade-overlay').classList.remove('open');
-    }
-    async function sendTrade() {
-      const toUsername    = document.getElementById('trade-target').value.trim();
-      const offerItemId   = document.getElementById('trade-offer').value;
-      const requestItemId = document.getElementById('trade-request').value.trim();
-      const msgEl = document.getElementById('trade-msg');
-      if (!toUsername || !offerItemId || !requestItemId) {
-        msgEl.className = 'trade-msg err'; msgEl.textContent = 'All fields required.'; return;
+      if (_tradeSessionId) {
+        _chatSocket?.emit('tradeCancel', { sessionId: _tradeSessionId });
+        _tradeSessionId = null;
       }
-      const token = localStorage.getItem('ah_token');
-      const btn = document.getElementById('trade-send-btn');
-      btn.disabled = true;
-      try {
-        const r = await fetch(`${API}/trade/offer`, {
-          method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
-          body: JSON.stringify({ toUsername, offerItemId, requestItemId }),
-        });
-        const d = await r.json();
-        if (!r.ok) { msgEl.className='trade-msg err'; msgEl.textContent = d.error||'Error.'; }
-        else {
-          msgEl.className='trade-msg ok'; msgEl.textContent='Trade offer sent!';
-          setTimeout(closeTrade, 1500);
-        }
-      } catch { msgEl.className='trade-msg err'; msgEl.textContent='Could not reach server.'; }
-      btn.disabled = false;
+      _tradeMyRole = null;
+      _clearTradeCountdown();
+      document.getElementById('trade-overlay').classList.remove('open');
+      _setTradeState('request');
     }
-    function _showIncomingTrade(trade) {
-      const offerItem   = SHOP_ITEMS.find(x => x.id === trade.offerItemId);
-      const requestItem = SHOP_ITEMS.find(x => x.id === trade.requestItemId);
+    function _setTradeState(state) {
+      document.querySelectorAll('.trade-state').forEach(el => el.classList.remove('active'));
+      const el = document.getElementById('ts-' + state);
+      if (el) el.classList.add('active');
+    }
+    function _sendTradeRequest() {
+      const username = document.getElementById('tr-username').value.trim();
+      const msgEl    = document.getElementById('tr-req-msg');
+      if (!username) { msgEl.textContent = 'Enter a username.'; return; }
+      if (!_chatLoggedIn || !_chatSocket) { msgEl.textContent = 'Not connected.'; return; }
+      const token = localStorage.getItem('ah_token');
+      document.getElementById('tr-req-send-btn').disabled = true;
+      msgEl.textContent = '';
+      _chatSocket.emit('tradeRequest', { token, toUsername: username });
+    }
+    function _addTradeItem() {
+      const sel = document.getElementById('tr-add-select');
+      const itemId = sel.value;
+      if (!itemId || !_tradeSessionId) return;
+      const token = localStorage.getItem('ah_token');
+      _chatSocket?.emit('tradeAddItem', { token, sessionId: _tradeSessionId, itemId });
+    }
+    function _removeTradeItem(itemId) {
+      if (!_tradeSessionId) return;
+      _chatSocket?.emit('tradeRemoveItem', { sessionId: _tradeSessionId, itemId });
+    }
+    function _confirmTrade() {
+      if (!_tradeSessionId) return;
+      _chatSocket?.emit('tradeConfirm', { sessionId: _tradeSessionId });
+    }
+    function _clearTradeCountdown() {
+      if (_tradeCountdownInterval) {
+        clearInterval(_tradeCountdownInterval);
+        _tradeCountdownInterval = null;
+      }
+    }
+    function _renderTradeRoom(data) {
+      const myItems    = _tradeMyRole === 'initiator' ? data.initiatorItems : data.targetItems;
+      const theirItems = _tradeMyRole === 'initiator' ? data.targetItems    : data.initiatorItems;
+
+      const myEl = document.getElementById('tr-my-items');
+      if (myEl) {
+        myEl.innerHTML = myItems.length
+          ? myItems.map(id => {
+              const it = SHOP_ITEMS.find(x => x.id === id);
+              return `<div class="ts-item-chip">${it ? it.name : id}<button class="ts-item-remove" onclick="_removeTradeItem('${id}')">✕</button></div>`;
+            }).join('')
+          : '<div class="ts-items-empty">Nothing added yet</div>';
+      }
+
+      const theirEl = document.getElementById('tr-their-items');
+      if (theirEl) {
+        theirEl.innerHTML = theirItems.length
+          ? theirItems.map(id => {
+              const it = SHOP_ITEMS.find(x => x.id === id);
+              return `<div class="ts-item-chip">${it ? it.name : id}</div>`;
+            }).join('')
+          : '<div class="ts-items-empty">Nothing added yet</div>';
+      }
+
+      const sel = document.getElementById('tr-add-select');
+      if (sel) {
+        const tradeable = [..._ownedItems].filter(id => !id.startsWith('emote_') && !myItems.includes(id));
+        sel.innerHTML = tradeable.length
+          ? tradeable.map(id => {
+              const it = SHOP_ITEMS.find(x => x.id === id);
+              return `<option value="${id}">${it ? it.name : id}</option>`;
+            }).join('')
+          : '<option value="">No items to add</option>';
+      }
+
+      _clearTradeCountdown();
+      const bar        = document.getElementById('tr-countdown-bar');
+      const btns       = document.getElementById('tr-room-btns');
+      const confirmBtn = document.getElementById('tr-room-confirm-btn');
+      if (data.confirmed && data.countdownStart) {
+        if (bar)  bar.style.display  = 'flex';
+        if (btns) { confirmBtn.style.display = 'none'; }
+        const endTime = data.countdownStart + 5000;
+        const tick = () => {
+          const left = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+          const numEl = document.getElementById('tr-cd-num');
+          if (numEl) numEl.textContent = left;
+        };
+        tick();
+        _tradeCountdownInterval = setInterval(tick, 200);
+      } else {
+        if (bar)  bar.style.display  = 'none';
+        if (confirmBtn) confirmBtn.style.display = '';
+      }
+    }
+    function _showIncomingTrade(data) {
       const banner = document.createElement('div');
       banner.className = 'incoming-trade-banner';
-      banner.id = 'itb-' + trade.id;
+      banner.id = 'itb-' + data.sessionId;
       banner.innerHTML = `
-        <div class="itb-title">⇄ INCOMING TRADE OFFER</div>
-        <div class="itb-body">
-          <b>${trade.fromUsername}</b> offers <b>${offerItem?.name||trade.offerItemId}</b><br>
-          and wants your <b>${requestItem?.name||trade.requestItemId}</b>
-        </div>
+        <div class="itb-title">⇄ TRADE REQUEST</div>
+        <div class="itb-body"><b>${data.fromUsername}</b> wants to trade with you!</div>
         <div class="itb-btns">
-          <button class="itb-btn itb-decline" onclick="_respondTrade('${trade.id}',false)">DECLINE</button>
-          <button class="itb-btn itb-accept"  onclick="_respondTrade('${trade.id}',true)">ACCEPT</button>
+          <button class="itb-btn itb-decline" onclick="_respondTrade('${data.sessionId}',false)">DECLINE</button>
+          <button class="itb-btn itb-accept"  onclick="_respondTrade('${data.sessionId}',true)">ACCEPT</button>
         </div>`;
       document.body.appendChild(banner);
       setTimeout(() => banner.remove(), 90000);
     }
-    async function _respondTrade(tradeId, accept) {
-      const banner = document.getElementById('itb-' + tradeId);
+    function _respondTrade(sessionId, accept) {
+      const banner = document.getElementById('itb-' + sessionId);
       if (banner) banner.remove();
-      const token = localStorage.getItem('ah_token');
-      try {
-        const r = await fetch(`${API}/trade/respond`, {
-          method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
-          body: JSON.stringify({ tradeId, accept }),
-        });
-        const d = await r.json();
-        if (d.success && d.accepted) {
-          // Refresh owned/equipped items from server
-          loadShopProfile();
-        }
-      } catch {}
+      _chatSocket?.emit('tradeRespond', { sessionId, accept });
     }
 
     async function apLoadPlayers() {
