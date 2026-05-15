@@ -520,7 +520,17 @@ async function start() {
 
     // ── Emote broadcast ───────────────────────────────────────
     socket.on('emotePlay', ({ token, emoteId }) => {
-      const VALID = ['emote_wave','emote_dance','emote_salute','emote_point','emote_laugh','emote_taunt','emote_bow','emote_flex'];
+      const VALID = [
+        'emote_wave','emote_dance','emote_salute','emote_point','emote_laugh','emote_taunt','emote_bow','emote_flex',
+        'emote_clap','emote_thumbsup','emote_facepalm','emote_shrug','emote_peace','emote_heart','emote_skull',
+        'emote_fire','emote_dizzy','emote_sleep','emote_cry','emote_rage','emote_cool','emote_nervous','emote_think',
+        'emote_kiss','emote_explode','emote_ghost','emote_robot','emote_alien','emote_clown','emote_ninja',
+        'emote_zombie','emote_cowboy','emote_pirate','emote_crown','emote_trophy','emote_money','emote_diamond',
+        'emote_sparkle','emote_rainbow','emote_thunder','emote_star','emote_100','emote_eyes','emote_run',
+        'emote_jump','emote_spin','emote_dab','emote_breakdance','emote_moonwalk','emote_floss','emote_worm',
+        'emote_splits','emote_headbang','emote_airguitar','emote_sing','emote_confused','emote_surprised',
+        'emote_rofl','emote_sneeze','emote_sick','emote_party',
+      ];
       if (!VALID.includes(emoteId)) return;
       let username = 'Guest';
       try { const p = jwt.verify(token, JWT_SECRET); username = p.username || 'Guest'; } catch {}

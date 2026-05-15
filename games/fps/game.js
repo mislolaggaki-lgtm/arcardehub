@@ -2760,48 +2760,138 @@ function exitKillcam() {
 
 // ── Emote wheel ─────────────────────────────────────────────────
 const EMOTE_DEFS = [
-  { id:'emote_wave',   emoji:'👋', label:'Wave'   },
-  { id:'emote_dance',  emoji:'💃', label:'Dance'  },
-  { id:'emote_salute', emoji:'🫡', label:'Salute' },
-  { id:'emote_point',  emoji:'👆', label:'Point'  },
-  { id:'emote_laugh',  emoji:'😂', label:'Laugh'  },
-  { id:'emote_taunt',  emoji:'😏', label:'Taunt'  },
-  { id:'emote_bow',    emoji:'🙇', label:'Bow'    },
-  { id:'emote_flex',   emoji:'💪', label:'Flex'   },
+  // original 8
+  { id:'emote_wave',       emoji:'👋', label:'Wave',       anim:'ea-wave',       dur:5 },
+  { id:'emote_dance',      emoji:'💃', label:'Dance',      anim:'ea-dance',      dur:5 },
+  { id:'emote_salute',     emoji:'🫡', label:'Salute',     anim:'ea-salute',     dur:4 },
+  { id:'emote_point',      emoji:'👆', label:'Point',      anim:'ea-pulse',      dur:4 },
+  { id:'emote_laugh',      emoji:'😂', label:'Laugh',      anim:'ea-shake',      dur:5 },
+  { id:'emote_taunt',      emoji:'😏', label:'Taunt',      anim:'ea-swagger',    dur:5 },
+  { id:'emote_bow',        emoji:'🙇', label:'Bow',        anim:'ea-bow',        dur:5 },
+  { id:'emote_flex',       emoji:'💪', label:'Flex',       anim:'ea-zoom',       dur:5 },
+  // 53 new
+  { id:'emote_clap',       emoji:'👏', label:'Clap',       anim:'ea-pulse',      dur:4 },
+  { id:'emote_thumbsup',   emoji:'👍', label:'Thumbs Up',  anim:'ea-bounce',     dur:4 },
+  { id:'emote_facepalm',   emoji:'🤦', label:'Facepalm',   anim:'ea-bow',        dur:5 },
+  { id:'emote_shrug',      emoji:'🤷', label:'Shrug',      anim:'ea-float',      dur:5 },
+  { id:'emote_peace',      emoji:'✌️', label:'Peace',      anim:'ea-float',      dur:4 },
+  { id:'emote_heart',      emoji:'❤️', label:'Love',       anim:'ea-heartbeat',  dur:5 },
+  { id:'emote_skull',      emoji:'💀', label:'GG',         anim:'ea-float',      dur:5 },
+  { id:'emote_fire',       emoji:'🔥', label:'On Fire',    anim:'ea-wiggle',     dur:5 },
+  { id:'emote_dizzy',      emoji:'😵', label:'Dizzy',      anim:'ea-spin',       dur:5 },
+  { id:'emote_sleep',      emoji:'😴', label:'Sleep',      anim:'ea-float',      dur:6 },
+  { id:'emote_cry',        emoji:'😭', label:'Cry',        anim:'ea-cry',        dur:5 },
+  { id:'emote_rage',       emoji:'😡', label:'Rage',       anim:'ea-shake',      dur:4 },
+  { id:'emote_cool',       emoji:'😎', label:'Cool',       anim:'ea-swagger',    dur:5 },
+  { id:'emote_nervous',    emoji:'😅', label:'Nervous',    anim:'ea-headtilt',   dur:4 },
+  { id:'emote_think',      emoji:'🤔', label:'Think',      anim:'ea-swing',      dur:5 },
+  { id:'emote_kiss',       emoji:'😘', label:'Kiss',       anim:'ea-heartbeat',  dur:5 },
+  { id:'emote_explode',    emoji:'🤯', label:'Mind Blown', anim:'ea-explode',    dur:5 },
+  { id:'emote_ghost',      emoji:'👻', label:'Ghost',      anim:'ea-float',      dur:5 },
+  { id:'emote_robot',      emoji:'🤖', label:'Robot',      anim:'ea-robot',      dur:5 },
+  { id:'emote_alien',      emoji:'👽', label:'Alien',      anim:'ea-float',      dur:5 },
+  { id:'emote_clown',      emoji:'🤡', label:'Clown',      anim:'ea-spin',       dur:5 },
+  { id:'emote_ninja',      emoji:'🥷', label:'Ninja',      anim:'ea-jump',       dur:5 },
+  { id:'emote_zombie',     emoji:'🧟', label:'Zombie',     anim:'ea-zombie',     dur:5 },
+  { id:'emote_cowboy',     emoji:'🤠', label:'Cowboy',     anim:'ea-swagger',    dur:5 },
+  { id:'emote_pirate',     emoji:'⚔️', label:'Pirate',     anim:'ea-swagger',    dur:5 },
+  { id:'emote_crown',      emoji:'👑', label:'Crown',      anim:'ea-bounce',     dur:4 },
+  { id:'emote_trophy',     emoji:'🏆', label:'Win',        anim:'ea-zoom',       dur:4 },
+  { id:'emote_money',      emoji:'💰', label:'Money',      anim:'ea-bounce',     dur:5 },
+  { id:'emote_diamond',    emoji:'💎', label:'Diamond',    anim:'ea-sparkle',    dur:5 },
+  { id:'emote_sparkle',    emoji:'✨', label:'Sparkle',    anim:'ea-sparkle',    dur:5 },
+  { id:'emote_rainbow',    emoji:'🌈', label:'Rainbow',    anim:'ea-rainbow',    dur:6 },
+  { id:'emote_thunder',    emoji:'⚡', label:'Thunder',    anim:'ea-flash',      dur:4 },
+  { id:'emote_star',       emoji:'⭐', label:'Star',       anim:'ea-sparkle',    dur:5 },
+  { id:'emote_100',        emoji:'💯', label:'Perfect',    anim:'ea-zoom',       dur:4 },
+  { id:'emote_eyes',       emoji:'👀', label:'Watch Out',  anim:'ea-peek',       dur:5 },
+  { id:'emote_run',        emoji:'🏃', label:'Sprint',     anim:'ea-run',        dur:5 },
+  { id:'emote_jump',       emoji:'🦘', label:'Jump',       anim:'ea-jump',       dur:4 },
+  { id:'emote_spin',       emoji:'🌀', label:'Spin',       anim:'ea-spin',       dur:5 },
+  { id:'emote_dab',        emoji:'🫳', label:'Dab',        anim:'ea-dab',        dur:4 },
+  { id:'emote_breakdance', emoji:'🕺', label:'Breakdance', anim:'ea-breakdance', dur:5 },
+  { id:'emote_moonwalk',   emoji:'🌙', label:'Moonwalk',   anim:'ea-moonwalk',   dur:5 },
+  { id:'emote_floss',      emoji:'🎵', label:'Floss',      anim:'ea-floss',      dur:5 },
+  { id:'emote_worm',       emoji:'🪱', label:'Worm',       anim:'ea-worm',       dur:5 },
+  { id:'emote_splits',     emoji:'🤸', label:'Splits',     anim:'ea-splits',     dur:5 },
+  { id:'emote_headbang',   emoji:'🎸', label:'Headbang',   anim:'ea-headbang',   dur:4 },
+  { id:'emote_airguitar',  emoji:'🎶', label:'Air Guitar', anim:'ea-airguitar',  dur:5 },
+  { id:'emote_sing',       emoji:'🎤', label:'Sing',       anim:'ea-float',      dur:5 },
+  { id:'emote_confused',   emoji:'😕', label:'Confused',   anim:'ea-headtilt',   dur:5 },
+  { id:'emote_surprised',  emoji:'😲', label:'Surprised',  anim:'ea-explode',    dur:4 },
+  { id:'emote_rofl',       emoji:'🤣', label:'ROFL',       anim:'ea-rofl',       dur:5 },
+  { id:'emote_sneeze',     emoji:'🤧', label:'Sneeze',     anim:'ea-explode',    dur:4 },
+  { id:'emote_sick',       emoji:'🤢', label:'Sick',       anim:'ea-worm',       dur:5 },
+  { id:'emote_party',      emoji:'🎉', label:'Party',      anim:'ea-party',      dur:5 },
 ];
 let emoteWheelOpen = false;
+let _emotePage     = 0;
 
 function toggleEmoteWheel() {
   emoteWheelOpen ? hideEmoteWheel() : showEmoteWheel();
 }
 
 function showEmoteWheel() {
-  const owned = new Set(JSON.parse(localStorage.getItem('ah_owned') || '[]'));
-  const ring  = document.getElementById('emote-wheel-ring');
-  if (!ring) return;
-  ring.innerHTML = '';
+  const owned     = new Set(JSON.parse(localStorage.getItem('ah_owned') || '[]'));
   const available = EMOTE_DEFS.filter(e => owned.has(e.id));
-  if (available.length === 0) {
-    ring.innerHTML = '<div id="emote-wheel-none">No emotes owned.<br>Buy some in the shop!</div>';
-  } else {
-    const n = available.length;
-    const r = 128, cx = 170, cy = 170, w = 88, h = 88;
-    available.forEach((em, i) => {
-      const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
-      const x = cx + r * Math.cos(angle) - w / 2;
-      const y = cy + r * Math.sin(angle) - h / 2;
-      const seg = document.createElement('div');
-      seg.className = 'emote-seg';
-      seg.style.left = x + 'px';
-      seg.style.top  = y + 'px';
-      seg.innerHTML  = `<div class="emote-seg-emoji">${em.emoji}</div><div class="emote-seg-label">${em.label}</div>`;
-      seg.addEventListener('click', () => selectEmote(em));
-      ring.appendChild(seg);
-    });
-  }
+  _emotePage      = 0;
+  _renderEmoteWheelPage(available, 0);
   document.getElementById('emote-wheel').style.display = 'flex';
   document.exitPointerLock();
   emoteWheelOpen = true;
+}
+
+function _renderEmoteWheelPage(available, page) {
+  const ring = document.getElementById('emote-wheel-ring');
+  if (!ring) return;
+  ring.innerHTML = '';
+  if (available.length === 0) {
+    ring.innerHTML = '<div id="emote-wheel-none">No emotes owned.<br>Buy some in the shop!</div>';
+    return;
+  }
+  const PAGE  = 12;
+  const total = Math.ceil(available.length / PAGE);
+  const items = available.slice(page * PAGE, (page + 1) * PAGE);
+  const n     = items.length;
+  const cx = 200, cy = 200;
+  // Adaptive radius and segment size
+  let r, w;
+  if      (n <= 6)  { r = 118; w = 88; }
+  else if (n <= 9)  { r = 148; w = 76; }
+  else              { r = 168; w = 64; }
+  const h = w;
+  items.forEach((em, i) => {
+    const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+    const x     = cx + r * Math.cos(angle) - w / 2;
+    const y     = cy + r * Math.sin(angle) - h / 2;
+    const seg   = document.createElement('div');
+    seg.className  = 'emote-seg';
+    seg.style.left = x + 'px';
+    seg.style.top  = y + 'px';
+    seg.style.width  = w + 'px';
+    seg.style.height = h + 'px';
+    const fs = w <= 64 ? '28px' : w <= 76 ? '30px' : '34px';
+    seg.innerHTML = `<div class="emote-seg-emoji" style="font-size:${fs}">${em.emoji}</div><div class="emote-seg-label">${em.label}</div>`;
+    seg.addEventListener('click', () => selectEmote(em));
+    ring.appendChild(seg);
+  });
+  if (total > 1) {
+    const nav = document.createElement('div');
+    nav.id = 'emote-page-nav';
+    nav.innerHTML = `
+      <button class="emote-page-btn" onclick="_emotePageNav(-1)">◀</button>
+      <span>${page + 1} / ${total}</span>
+      <button class="emote-page-btn" onclick="_emotePageNav(1)">▶</button>`;
+    ring.appendChild(nav);
+  }
+}
+
+function _emotePageNav(dir) {
+  const owned     = new Set(JSON.parse(localStorage.getItem('ah_owned') || '[]'));
+  const available = EMOTE_DEFS.filter(e => owned.has(e.id));
+  const total     = Math.ceil(available.length / 12);
+  _emotePage      = (_emotePage + dir + total) % total;
+  _renderEmoteWheelPage(available, _emotePage);
 }
 
 function hideEmoteWheel() {
@@ -2816,38 +2906,41 @@ function selectEmote(em) {
 }
 
 function playEmote(em) {
-  // Show on own screen
-  const el = document.getElementById('emote-self-display');
+  const el  = document.getElementById('emote-self-display');
+  const dur = (em.dur || 5) * 1000;
   if (el) {
-    el.textContent = em.emoji;
-    el.style.display = 'block';
+    el.textContent   = em.emoji;
     el.style.opacity = '1';
+    el.style.display = 'block';
+    el.style.animation = em.anim
+      ? `${em.anim} ${em.dur || 5}s ease-in-out infinite`
+      : 'none';
     clearTimeout(el._hideTimer);
     el._hideTimer = setTimeout(() => {
       el.style.opacity = '0';
-      setTimeout(() => { el.style.display = 'none'; }, 400);
-    }, 1600);
+      setTimeout(() => { el.style.display = 'none'; el.style.animation = 'none'; }, 400);
+    }, dur);
   }
-  // Broadcast to others
   const token = localStorage.getItem('ah_token');
-  if (socket && socket.connected && token) {
+  if (socket && socket.connected && token)
     socket.emit('emotePlay', { token, emoteId: em.id });
-  }
 }
 
-function showRemoteEmote(rp, emoji) {
+function showRemoteEmote(rp, em) {
   if (!rp || !rp.group) return;
   const worldPos = rp.group.position.clone().setY(rp.group.position.y + 2.6);
   const v = worldPos.project(camera);
-  if (v.z > 1) return; // behind camera
-  const x = (v.x *  0.5 + 0.5) * window.innerWidth;
-  const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
-  const el = document.createElement('div');
-  el.style.cssText = `position:fixed;left:${x}px;top:${y}px;transform:translate(-50%,-50%);font-size:38px;z-index:120;pointer-events:none;transition:opacity 0.35s;filter:drop-shadow(0 2px 8px #000)`;
-  el.textContent = emoji;
+  if (v.z > 1) return;
+  const x   = (v.x *  0.5 + 0.5) * window.innerWidth;
+  const y   = (-v.y * 0.5 + 0.5) * window.innerHeight;
+  const dur = (em.dur || 5) * 1000;
+  const el  = document.createElement('div');
+  el.style.cssText = `position:fixed;left:${x}px;top:${y}px;transform:translate(-50%,-50%);font-size:42px;z-index:120;pointer-events:none;transition:opacity 0.4s;filter:drop-shadow(0 2px 8px #000);transform-origin:center center`;
+  el.textContent = em.emoji;
+  if (em.anim) el.style.animation = `${em.anim} ${em.dur || 5}s ease-in-out infinite`;
   document.body.appendChild(el);
-  setTimeout(() => { el.style.opacity = '0'; }, 1300);
-  setTimeout(() => el.remove(), 1650);
+  setTimeout(() => { el.style.opacity = '0'; }, dur - 400);
+  setTimeout(() => el.remove(), dur);
 }
 
 function killPlayer(killerRef) {
@@ -3609,7 +3702,7 @@ function initSocket() {
     const em = EMOTE_DEFS.find(e => e.id === emoteId);
     if (!em) return;
     const rp = remotePlayers.get(socketId);
-    if (rp) showRemoteEmote(rp, em.emoji);
+    if (rp) showRemoteEmote(rp, em);
     else pushKillFeed(`${em.emoji}`);
   });
 

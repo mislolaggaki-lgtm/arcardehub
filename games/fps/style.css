@@ -741,7 +741,7 @@ body {
 }
 #emote-wheel-ring {
   position: relative;
-  width: 340px; height: 340px;
+  width: 400px; height: 400px;
   flex-shrink: 0;
 }
 .emote-seg {
@@ -790,4 +790,207 @@ body {
   pointer-events: none;
   transition: opacity 0.4s;
   filter: drop-shadow(0 4px 18px rgba(0,0,0,0.7));
+  transform-origin: center center;
 }
+
+/* ── Emote animations ──────────────────────────────────────── */
+@keyframes ea-wave {
+  0%,100% { transform: translate(-50%,-50%) rotate(0deg); }
+  25%     { transform: translate(-50%,-50%) rotate(-28deg); }
+  75%     { transform: translate(-50%,-50%) rotate(28deg); }
+}
+@keyframes ea-dance {
+  0%,100% { transform: translate(-50%,-50%) translateY(0) rotate(0deg) scale(1); }
+  25%     { transform: translate(-50%,-50%) translateY(-18px) rotate(-8deg) scale(1.05); }
+  75%     { transform: translate(-50%,-50%) translateY(-18px) rotate(8deg) scale(1.05); }
+}
+@keyframes ea-bow {
+  0%,100% { transform: translate(-50%,-50%) rotate(0deg) translateY(0); }
+  35%,65% { transform: translate(-50%,-50%) rotate(22deg) translateY(8px); }
+}
+@keyframes ea-salute {
+  0%      { transform: translate(-50%,-50%) scale(0.85); opacity: 0.6; }
+  20%,80% { transform: translate(-50%,-50%) scale(1) rotate(6deg); opacity: 1; }
+  100%    { transform: translate(-50%,-50%) scale(0.9); opacity: 0.7; }
+}
+@keyframes ea-pulse {
+  0%,100% { transform: translate(-50%,-50%) scale(1); }
+  50%     { transform: translate(-50%,-50%) scale(1.55); }
+}
+@keyframes ea-shake {
+  0%,100% { transform: translate(-50%,-50%) translateX(0); }
+  20%     { transform: translate(-50%,-50%) translateX(-14px); }
+  40%     { transform: translate(-50%,-50%) translateX(14px); }
+  60%     { transform: translate(-50%,-50%) translateX(-10px); }
+  80%     { transform: translate(-50%,-50%) translateX(10px); }
+}
+@keyframes ea-swing {
+  0%,100% { transform: translate(-50%,-50%) rotate(0deg); }
+  25%     { transform: translate(-50%,-50%) rotate(20deg); }
+  75%     { transform: translate(-50%,-50%) rotate(-20deg); }
+}
+@keyframes ea-zoom {
+  0%,100% { transform: translate(-50%,-50%) scale(1); }
+  30%     { transform: translate(-50%,-50%) scale(1.7); }
+  60%     { transform: translate(-50%,-50%) scale(0.85); }
+}
+@keyframes ea-bounce {
+  0%,100% { transform: translate(-50%,-50%) translateY(0) scaleX(1) scaleY(1); }
+  10%     { transform: translate(-50%,-50%) translateY(0) scaleX(1.25) scaleY(0.72); }
+  40%,60% { transform: translate(-50%,-50%) translateY(-34px) scaleX(0.9) scaleY(1.15); }
+  90%     { transform: translate(-50%,-50%) translateY(0) scaleX(1.3) scaleY(0.68); }
+}
+@keyframes ea-float {
+  0%,100% { transform: translate(-50%,-50%) translateY(0); }
+  50%     { transform: translate(-50%,-50%) translateY(-22px); }
+}
+@keyframes ea-heartbeat {
+  0%,40%,60%,100% { transform: translate(-50%,-50%) scale(1); }
+  20%             { transform: translate(-50%,-50%) scale(1.5); }
+  30%             { transform: translate(-50%,-50%) scale(1.15); }
+  50%             { transform: translate(-50%,-50%) scale(1.55); }
+}
+@keyframes ea-wiggle {
+  0%,100% { transform: translate(-50%,-50%) rotate(0deg); }
+  15%     { transform: translate(-50%,-50%) rotate(-16deg); }
+  30%     { transform: translate(-50%,-50%) rotate(16deg); }
+  45%     { transform: translate(-50%,-50%) rotate(-10deg); }
+  60%     { transform: translate(-50%,-50%) rotate(10deg); }
+  75%     { transform: translate(-50%,-50%) rotate(-6deg); }
+  90%     { transform: translate(-50%,-50%) rotate(6deg); }
+}
+@keyframes ea-spin {
+  0%   { transform: translate(-50%,-50%) rotate(0deg); }
+  100% { transform: translate(-50%,-50%) rotate(360deg); }
+}
+@keyframes ea-sparkle {
+  0%,100% { transform: translate(-50%,-50%) scale(1) rotate(0deg); }
+  25%     { transform: translate(-50%,-50%) scale(1.35) rotate(-12deg); }
+  50%     { transform: translate(-50%,-50%) scale(0.9) rotate(12deg); }
+  75%     { transform: translate(-50%,-50%) scale(1.25) rotate(-6deg); }
+}
+@keyframes ea-rainbow {
+  0%   { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+@keyframes ea-flash {
+  0%,35%,70%,100% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+  17%             { transform: translate(-50%,-50%) scale(1.6); opacity: 0.45; }
+  52%             { transform: translate(-50%,-50%) scale(1.4); opacity: 0.45; }
+}
+@keyframes ea-explode {
+  0%   { transform: translate(-50%,-50%) scale(0.2); opacity: 0; }
+  22%  { transform: translate(-50%,-50%) scale(2); opacity: 1; }
+  55%,100% { transform: translate(-50%,-50%) scale(1); opacity: 0.9; }
+}
+@keyframes ea-robot {
+  0%,100% { transform: translate(-50%,-50%) translate(0,0) rotate(0deg); }
+  25%     { transform: translate(-50%,-50%) translate(5px,-7px) rotate(5deg); }
+  50%     { transform: translate(-50%,-50%) translate(-5px,-7px) rotate(-5deg); }
+  75%     { transform: translate(-50%,-50%) translate(5px,0) rotate(3deg); }
+}
+@keyframes ea-zombie {
+  0%,100% { transform: translate(-50%,-50%) rotate(0deg) translateX(0); }
+  25%     { transform: translate(-50%,-50%) rotate(11deg) translateX(8px); }
+  50%     { transform: translate(-50%,-50%) rotate(-5deg) translateX(-8px); }
+  75%     { transform: translate(-50%,-50%) rotate(9deg) translateX(5px); }
+}
+@keyframes ea-swagger {
+  0%,100% { transform: translate(-50%,-50%) rotate(0deg) translateX(0) translateY(0); }
+  33%     { transform: translate(-50%,-50%) rotate(-6deg) translateX(-7px) translateY(-3px); }
+  66%     { transform: translate(-50%,-50%) rotate(6deg) translateX(7px) translateY(-3px); }
+}
+@keyframes ea-rofl {
+  0%,100% { transform: translate(-50%,-50%) rotate(0deg) translateY(0); }
+  20%     { transform: translate(-50%,-50%) rotate(-28deg) translateY(8px); }
+  50%     { transform: translate(-50%,-50%) rotate(10deg) translateY(-14px); }
+  75%     { transform: translate(-50%,-50%) rotate(-18deg) translateY(6px); }
+}
+@keyframes ea-headbang {
+  0%,100% { transform: translate(-50%,-50%) rotate(0deg); }
+  50%     { transform: translate(-50%,-50%) rotate(26deg) translateY(10px); }
+}
+@keyframes ea-moonwalk {
+  0%,100% { transform: translate(-50%,-50%) translateX(26px); }
+  50%     { transform: translate(-50%,-50%) translateX(-26px); }
+}
+@keyframes ea-floss {
+  0%,100% { transform: translate(-50%,-50%) rotate(0deg) translateX(0); }
+  25%     { transform: translate(-50%,-50%) rotate(-18deg) translateX(-12px); }
+  50%     { transform: translate(-50%,-50%) rotate(0deg) translateX(0); }
+  75%     { transform: translate(-50%,-50%) rotate(18deg) translateX(12px); }
+}
+@keyframes ea-worm {
+  0%,100% { transform: translate(-50%,-50%) scaleX(1) scaleY(1); }
+  30%     { transform: translate(-50%,-50%) scaleX(1.55) scaleY(0.55); }
+  70%     { transform: translate(-50%,-50%) scaleX(0.65) scaleY(1.45); }
+}
+@keyframes ea-dab {
+  0%,100% { transform: translate(-50%,-50%) rotate(0deg); }
+  25%,55% { transform: translate(-50%,-50%) rotate(-35deg) translateX(-10px) translateY(6px); }
+}
+@keyframes ea-jump {
+  0%,100% { transform: translate(-50%,-50%) translateY(0) scaleX(1) scaleY(1); }
+  10%     { transform: translate(-50%,-50%) translateY(0) scaleX(1.3) scaleY(0.68); }
+  35%,65% { transform: translate(-50%,-50%) translateY(-42px) scaleX(0.9) scaleY(1.15); }
+  90%     { transform: translate(-50%,-50%) translateY(0) scaleX(1.35) scaleY(0.65); }
+}
+@keyframes ea-run {
+  0%,100% { transform: translate(-50%,-50%) translateX(-14px) rotate(-6deg); }
+  50%     { transform: translate(-50%,-50%) translateX(14px) rotate(6deg); }
+}
+@keyframes ea-breakdance {
+  0%   { transform: translate(-50%,-50%) rotate(0deg) translateY(0); }
+  25%  { transform: translate(-50%,-50%) rotate(-32deg) translateY(-10px); }
+  50%  { transform: translate(-50%,-50%) rotate(0deg) translateY(-20px); }
+  75%  { transform: translate(-50%,-50%) rotate(32deg) translateY(-10px); }
+  100% { transform: translate(-50%,-50%) rotate(0deg) translateY(0); }
+}
+@keyframes ea-splits {
+  0%,100% { transform: translate(-50%,-50%) scaleX(1) translateY(0); }
+  50%     { transform: translate(-50%,-50%) scaleX(1.85) translateY(8px); }
+}
+@keyframes ea-airguitar {
+  0%,100% { transform: translate(-50%,-50%) rotate(0deg) translateX(0); }
+  20%     { transform: translate(-50%,-50%) rotate(-22deg) translateX(-8px); }
+  40%     { transform: translate(-50%,-50%) rotate(16deg) translateX(6px); }
+  60%     { transform: translate(-50%,-50%) rotate(-28deg) translateX(-10px); }
+  80%     { transform: translate(-50%,-50%) rotate(20deg) translateX(8px); }
+}
+@keyframes ea-party {
+  0%,100% { transform: translate(-50%,-50%) rotate(0deg) scale(1); }
+  20%     { transform: translate(-50%,-50%) rotate(-15deg) scale(1.2); }
+  40%     { transform: translate(-50%,-50%) rotate(20deg) scale(0.9); }
+  60%     { transform: translate(-50%,-50%) rotate(-10deg) scale(1.3); }
+  80%     { transform: translate(-50%,-50%) rotate(15deg) scale(0.95); }
+}
+@keyframes ea-peek {
+  0%,100% { transform: translate(-50%,-50%) translateX(0); }
+  25%     { transform: translate(-50%,-50%) translateX(-20px); }
+  75%     { transform: translate(-50%,-50%) translateX(20px); }
+}
+@keyframes ea-cry {
+  0%,100% { transform: translate(-50%,-50%) translateY(0) rotate(0deg); }
+  33%     { transform: translate(-50%,-50%) translateY(6px) rotate(-9deg); }
+  66%     { transform: translate(-50%,-50%) translateY(6px) rotate(9deg); }
+}
+@keyframes ea-headtilt {
+  0%,100% { transform: translate(-50%,-50%) rotate(0deg); }
+  35%,65% { transform: translate(-50%,-50%) rotate(20deg); }
+}
+
+/* ── Emote wheel pagination ─────────────────────────────────── */
+#emote-page-nav {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Courier New', monospace; font-size: 11px;
+  color: rgba(255,255,255,0.4); letter-spacing: 2px;
+  pointer-events: all;
+}
+.emote-page-btn {
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15);
+  color: #bbb; border-radius: 6px; padding: 5px 10px; cursor: pointer;
+  font-size: 13px; line-height: 1; transition: background .12s;
+}
+.emote-page-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
