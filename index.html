@@ -1059,6 +1059,396 @@
       #chat-panel { width: calc(100vw - 32px); right: 16px; }
       #chat-fab { right: 16px; bottom: 16px; }
     }
+
+    /* ── Notification bell button ────────────────────────────── */
+    .btn-notif {
+      position: relative;
+      padding: 7px 12px;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 5px; color: #9090bb;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px; cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .btn-notif:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.3); color: #fff; }
+
+    /* ── Friends button ──────────────────────────────────────── */
+    .btn-friends {
+      padding: 7px 14px;
+      background: transparent;
+      border: 1px solid rgba(59,158,232,0.25);
+      border-radius: 5px; color: #5588bb;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px; font-weight: 600;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      cursor: pointer; display: flex; align-items: center; gap: 6px;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+    .btn-friends:hover { background: rgba(59,158,232,0.1); border-color: rgba(59,158,232,0.5); color: #7ec8ff; }
+
+    /* ── Profile button ──────────────────────────────────────── */
+    .btn-profile {
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 5px; color: #6666aa;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px; font-weight: 600;
+      letter-spacing: 1px; cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+    .btn-profile:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.25); color: #c0c0ee; }
+
+    /* ── Notif badge (shared) ─────────────────────────────────── */
+    .notif-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 17px; height: 17px; border-radius: 9px;
+      background: #e74c3c; color: #fff;
+      font-size: 10px; font-weight: 700; padding: 0 4px; line-height: 1;
+    }
+
+    /* ── Slide-in panel (shared base) ────────────────────────── */
+    .side-panel {
+      position: fixed; top: 0; right: 0; bottom: 0; z-index: 850;
+      width: 360px; max-width: 100vw;
+      background: #0d0d1c;
+      border-left: 1px solid rgba(255,255,255,0.08);
+      display: flex; flex-direction: column;
+      transform: translateX(100%);
+      transition: transform .25s ease;
+      box-shadow: -8px 0 40px rgba(0,0,0,0.6);
+    }
+    .side-panel.open { transform: translateX(0); }
+    .side-panel-backdrop {
+      position: fixed; inset: 0; z-index: 840;
+      background: rgba(0,0,0,0.45);
+      display: none;
+    }
+    .side-panel-backdrop.open { display: block; }
+    .side-panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.02);
+      flex-shrink: 0;
+    }
+    .side-panel-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 4px;
+      text-transform: uppercase; color: #8888cc;
+    }
+    .side-panel-close {
+      background: none; border: none; color: #44445a; font-size: 18px;
+      cursor: pointer; padding: 2px 6px; transition: color .15s;
+    }
+    .side-panel-close:hover { color: #fff; }
+
+    /* ── Notification panel ──────────────────────────────────── */
+    #notif-panel .notif-actions {
+      display: flex; align-items: center; justify-content: flex-end;
+      padding: 8px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      flex-shrink: 0;
+    }
+    .notif-mark-all-btn {
+      background: none; border: none; color: #555580;
+      font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: color .15s;
+    }
+    .notif-mark-all-btn:hover { color: #9999cc; }
+    #notif-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+    #notif-list::-webkit-scrollbar { width: 4px; }
+    #notif-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+    .notif-card {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 11px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background .15s; cursor: default;
+    }
+    .notif-card:hover { background: rgba(255,255,255,0.03); }
+    .notif-card.unread { background: rgba(59,158,232,0.05); }
+    .notif-card.unread:hover { background: rgba(59,158,232,0.09); }
+    .notif-icon { font-size: 20px; flex-shrink: 0; line-height: 1.2; margin-top: 1px; }
+    .notif-content { flex: 1; min-width: 0; }
+    .notif-title { font-size: 12px; font-weight: 600; color: #c0c0ee; margin-bottom: 2px; }
+    .notif-body  { font-size: 11px; color: #6666aa; line-height: 1.45; margin-bottom: 4px; }
+    .notif-time  { font-size: 10px; color: #3a3a58; letter-spacing: 0.3px; }
+    .notif-card-actions { display: flex; gap: 6px; margin-top: 6px; }
+    .notif-action-btn {
+      padding: 4px 10px; font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; font-family: 'Inter', sans-serif;
+      border-radius: 4px; cursor: pointer; transition: all .15s;
+    }
+    .notif-accept-btn { background: rgba(0,200,120,0.12); color: #00c878; border: 1px solid rgba(0,200,120,0.3); }
+    .notif-accept-btn:hover { background: rgba(0,200,120,0.25); }
+    .notif-decline-btn { background: rgba(255,255,255,0.04); color: #555; border: 1px solid rgba(255,255,255,0.1); }
+    .notif-decline-btn:hover { color: #aaa; background: rgba(255,255,255,0.09); }
+    .notif-del-btn {
+      background: none; border: none; color: #2a2a42; font-size: 14px;
+      cursor: pointer; padding: 0; flex-shrink: 0; transition: color .15s;
+      align-self: flex-start;
+    }
+    .notif-del-btn:hover { color: #e74c3c; }
+    .notif-empty { text-align: center; padding: 40px 20px; color: #333350; font-size: 12px; letter-spacing: 1px; }
+
+    /* ── Friends panel ───────────────────────────────────────── */
+    #friends-panel .friends-add-row {
+      display: flex; gap: 8px; padding: 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+    .friends-add-input {
+      flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px; color: #ccc; font-family: 'Inter', sans-serif; font-size: 12px;
+      padding: 7px 10px; outline: none; transition: border-color .15s;
+    }
+    .friends-add-input:focus { border-color: rgba(59,158,232,0.4); }
+    .friends-add-btn {
+      padding: 7px 14px; font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; font-family: 'Inter', sans-serif;
+      background: rgba(59,158,232,0.1); color: #3b9ee8;
+      border: 1px solid rgba(59,158,232,0.3); border-radius: 6px;
+      cursor: pointer; transition: background .15s, border-color .15s; white-space: nowrap;
+    }
+    .friends-add-btn:hover { background: rgba(59,158,232,0.22); border-color: rgba(59,158,232,0.55); }
+    #friends-status { font-size: 11px; min-height: 14px; padding: 4px 14px; color: #44dd88; flex-shrink: 0; }
+    #friends-status.err { color: #e74c3c; }
+    #friends-list { flex: 1; overflow-y: auto; padding: 6px 0; }
+    #friends-list::-webkit-scrollbar { width: 4px; }
+    #friends-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+    .friend-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background .15s;
+    }
+    .friend-row:hover { background: rgba(255,255,255,0.03); }
+    .friend-avatar-sm {
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      overflow: hidden; display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .friend-avatar-sm img { width: 100%; height: 100%; object-fit: cover; }
+    .friend-info { flex: 1; min-width: 0; }
+    .friend-name { font-size: 13px; font-weight: 600; color: #c0c0ee; }
+    .friend-status-pill {
+      display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; padding: 2px 7px; border-radius: 10px; margin-top: 2px;
+    }
+    .status-online  { background: rgba(34,221,102,0.14); color: #22dd66; border: 1px solid rgba(34,221,102,0.3); }
+    .status-in-game { background: rgba(59,158,232,0.14); color: #3b9ee8; border: 1px solid rgba(59,158,232,0.3); }
+    .status-offline { background: rgba(255,255,255,0.05); color: #3a3a58; border: 1px solid rgba(255,255,255,0.08); }
+    .friend-remove-btn {
+      background: none; border: none; color: #2a2a42; font-size: 13px;
+      cursor: pointer; padding: 4px; flex-shrink: 0; transition: color .15s;
+    }
+    .friend-remove-btn:hover { color: #e74c3c; }
+    .friends-empty { text-align: center; padding: 40px 20px; color: #333350; font-size: 12px; letter-spacing: 1px; }
+
+    /* ── Profile settings modal ──────────────────────────────── */
+    .profile-overlay {
+      position: fixed; inset: 0; z-index: 600;
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .profile-overlay.open { opacity: 1; pointer-events: all; }
+    .profile-modal {
+      width: min(480px, 96vw); max-height: 90vh; overflow-y: auto;
+      background: #0d0d1a; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px; padding: 28px 28px 24px; position: relative;
+      transform: scale(0.93) translateY(12px); transition: transform .22s ease;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.7);
+    }
+    .profile-overlay.open .profile-modal { transform: scale(1) translateY(0); }
+    .profile-modal-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 5px;
+      text-transform: uppercase; color: #8888cc; margin-bottom: 24px;
+    }
+    .profile-modal-close {
+      position: absolute; top: 14px; right: 16px;
+      background: none; border: none; color: #44445a;
+      font-size: 18px; cursor: pointer; padding: 4px 6px; transition: color .15s;
+    }
+    .profile-modal-close:hover { color: #fff; }
+    .profile-section { margin-bottom: 22px; }
+    .profile-section-label {
+      font-size: 9px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+      color: #444466; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .profile-section-label::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.06); }
+    /* avatar preview */
+    .profile-avatar-wrap {
+      display: flex; align-items: center; gap: 16px; margin-bottom: 4px;
+    }
+    #profile-avatar-preview {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.1);
+      overflow: hidden; display: flex; align-items: center; justify-content: center;
+      font-size: 30px; flex-shrink: 0; cursor: pointer; transition: border-color .15s;
+    }
+    #profile-avatar-preview:hover { border-color: rgba(231,76,60,0.5); }
+    #profile-avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-avatar-btn {
+      padding: 7px 16px; font-size: 10px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; font-family: 'Inter', sans-serif;
+      background: rgba(231,76,60,0.1); color: #e74c3c;
+      border: 1px solid rgba(231,76,60,0.3); border-radius: 5px;
+      cursor: pointer; transition: background .15s;
+    }
+    .profile-avatar-btn:hover { background: rgba(231,76,60,0.2); }
+    /* bio textarea */
+    .profile-bio-wrap { position: relative; }
+    #profile-bio-input {
+      width: 100%; box-sizing: border-box; resize: none;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 7px; padding: 10px 12px; color: #e0e0f0;
+      font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.55;
+      outline: none; transition: border-color .15s; min-height: 80px;
+    }
+    #profile-bio-input:focus { border-color: rgba(231,76,60,0.4); }
+    .bio-char-count { font-size: 10px; color: #333350; text-align: right; margin-top: 4px; }
+    /* username input */
+    #profile-username-input {
+      width: 100%; box-sizing: border-box;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 7px; padding: 10px 12px; color: #e0e0f0;
+      font-family: 'Inter', sans-serif; font-size: 13px;
+      outline: none; transition: border-color .15s;
+    }
+    #profile-username-input:focus { border-color: rgba(231,76,60,0.4); }
+    .profile-username-note { font-size: 10px; color: #333350; margin-top: 5px; letter-spacing: 0.3px; }
+    .profile-username-note.warn { color: #c8a215; }
+    /* save button */
+    .profile-save-btn {
+      width: 100%; padding: 12px 0; margin-top: 8px;
+      background: rgba(231,76,60,0.12); border: 1px solid rgba(231,76,60,0.38);
+      border-radius: 7px; color: #e74c3c;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+      cursor: pointer; transition: background .15s, box-shadow .15s;
+    }
+    .profile-save-btn:hover { background: rgba(231,76,60,0.24); box-shadow: 0 0 22px rgba(231,76,60,0.18); }
+    .profile-save-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .profile-msg { font-size: 12px; min-height: 16px; margin-top: 8px; text-align: center; }
+    .profile-msg.ok  { color: #22dd66; }
+    .profile-msg.err { color: #e74c3c; }
+
+    /* ── Shared side panel ─────────────────────────────────── */
+    .panel-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      z-index: 1800; opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .side-panel {
+      position: fixed; top: 0; right: 0; height: 100vh; width: 340px;
+      background: #0f0f24; border-left: 1px solid rgba(255,255,255,0.07);
+      z-index: 1801; display: flex; flex-direction: column;
+      transform: translateX(100%); transition: transform .25s cubic-bezier(.4,0,.2,1);
+    }
+    .side-panel.open { transform: translateX(0); }
+    .side-panel.open ~ .panel-overlay { opacity: 1; pointer-events: all; }
+    /* make overlay visible when panel opens */
+    #notif-panel.open + #notif-overlay,
+    #friends-panel.open + #friends-overlay { opacity: 1; pointer-events: all; }
+    .panel-overlay { transition: opacity .2s; }
+    .side-panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 18px; border-bottom: 1px solid rgba(255,255,255,0.07);
+      font-size: 12px; font-weight: 700; letter-spacing: 2px; color: #c0c0ee;
+    }
+    .side-panel-close {
+      background: none; border: none; color: #666; cursor: pointer; font-size: 16px; padding: 2px 6px;
+    }
+    .side-panel-close:hover { color: #fff; }
+    .side-panel-action {
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px; color: #888; cursor: pointer; font-size: 10px; padding: 4px 8px;
+      font-family: inherit; letter-spacing: 0.5px;
+    }
+    .side-panel-action:hover { color: #c0c0ee; border-color: rgba(255,255,255,0.2); }
+
+    /* ── Notifications ─────────────────────────────────────── */
+    .notif-empty { text-align: center; color: #555; font-size: 12px; padding: 32px 16px; }
+    .notif-card {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background .15s;
+    }
+    .notif-card.unread { background: rgba(59,158,232,0.05); }
+    .notif-card:hover { background: rgba(255,255,255,0.03); }
+    .notif-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+    .notif-body { flex: 1; min-width: 0; }
+    .notif-title { font-size: 12px; font-weight: 600; color: #c0c0ee; margin-bottom: 2px; }
+    .notif-text  { font-size: 11px; color: #777; line-height: 1.4; }
+    .notif-time  { font-size: 10px; color: #444; margin-top: 4px; }
+    .notif-del   { background: none; border: none; color: #444; cursor: pointer; font-size: 13px; padding: 2px 4px; flex-shrink: 0; }
+    .notif-del:hover { color: #e74c3c; }
+    .notif-friend-btns { display: flex; gap: 6px; margin-top: 8px; }
+    .notif-btn-accept  { background: rgba(34,221,100,0.12); border: 1px solid rgba(34,221,100,0.35); color: #22dd64; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: 700; padding: 4px 10px; font-family: inherit; letter-spacing: 1px; }
+    .notif-btn-decline { background: rgba(231,76,60,0.1); border: 1px solid rgba(231,76,60,0.3); color: #e74c3c; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: 700; padding: 4px 10px; font-family: inherit; letter-spacing: 1px; }
+    .notif-btn-accept:hover  { background: rgba(34,221,100,0.25); }
+    .notif-btn-decline:hover { background: rgba(231,76,60,0.25); }
+
+    /* ── Friends ───────────────────────────────────────────── */
+    .friends-add-row {
+      display: flex; gap: 8px; padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .friends-add-row input {
+      flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px; color: #c0c0ee; font-family: inherit; font-size: 12px;
+      padding: 7px 10px; outline: none;
+    }
+    .friends-add-row input:focus { border-color: rgba(59,158,232,0.45); }
+    .friends-add-btn {
+      background: rgba(59,158,232,0.12); border: 1px solid rgba(59,158,232,0.3); border-radius: 6px;
+      color: #3b9ee8; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 700;
+      letter-spacing: 1px; padding: 7px 12px;
+    }
+    .friends-add-btn:hover { background: rgba(59,158,232,0.25); }
+    .friend-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .friend-row:hover { background: rgba(255,255,255,0.025); }
+    .friend-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: #888; overflow: hidden; flex-shrink: 0;
+    }
+    .friend-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .friend-info { flex: 1; min-width: 0; }
+    .friend-name   { font-size: 13px; color: #c0c0ee; font-weight: 600; }
+    .friend-status { font-size: 11px; color: #666; display: flex; align-items: center; gap: 5px; margin-top: 2px; }
+    .friend-dot    { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .dot-online  { background: #22dd64; box-shadow: 0 0 6px #22dd64; }
+    .dot-ingame  { background: #3b9ee8; box-shadow: 0 0 6px #3b9ee8; }
+    .dot-offline { background: #444; }
+    .friend-remove-btn { background: none; border: none; color: #333; cursor: pointer; font-size: 13px; padding: 4px 6px; }
+    .friend-remove-btn:hover { color: #e74c3c; }
+
+    /* ── Profile sections ──────────────────────────────────── */
+    .profile-section { margin-bottom: 20px; }
+    .profile-section-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 2px; color: #555; margin-bottom: 8px;
+    }
+    #profile-bio-input {
+      width: 100%; box-sizing: border-box;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 7px; color: #c0c0ee; font-family: inherit; font-size: 13px;
+      padding: 10px 12px; outline: none; resize: vertical; min-height: 70px;
+    }
+    #profile-bio-input:focus { border-color: rgba(231,76,60,0.4); }
+    #profile-username-input {
+      width: 100%; box-sizing: border-box;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 7px; color: #c0c0ee; font-family: inherit; font-size: 13px;
+      padding: 10px 12px; outline: none;
+    }
+    #profile-username-input:focus { border-color: rgba(231,76,60,0.4); }
   </style>
 </head>
 <body>
@@ -1168,12 +1558,15 @@
       <!-- Logged-in state (hidden until auth) -->
       <div id="nav-user">
         <span class="nav-username">Hello,&nbsp;<strong id="nav-username-text"></strong></span>
+        <button class="btn-profile" onclick="openProfile()" title="Profile Settings">⚙ PROFILE</button>
         <div class="bucks-display" id="bucks-display" onclick="openShop()" title="Open Avatar Shop">
           <svg width="16" height="16" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>
           <span id="bucks-balance">0</span>
         </div>
         <button class="btn-shop" onclick="openShop()">SHOP</button>
         <button class="btn-shop" onclick="openTrade()" title="Trade accessories with other players" style="background:rgba(0,200,120,0.08);border-color:rgba(0,200,120,0.3);color:#00c878">TRADE</button>
+        <button class="btn-notif" id="btn-notif" onclick="openNotifPanel()" title="Notifications">🔔 <span class="notif-badge" id="notif-badge" style="display:none">0</span></button>
+        <button class="btn-friends" onclick="openFriends()" title="Friends">👥 FRIENDS <span class="notif-badge" id="friends-online-count" style="display:none">0</span></button>
         <button class="btn-logout" id="btn-logout">LOGOUT</button>
         <button class="btn-delete-account" id="btn-delete-account">DELETE ACCOUNT</button>
       </div>
@@ -3132,6 +3525,8 @@
         _toastMsg('✓ Trade completed!');
       });
 
+      _wireNotifFriendSockets();
+
       // Show logged-in UI
       document.getElementById('chat-guest-note').style.display = 'none';
       document.getElementById('chat-input-row').style.display = 'flex';
@@ -3605,6 +4000,286 @@
       _chatSocket?.emit('tradeRespond', { sessionId, accept });
     }
 
+    // ══════════════════════════════════════════════════════════
+    //  NOTIFICATION CENTRE
+    // ══════════════════════════════════════════════════════════
+    let _notifs = [];
+
+    function openNotifPanel() {
+      document.getElementById('notif-panel').classList.add('open');
+      document.getElementById('notif-overlay').style.cssText = 'opacity:1;pointer-events:all';
+      _loadNotifications();
+    }
+    function closeNotifPanel() {
+      document.getElementById('notif-panel').classList.remove('open');
+      document.getElementById('notif-overlay').style.cssText = '';
+    }
+
+    async function _loadNotifications() {
+      const token = localStorage.getItem('ah_token');
+      if (!token) { _renderNotifs([]); return; }
+      try {
+        const r = await fetch(`${API}/notifications`, { headers:{ Authorization:`Bearer ${token}` } });
+        const d = await r.json();
+        _notifs = d.notifications || [];
+      } catch { _notifs = []; }
+      _renderNotifs(_notifs);
+    }
+
+    function _renderNotifs(list) {
+      const el = document.getElementById('notif-list');
+      if (!el) return;
+      const unread = list.filter(n => !n.read).length;
+      const badge = document.getElementById('notif-badge');
+      if (badge) {
+        badge.textContent = unread;
+        badge.style.display = unread > 0 ? '' : 'none';
+      }
+      if (list.length === 0) {
+        el.innerHTML = '<div class="notif-empty">No notifications yet</div>';
+        return;
+      }
+      el.innerHTML = list.map(n => {
+        const icon = n.type === 'friend_request' ? '👤' : n.type === 'friend_accepted' ? '✅' : '🔔';
+        const ago = _timeAgo(n.createdAt);
+        const friendBtns = n.type === 'friend_request' && !n.read ? `
+          <div class="notif-friend-btns">
+            <button class="notif-btn-accept" onclick="respondFriendRequest('${n._id}', true)">ACCEPT</button>
+            <button class="notif-btn-decline" onclick="respondFriendRequest('${n._id}', false)">DECLINE</button>
+          </div>` : '';
+        return `<div class="notif-card${n.read ? '' : ' unread'}" id="nc-${n._id}">
+          <div class="notif-icon">${icon}</div>
+          <div class="notif-body">
+            <div class="notif-title">${_esc(n.title)}</div>
+            <div class="notif-text">${_esc(n.body)}</div>
+            <div class="notif-time">${ago}</div>
+            ${friendBtns}
+          </div>
+          <button class="notif-del" onclick="_deleteNotif('${n._id}')">✕</button>
+        </div>`;
+      }).join('');
+    }
+
+    async function _markAllNotifRead() {
+      const token = localStorage.getItem('ah_token');
+      if (!token) return;
+      try { await fetch(`${API}/notifications/read`, { method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`}, body:'{}' }); } catch {}
+      _notifs.forEach(n => n.read = true);
+      _renderNotifs(_notifs);
+    }
+
+    async function _deleteNotif(id) {
+      const token = localStorage.getItem('ah_token');
+      if (!token) return;
+      try { await fetch(`${API}/notifications/${id}`, { method:'DELETE', headers:{ Authorization:`Bearer ${token}` } }); } catch {}
+      _notifs = _notifs.filter(n => String(n._id) !== String(id));
+      _renderNotifs(_notifs);
+    }
+
+    function _timeAgo(ts) {
+      if (!ts) return '';
+      const diff = (Date.now() - new Date(ts).getTime()) / 1000;
+      if (diff < 60) return 'just now';
+      if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+      return Math.floor(diff/86400) + 'd ago';
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  FRIENDS LIST
+    // ══════════════════════════════════════════════════════════
+    let _friendsList = [];
+
+    function openFriends() {
+      document.getElementById('friends-panel').classList.add('open');
+      document.getElementById('friends-overlay').style.cssText = 'opacity:1;pointer-events:all';
+      const token = localStorage.getItem('ah_token');
+      if (token && _chatSocket) _chatSocket.emit('getFriendsList', { token });
+    }
+    function closeFriends() {
+      document.getElementById('friends-panel').classList.remove('open');
+      document.getElementById('friends-overlay').style.cssText = '';
+    }
+
+    function _renderFriends(list) {
+      _friendsList = list;
+      const el = document.getElementById('friends-list');
+      if (!el) return;
+      const online = list.filter(f => f.status !== 'offline').length;
+      const oc = document.getElementById('friends-online-count');
+      if (oc) { oc.textContent = online; oc.style.display = online > 0 ? '' : 'none'; }
+      if (list.length === 0) {
+        el.innerHTML = '<div class="notif-empty">No friends yet.<br>Add someone by username!</div>';
+        return;
+      }
+      el.innerHTML = list.map(f => {
+        const dot = f.status === 'in-game' ? 'dot-ingame' : f.status === 'online' ? 'dot-online' : 'dot-offline';
+        const label = f.status === 'in-game' ? 'In Game' : f.status === 'online' ? 'Online' : 'Offline';
+        const av = f.avatar ? `<img src="${f.avatar}" alt="">` : f.username.slice(0,2).toUpperCase();
+        return `<div class="friend-row">
+          <div class="friend-avatar">${av}</div>
+          <div class="friend-info">
+            <div class="friend-name">${_esc(f.username)}</div>
+            <div class="friend-status"><span class="friend-dot ${dot}"></span>${label}</div>
+          </div>
+          <button class="friend-remove-btn" onclick="removeFriend('${f.username}')" title="Remove friend">✕</button>
+        </div>`;
+      }).join('');
+    }
+
+    async function sendFriendRequest() {
+      const token = localStorage.getItem('ah_token');
+      const inp = document.getElementById('friend-add-input');
+      const toUsername = (inp?.value || '').trim();
+      if (!token || !toUsername || !_chatSocket) return;
+      _chatSocket.emit('friendRequest', { token, toUsername });
+      if (inp) inp.value = '';
+    }
+
+    function respondFriendRequest(notifId, accept) {
+      const token = localStorage.getItem('ah_token');
+      if (!token || !_chatSocket) return;
+      _chatSocket.emit('friendRespond', { token, notifId, accept });
+      _notifs = _notifs.filter(n => String(n._id) !== String(notifId));
+      _renderNotifs(_notifs);
+    }
+
+    async function removeFriend(username) {
+      const token = localStorage.getItem('ah_token');
+      if (!token || !_chatSocket) return;
+      _chatSocket.emit('removeFriend', { token, username });
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  PROFILE SETTINGS
+    // ══════════════════════════════════════════════════════════
+    let _profileAvatarB64 = null;
+
+    async function openProfile() {
+      document.getElementById('profile-overlay').classList.add('open');
+      const token = localStorage.getItem('ah_token');
+      const username = localStorage.getItem('ah_user');
+      if (username) document.getElementById('profile-username-input').value = username;
+      document.getElementById('profile-bio-input').value = '';
+      document.getElementById('profile-bio-chars').textContent = '0/200';
+      document.getElementById('profile-username-note').textContent = '';
+      _profileAvatarB64 = null;
+      if (token && username) {
+        try {
+          const r = await fetch(`${API}/profile/${encodeURIComponent(username)}`);
+          const d = await r.json();
+          if (d.bio) {
+            document.getElementById('profile-bio-input').value = d.bio;
+            document.getElementById('profile-bio-chars').textContent = d.bio.length + '/200';
+          }
+          if (d.avatar) _setProfilePreview(d.avatar);
+          if (d.usernameChangedAt) {
+            const daysLeft = Math.ceil(7 - (Date.now() - new Date(d.usernameChangedAt).getTime()) / 86400000);
+            if (daysLeft > 0) document.getElementById('profile-username-note').textContent = `Next change in ${daysLeft} day(s)`;
+          }
+        } catch {}
+      }
+    }
+    function closeProfile() {
+      document.getElementById('profile-overlay').classList.remove('open');
+    }
+
+    function _setProfilePreview(src) {
+      const prev = document.getElementById('profile-avatar-preview');
+      if (!prev) return;
+      prev.innerHTML = `<img src="${src}" alt="avatar">`;
+    }
+
+    function triggerAvatarInput() {
+      document.getElementById('profile-avatar-file').click();
+    }
+
+    function _handleAvatarFile(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX = 128;
+          let w = img.width, h = img.height;
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else       { w = Math.round(w * MAX / h); h = MAX; }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          _profileAvatarB64 = canvas.toDataURL('image/jpeg', 0.85);
+          _setProfilePreview(_profileAvatarB64);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function _profileBioInput(el) {
+      const len = el.value.length;
+      document.getElementById('profile-bio-chars').textContent = len + '/200';
+    }
+
+    async function saveProfile() {
+      const token = localStorage.getItem('ah_token');
+      if (!token) return;
+      const bio      = document.getElementById('profile-bio-input').value.trim().slice(0, 200);
+      const username = document.getElementById('profile-username-input').value.trim();
+      const payload  = { bio };
+      if (username) payload.username = username;
+      if (_profileAvatarB64) payload.avatar = _profileAvatarB64;
+      const statusEl = document.getElementById('profile-save-status');
+      statusEl.textContent = 'Saving…';
+      try {
+        const r = await fetch(`${API}/profile/update`, {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+          body: JSON.stringify(payload),
+        });
+        const d = await r.json();
+        if (!r.ok) { statusEl.textContent = d.error || 'Error saving.'; return; }
+        if (d.token) {
+          localStorage.setItem('ah_token', d.token);
+          localStorage.setItem('ah_user', d.username);
+          const nameEl = document.getElementById('nav-username-text');
+          if (nameEl) nameEl.textContent = d.username;
+        }
+        statusEl.textContent = '✓ Saved!';
+        setTimeout(() => { statusEl.textContent = ''; }, 2500);
+      } catch { statusEl.textContent = 'Network error.'; }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  Wire up socket listeners for notifs + friends
+    // ══════════════════════════════════════════════════════════
+    function _wireNotifFriendSockets() {
+      if (!_chatSocket) return;
+
+      _chatSocket.on('notif:new', notif => {
+        _notifs.unshift(notif);
+        _renderNotifs(_notifs);
+        _toastMsg(`🔔 ${notif.title}`);
+      });
+
+      _chatSocket.on('notif:unread', count => {
+        const badge = document.getElementById('notif-badge');
+        if (badge) { badge.textContent = count; badge.style.display = count > 0 ? '' : 'none'; }
+      });
+
+      _chatSocket.on('friendsList', list => {
+        _renderFriends(list);
+      });
+
+      _chatSocket.on('friendRequestSent', ({ toUsername }) => {
+        _toastMsg(`✓ Friend request sent to ${toUsername}`);
+      });
+
+      _chatSocket.on('friendError', msg => {
+        _toastMsg(`✗ ${msg}`);
+      });
+    }
+
     async function apLoadPlayers() {
       const token = localStorage.getItem('ah_token');
       const list  = document.getElementById('ap-players-list');
@@ -3621,6 +4296,68 @@
       } catch { list.innerHTML = ''; }
     }
   </script>
+
+  <!-- ── Notification Panel ──────────────────────────────── -->
+  <div class="panel-overlay" id="notif-overlay" onclick="closeNotifPanel()"></div>
+  <div class="side-panel" id="notif-panel">
+    <div class="side-panel-header">
+      <span>🔔 NOTIFICATIONS</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="side-panel-action" onclick="_markAllNotifRead()">Mark all read</button>
+        <button class="side-panel-close" onclick="closeNotifPanel()">✕</button>
+      </div>
+    </div>
+    <div id="notif-list"><div class="notif-empty">No notifications yet</div></div>
+  </div>
+
+  <!-- ── Friends Panel ───────────────────────────────────── -->
+  <div class="panel-overlay" id="friends-overlay" onclick="closeFriends()"></div>
+  <div class="side-panel" id="friends-panel">
+    <div class="side-panel-header">
+      <span>👥 FRIENDS</span>
+      <button class="side-panel-close" onclick="closeFriends()">✕</button>
+    </div>
+    <div class="friends-add-row">
+      <input id="friend-add-input" type="text" placeholder="Add by username…" maxlength="24" autocomplete="off"
+             onkeydown="if(event.key==='Enter') sendFriendRequest()">
+      <button class="friends-add-btn" onclick="sendFriendRequest()">ADD</button>
+    </div>
+    <div id="friends-list"><div class="notif-empty">No friends yet</div></div>
+  </div>
+
+  <!-- ── Profile Settings Modal ─────────────────────────── -->
+  <div class="profile-overlay" id="profile-overlay" onclick="if(event.target===this)closeProfile()">
+    <div class="profile-modal">
+      <div class="profile-modal-title">⚙ PROFILE SETTINGS</div>
+      <button class="profile-modal-close" onclick="closeProfile()">✕</button>
+
+      <div class="profile-section">
+        <div class="profile-section-label">PROFILE PICTURE</div>
+        <div class="profile-avatar-wrap">
+          <div id="profile-avatar-preview" onclick="triggerAvatarInput()" title="Click to change"></div>
+          <button class="profile-avatar-btn" onclick="triggerAvatarInput()">CHANGE PHOTO</button>
+          <input type="file" id="profile-avatar-file" accept="image/*" style="display:none" onchange="_handleAvatarFile(this)">
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-section-label">BIO <span id="profile-bio-chars" style="float:right;font-size:11px;opacity:0.5">0/200</span></div>
+        <textarea id="profile-bio-input" maxlength="200" placeholder="Tell the world about yourself…"
+                  oninput="_profileBioInput(this)"></textarea>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-section-label">USERNAME</div>
+        <input id="profile-username-input" type="text" maxlength="24" autocomplete="off" placeholder="New username…">
+        <div id="profile-username-note" style="font-size:11px;color:#ff8a65;margin-top:4px"></div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+        <button class="profile-save-btn" onclick="saveProfile()">SAVE CHANGES</button>
+        <span id="profile-save-status" style="font-size:12px;color:#22dd64"></span>
+      </div>
+    </div>
+  </div>
 
 </body>
 </html>

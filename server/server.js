@@ -113,8 +113,9 @@ async function start() {
   const dbName = new URL(MONGODB_URI).pathname.replace('/', '') || 'arcadehub';
   const db     = client.db(dbName);
 
-  const usersCol  = db.collection('users');  // { username, password, isAdmin, banned, created_at }
-  const bannedCol = db.collection('banned'); // { username } — quick ban-list lookup
+  const usersCol        = db.collection('users');         // { username, password, isAdmin, banned, created_at }
+  const bannedCol       = db.collection('banned');        // { username } — quick ban-list lookup
+  const notificationsCol = db.collection('notifications'); // { userId, type, title, body, data, read, createdAt }
 
   // Enforce unique usernames
   await usersCol.createIndex({ username: 1 }, { unique: true });
@@ -185,6 +186,33 @@ async function start() {
       io.to(session.initiatorSocketId).emit('tradeCancelled', { sessionId: session.id, byUsername: 'System' });
       io.to(session.targetSocketId).emit('tradeCancelled',   { sessionId: session.id, byUsername: 'System' });
     }
+  }
+
+  // ── Notification helper ─────────────────────────────────────
+  async function pushNotif(toUsername, type, title, body, data = {}) {
+    const user = await usersCol.findOne({ username: toUsername }, { projection: { _id:1 } });
+    if (!user) return;
+    const notif = { userId: user._id, type, title, body, data, read: false, createdAt: new Date() };
+    const r = await notificationsCol.insertOne(notif);
+    for (const [sid, u] of chatUsers) {
+      if (u.username === toUsername) {
+        const s = io.sockets.sockets.get(sid);
+        if (s) s.emit('notif:new', { ...notif, _id: r.insertedId });
+        break;
+      }
+    }
+  }
+
+  // ── Friends list helper ──────────────────────────────────────
+  async function _getFriendsList(username) {
+    const user = await usersCol.findOne({ username }, { projection: { friends: 1 } });
+    const friends = user?.friends || [];
+    const onlineSet = new Set([...chatUsers.values()].map(u => u.username));
+    const inGameSet = new Set([...players.values()].map(p => p.username));
+    return friends.map(f => ({
+      username: f,
+      status: inGameSet.has(f) ? 'in-game' : onlineSet.has(f) ? 'online' : 'offline',
+    }));
   }
 
   // ── Socket.io connection handler ────────────────────────────
@@ -350,12 +378,20 @@ async function start() {
     });
 
     // ── Chat ──────────────────────────────────────────────────
-    socket.on('chatJoin', ({ token }) => {
+    socket.on('chatJoin', async ({ token }) => {
       try {
         const payload = jwt.verify(token, JWT_SECRET);
         chatUsers.set(socket.id, { username: payload.username });
         socket.emit('chatHistory', []); // could persist messages here later
         io.emit('chatOnline', [...chatUsers.values()].map(u => u.username));
+        // Emit unread notification count
+        try {
+          const user = await usersCol.findOne({ username: payload.username }, { projection: { _id:1 } });
+          if (user) {
+            const unread = await notificationsCol.countDocuments({ userId: user._id, read: false });
+            socket.emit('notif:unreadCount', { count: unread });
+          }
+        } catch { /* ignore */ }
       } catch { /* invalid token — silently ignore */ }
     });
 
@@ -467,35 +503,60 @@ async function start() {
     });
 
     // ── Friends ───────────────────────────────────────────────
-    socket.on('addFriend', async ({ token, targetUsername }) => {
+    socket.on('friendRequest', async ({ token, toUsername }) => {
       try {
         const payload = jwt.verify(token, JWT_SECRET);
-        const target = await usersCol.findOne({ username: targetUsername });
-        if (!target) { socket.emit('friendResult', { error: 'User not found.' }); return; }
-        if (target.username === payload.username) { socket.emit('friendResult', { error: "Can't add yourself." }); return; }
+        const fromUsername = payload.username;
+        if (fromUsername === toUsername) return;
         const { ObjectId } = require('mongodb');
-        await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, { $addToSet: { friends: target.username } });
-        socket.emit('friendResult', { success: true, username: target.username });
-      } catch { socket.emit('friendResult', { error: 'Failed.' }); }
-    });
-
-    socket.on('removeFriend', async ({ token, targetUsername }) => {
-      try {
-        const payload = jwt.verify(token, JWT_SECRET);
-        const { ObjectId } = require('mongodb');
-        await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, { $pull: { friends: targetUsername } });
-        socket.emit('friendResult', { removed: targetUsername });
+        const fromUser = await usersCol.findOne({ _id: new ObjectId(payload.userId) });
+        if (!fromUser) return;
+        if ((fromUser.friends || []).includes(toUsername)) return;
+        const toUser = await usersCol.findOne({ username: toUsername });
+        if (!toUser) { socket.emit('friendError', 'User not found.'); return; }
+        const existing = await notificationsCol.findOne({
+          userId: toUser._id, type: 'friend_request',
+          'data.fromUsername': fromUsername, read: false
+        });
+        if (existing) { socket.emit('friendError', 'Request already sent.'); return; }
+        await pushNotif(toUsername, 'friend_request', 'Friend Request',
+          `${fromUsername} wants to be your friend.`, { fromUsername });
+        socket.emit('friendRequestSent', { toUsername });
       } catch {}
     });
 
-    socket.on('getFriends', async ({ token }) => {
+    socket.on('friendRespond', async ({ token, notifId, accept }) => {
       try {
         const payload = jwt.verify(token, JWT_SECRET);
         const { ObjectId } = require('mongodb');
-        const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { friends: 1 } });
-        const friends = (user && user.friends) || [];
-        const online = onlinePlayers();
-        socket.emit('friendsList', friends.map(f => ({ username: f, online: online.has(f) })));
+        const notif = await notificationsCol.findOne({ _id: new ObjectId(notifId) });
+        if (!notif || notif.type !== 'friend_request') return;
+        await notificationsCol.updateOne({ _id: notif._id }, { $set: { read: true } });
+        if (accept) {
+          const fromUsername = notif.data.fromUsername;
+          const toUsername   = payload.username;
+          await usersCol.updateOne({ username: toUsername },   { $addToSet: { friends: fromUsername } });
+          await usersCol.updateOne({ username: fromUsername }, { $addToSet: { friends: toUsername } });
+          await pushNotif(fromUsername, 'friend_accepted', 'Friend Request Accepted',
+            `${toUsername} accepted your friend request.`, { username: toUsername });
+          socket.emit('friendsList', await _getFriendsList(payload.username));
+        }
+      } catch {}
+    });
+
+    socket.on('getFriendsList', async ({ token }) => {
+      try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        socket.emit('friendsList', await _getFriendsList(payload.username));
+      } catch {}
+    });
+
+    socket.on('removeFriend', async ({ token, username }) => {
+      try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        await usersCol.updateOne({ username: payload.username }, { $pull: { friends: username } });
+        await usersCol.updateOne({ username },                   { $pull: { friends: payload.username } });
+        socket.emit('friendsList', await _getFriendsList(payload.username));
       } catch {}
     });
 
@@ -1007,15 +1068,33 @@ async function start() {
     try {
       const payload = verifyToken(req.headers.authorization);
       const { itemId } = req.body;
-      const RARITY_PRICES    = { common:50, rare:100, epic:200, legendary:500 };
-      const ATTACHMENT_PRICES = {
+      const RARITY_PRICES = { common:50, rare:100, epic:200, legendary:500 };
+      const ITEM_PRICES = {
+        // Weapon attachments
         silencer_rare:500, scope_epic:1000, extmag_rare:500,
-        emote_wave:300, emote_dance:400, emote_salute:300, emote_point:300,
-        emote_laugh:400, emote_taunt:500, emote_bow:300, emote_flex:400,
+        // Emotes — common (300)
+        emote_wave:300, emote_salute:300, emote_point:300, emote_bow:300,
+        emote_clap:300, emote_thumbsup:300, emote_facepalm:300, emote_shrug:300,
+        emote_peace:300, emote_skull:300, emote_dizzy:300, emote_sleep:300,
+        emote_nervous:300, emote_think:300, emote_ghost:300, emote_alien:300,
+        emote_eyes:300, emote_run:300, emote_sing:300, emote_confused:300,
+        emote_sick:300,
+        // Emotes — rare (400)
+        emote_dance:400, emote_laugh:400, emote_flex:400, emote_heart:400,
+        emote_fire:400, emote_cry:400, emote_rage:400, emote_cool:400,
+        emote_kiss:400, emote_robot:400, emote_clown:400, emote_ninja:400,
+        emote_zombie:400, emote_cowboy:400, emote_pirate:400, emote_money:400,
+        emote_star:400, emote_jump:400, emote_dab:400, emote_headbang:400,
+        emote_airguitar:400, emote_surprised:400, emote_rofl:400, emote_sneeze:400,
+        // Emotes — epic (500)
+        emote_taunt:500, emote_explode:500, emote_crown:500, emote_trophy:500,
+        emote_diamond:500, emote_sparkle:500, emote_rainbow:500, emote_thunder:500,
+        emote_100:500, emote_spin:500, emote_breakdance:500, emote_moonwalk:500,
+        emote_floss:500, emote_worm:500, emote_splits:500, emote_party:500,
       };
       if (!/^[a-z0-9_]+$/.test(itemId)) return res.status(400).json({ error: 'Invalid item.' });
       const rarity = itemId.split('_').pop();
-      const price  = ATTACHMENT_PRICES[itemId] ?? RARITY_PRICES[rarity];
+      const price  = ITEM_PRICES[itemId] ?? RARITY_PRICES[rarity];
       if (!price) return res.status(400).json({ error: 'Invalid item.' });
       const { ObjectId } = require('mongodb');
       const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { bucks:1, ownedItems:1 } });
@@ -1078,7 +1157,7 @@ async function start() {
     try {
       const user = await usersCol.findOne(
         { username: req.params.username },
-        { projection: { username:1, kills:1, deaths:1, bio:1, equippedItems:1, created_at:1 } }
+        { projection: { username:1, kills:1, deaths:1, bio:1, avatar:1, equippedItems:1, created_at:1, usernameChangedAt:1 } }
       );
       if (!user) return res.status(404).json({ error: 'User not found.' });
       res.json({
@@ -1086,9 +1165,11 @@ async function start() {
         kills:        user.kills  || 0,
         deaths:       user.deaths || 0,
         bio:          user.bio    || '',
+        avatar:       user.avatar || null,
         equippedItems: user.equippedItems || [],
         online:       onlinePlayers().has(user.username),
         memberSince:  user.created_at,
+        usernameChangedAt: user.usernameChangedAt || null,
       });
     } catch { res.status(500).json({ error: 'Server error.' }); }
   });
@@ -1100,6 +1181,123 @@ async function start() {
       const bio = String(req.body.bio || '').trim().slice(0, 200);
       const { ObjectId } = require('mongodb');
       await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, { $set: { bio } });
+      res.json({ success: true });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── POST /api/profile/update ────────────────────────────────
+  app.post('/api/profile/update', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { ObjectId } = require('mongodb');
+      const { bio, avatar, username: newUsername } = req.body;
+      const $set = {};
+
+      if (bio !== undefined) {
+        $set.bio = String(bio || '').trim().slice(0, 200);
+      }
+
+      if (avatar !== undefined) {
+        if (typeof avatar !== 'string' || !avatar.startsWith('data:image/'))
+          return res.status(400).json({ error: 'Invalid avatar format.' });
+        if (avatar.length > 200000)
+          return res.status(400).json({ error: 'Avatar too large (max ~150KB).' });
+        $set.avatar = avatar;
+      }
+
+      let newToken = null;
+      if (newUsername !== undefined && newUsername !== payload.username) {
+        if (!/^[a-zA-Z0-9_]{3,24}$/.test(newUsername))
+          return res.status(400).json({ error: 'Username must be 3-24 chars, alphanumeric/underscore only.' });
+        const current = await usersCol.findOne(
+          { _id: new ObjectId(payload.userId) },
+          { projection: { usernameChangedAt: 1, isAdmin: 1 } }
+        );
+        if (!current) return res.status(404).json({ error: 'User not found.' });
+        if (current.usernameChangedAt) {
+          const daysSince = (Date.now() - new Date(current.usernameChangedAt).getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSince < 7)
+            return res.status(400).json({ error: `Username can only be changed once every 7 days. ${Math.ceil(7 - daysSince)} day(s) remaining.` });
+        }
+        const taken = await usersCol.findOne({ username: newUsername });
+        if (taken) return res.status(409).json({ error: 'Username already taken.' });
+        $set.username = newUsername;
+        $set.usernameChangedAt = new Date();
+        newToken = jwt.sign(
+          { userId: payload.userId, username: newUsername, isAdmin: !!payload.isAdmin },
+          JWT_SECRET,
+          { expiresIn: '7d' }
+        );
+      }
+
+      if (Object.keys($set).length === 0) return res.json({ success: true });
+
+      await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, { $set });
+      const result = { success: true };
+      if (newToken) result.token = newToken;
+      if ($set.username) result.username = $set.username;
+      res.json(result);
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      if (err.code === 11000) return res.status(409).json({ error: 'Username already taken.' });
+      console.error('/api/profile/update error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── GET /api/notifications ──────────────────────────────────
+  app.get('/api/notifications', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { ObjectId } = require('mongodb');
+      const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { _id:1 } });
+      if (!user) return res.status(404).json({ error: 'User not found.' });
+      const notifs = await notificationsCol
+        .find({ userId: user._id })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .toArray();
+      res.json({ notifications: notifs });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── POST /api/notifications/read ────────────────────────────
+  app.post('/api/notifications/read', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { ObjectId } = require('mongodb');
+      const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { _id:1 } });
+      if (!user) return res.status(404).json({ error: 'User not found.' });
+      const { ids } = req.body;
+      if (ids && Array.isArray(ids) && ids.length > 0) {
+        await notificationsCol.updateMany(
+          { _id: { $in: ids.map(id => new ObjectId(id)) }, userId: user._id },
+          { $set: { read: true } }
+        );
+      } else {
+        await notificationsCol.updateMany({ userId: user._id }, { $set: { read: true } });
+      }
+      res.json({ success: true });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── DELETE /api/notifications/:id ───────────────────────────
+  app.delete('/api/notifications/:id', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { ObjectId } = require('mongodb');
+      const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { _id:1 } });
+      if (!user) return res.status(404).json({ error: 'User not found.' });
+      await notificationsCol.deleteOne({ _id: new ObjectId(req.params.id), userId: user._id });
       res.json({ success: true });
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
