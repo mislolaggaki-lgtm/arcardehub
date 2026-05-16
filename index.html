@@ -1096,13 +1096,26 @@
       .cards-grid { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 580px) {
-      nav { padding: 0 18px; }
-      .logo { font-size: 22px; letter-spacing: 3px; }
-      .btn-login { display: none; }
-      #nav-user .nav-username { display: none; }
-      .hero { padding: 120px 20px 70px; }
-      .games-section { padding: 10px 16px 80px; }
+      nav { padding: 0 16px; height: 54px; }
+      .logo { font-size: 20px; letter-spacing: 3px; }
+      .btn-login { padding: 8px 16px; font-size: 11px; }
+      #nav-user .nav-username,
+      #nav-user .btn-changelog,
+      #nav-user .btn-feedback,
+      #nav-user .btn-profile,
+      #nav-user .btn-shop,
+      #nav-user .btn-logout,
+      #nav-user .btn-delete-account,
+      #nav-user .btn-notif,
+      #nav-user .btn-friends,
+      #nav-user .online-badge { display: none !important; }
+      #nav-user .bucks-display { display: flex; }
+      .nav-hamburger { display: flex !important; }
+      .hero { padding: 100px 18px 60px; }
+      .games-section { padding: 10px 14px 80px; }
       .cards-grid { grid-template-columns: 1fr; gap: 14px; }
+      .card-banner { height: 90px; }
+      .btn-play, .btn-soon { padding: 13px 0; font-size: 12px; }
       .auth-modal { padding: 28px 20px 24px; }
       .badges-section { padding: 40px 16px 56px; }
       .badges-row { gap: 22px; }
@@ -1110,6 +1123,69 @@
       .badge-icon-wrap { width: 72px; height: 72px; }
       .badge-icon-wrap svg { width: 72px; height: 72px; }
     }
+
+    /* ── Hamburger button ──────────────────────────────────── */
+    .nav-hamburger {
+      display: none;
+      flex-direction: column; gap: 5px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; cursor: pointer; padding: 8px 10px;
+      transition: background .15s;
+    }
+    .nav-hamburger:hover { background: rgba(255,255,255,0.10); }
+    .nav-hamburger span { display: block; width: 20px; height: 2px; background: #9999bb; border-radius: 2px; }
+
+    /* ── Mobile slide-in drawer ────────────────────────────── */
+    .mobile-drawer-overlay {
+      display: none; position: fixed; inset: 0; z-index: 1800;
+      background: rgba(0,0,0,0.72); backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .mobile-drawer-overlay.open { display: block; }
+    .mobile-drawer {
+      position: absolute; top: 0; right: 0; bottom: 0;
+      width: 290px; max-width: 88vw;
+      background: #0a0a18;
+      border-left: 1px solid rgba(255,255,255,0.08);
+      display: flex; flex-direction: column;
+      transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
+    }
+    .mobile-drawer-overlay.open .mobile-drawer { transform: translateX(0); }
+    .md-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 20px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .md-logo { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 3px; color: #fff; }
+    .md-logo em { font-style: normal; color: #e74c3c; }
+    .md-close {
+      background: rgba(255,255,255,0.05); border: none; color: #555; font-size: 16px;
+      border-radius: 7px; padding: 6px 10px; cursor: pointer; transition: color .15s, background .15s;
+    }
+    .md-close:hover { color: #fff; background: rgba(255,255,255,0.10); }
+    .md-user {
+      padding: 14px 20px 10px; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .md-greeting { font-size: 11px; color: #4a4a70; letter-spacing: 2px; margin-bottom: 2px; }
+    .md-username-text { font-size: 16px; font-weight: 700; color: #c0c0ee; }
+    .md-bucks-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 20px 14px; border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 18px; font-weight: 800; color: #ffd700; letter-spacing: 1px;
+    }
+    .md-bucks-row span { font-size: 11px; color: #6a6a30; font-weight: 600; letter-spacing: 3px; margin-left: 2px; }
+    .md-list { flex: 1; overflow-y: auto; padding: 6px 0; }
+    .md-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 20px; width: 100%; text-align: left;
+      background: none; border: none; cursor: pointer;
+      font-family: 'Inter', sans-serif; font-size: 14px; color: #9090c0;
+      transition: background .15s, color .15s;
+    }
+    .md-item:hover { background: rgba(255,255,255,0.04); color: #e0e0ff; }
+    .md-item-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+    .md-sep { height: 1px; background: rgba(255,255,255,0.05); margin: 4px 0; }
+    .md-item.md-danger { color: #774444; }
+    .md-item.md-danger:hover { color: #e74c3c; background: rgba(231,76,60,0.07); }
 
     /* ── Chat widget ──────────────────────────────────────────── */
     #chat-fab {
@@ -2074,9 +2150,43 @@
         <button class="btn-friends" onclick="openFriends()" title="Friends">👥 FRIENDS <span class="notif-badge" id="friends-online-count" style="display:none">0</span></button>
         <button class="btn-logout" id="btn-logout">LOGOUT</button>
         <button class="btn-delete-account" id="btn-delete-account">DELETE ACCOUNT</button>
+        <button class="nav-hamburger" onclick="openMobileDrawer()" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
       </div>
     </div>
   </nav>
+
+  <!-- ── Mobile Navigation Drawer ──────────────────────────── -->
+  <div class="mobile-drawer-overlay" id="mobile-drawer-overlay" onclick="if(event.target===this)closeMobileDrawer()">
+    <div class="mobile-drawer">
+      <div class="md-header">
+        <span class="md-logo">ARCADE<em>HUB</em></span>
+        <button class="md-close" onclick="closeMobileDrawer()">✕</button>
+      </div>
+      <div class="md-user">
+        <div class="md-greeting">LOGGED IN AS</div>
+        <div class="md-username-text" id="md-username"></div>
+      </div>
+      <div class="md-bucks-row">
+        <svg width="20" height="20" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>
+        <span id="md-bucks">0</span><span>BUCKS</span>
+      </div>
+      <div class="md-list">
+        <button class="md-item" onclick="closeMobileDrawer();openShop()"><span class="md-item-icon">🛍️</span>Avatar Shop</button>
+        <button class="md-item" onclick="closeMobileDrawer();openTrade()"><span class="md-item-icon">⇄</span>Trade</button>
+        <div class="md-sep"></div>
+        <button class="md-item" onclick="closeMobileDrawer();openFriends()"><span class="md-item-icon">👥</span>Friends <span id="md-friends-count" style="margin-left:auto;background:rgba(59,158,232,0.2);color:#3b9ee8;border-radius:10px;padding:1px 7px;font-size:11px;display:none"></span></button>
+        <button class="md-item" onclick="closeMobileDrawer();openNotifPanel()"><span class="md-item-icon">🔔</span>Notifications <span id="md-notif-count" style="margin-left:auto;background:rgba(231,76,60,0.2);color:#e74c3c;border-radius:10px;padding:1px 7px;font-size:11px;display:none"></span></button>
+        <div class="md-sep"></div>
+        <button class="md-item" onclick="closeMobileDrawer();openProfile()"><span class="md-item-icon">⚙️</span>Profile Settings</button>
+        <button class="md-item" onclick="closeMobileDrawer();openChangelog()"><span class="md-item-icon">★</span>What's New</button>
+        <button class="md-item" onclick="closeMobileDrawer();openFeedback()"><span class="md-item-icon">✉️</span>Send Feedback</button>
+        <div class="md-sep"></div>
+        <button class="md-item md-danger" onclick="closeMobileDrawer();document.getElementById('btn-logout').click()"><span class="md-item-icon">↩</span>Log Out</button>
+      </div>
+    </div>
+  </div>
 
   <main>
 
@@ -3807,7 +3917,7 @@
       if (!window.THREE || !window.buildRobot) return;
       const canvas = document.getElementById('shop-robot-canvas');
       if (!canvas) return;
-      if (_sr) return; // already initialized
+      if (_sr) { _restartShopAnim(); return; } // restart animation, don't re-create scene
 
       const W = 226, H = 310;
       const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -3817,8 +3927,8 @@
 
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 100);
-      camera.position.set(0, 1.28, 3.9);
-      camera.lookAt(0, 1.15, 0);
+      camera.position.set(0, 0.2, 4.2);
+      camera.lookAt(0, 0.3, 0);
 
       // Lighting — mirrors game lighting
       scene.add(new THREE.AmbientLight(0x506070, 0.55));
@@ -3848,20 +3958,20 @@
       rob._prevNodes = [];  // nodes added for preview accessories
       scene.add(rob.group);
 
-      let yaw = Math.PI;
-      let autoRotate = true;
+      // Init _sr early so event handlers can reference it
+      _sr = { renderer, scene, camera, rob, yaw: Math.PI, raf: null, autoRotate: true };
 
       // Drag to orbit
       let dragging = false, lastX = 0;
       canvas.addEventListener('mousedown', e => {
         dragging = true; lastX = e.clientX;
-        autoRotate = false;
+        _sr.autoRotate = false;
         canvas.style.cursor = 'grabbing';
       });
       window.addEventListener('mousemove', e => {
         if (!dragging) return;
-        yaw += (e.clientX - lastX) * 0.008;
-        rob.group.rotation.y = yaw;
+        _sr.yaw += (e.clientX - lastX) * 0.008;
+        rob.group.rotation.y = _sr.yaw;
         lastX = e.clientX;
       });
       window.addEventListener('mouseup', () => {
@@ -3870,22 +3980,29 @@
 
       // Touch drag
       let lastTX = 0;
-      canvas.addEventListener('touchstart', e => { lastTX = e.touches[0].clientX; autoRotate = false; });
+      canvas.addEventListener('touchstart', e => { lastTX = e.touches[0].clientX; _sr.autoRotate = false; });
       canvas.addEventListener('touchmove', e => {
-        yaw += (e.touches[0].clientX - lastTX) * 0.010;
-        rob.group.rotation.y = yaw;
+        _sr.yaw += (e.touches[0].clientX - lastTX) * 0.010;
+        rob.group.rotation.y = _sr.yaw;
         lastTX = e.touches[0].clientX;
       });
 
-      let raf;
-      function animate() {
-        raf = requestAnimationFrame(animate);
-        if (autoRotate) { yaw += 0.003; rob.group.rotation.y = yaw; }
-        renderer.render(scene, camera);
-      }
-      animate();
+      _restartShopAnim();
+    }
 
-      _sr = { renderer, scene, camera, rob, yaw, raf, autoRotate };
+    function _restartShopAnim() {
+      if (!_sr) return;
+      if (_sr.raf) cancelAnimationFrame(_sr.raf);
+      function animate() {
+        _sr.raf = requestAnimationFrame(animate);
+        if (_sr.autoRotate) { _sr.yaw += 0.003; _sr.rob.group.rotation.y = _sr.yaw; }
+        _sr.renderer.render(_sr.scene, _sr.camera);
+      }
+      _sr.raf = requestAnimationFrame(animate);
+    }
+
+    function _stopShopAnim() {
+      if (_sr && _sr.raf) { cancelAnimationFrame(_sr.raf); _sr.raf = null; }
     }
 
     function _srAddAcc(accessoryId, isPreview) {
@@ -3961,13 +4078,13 @@
       _renderShopGrid();
       _renderShopAvatar();
       document.getElementById('shop-overlay').classList.add('open');
-      // Initialize 3D canvas on first open (deferred so shop is visible first)
+      // Initialize or restart 3D canvas (deferred so shop is visible first)
       setTimeout(() => {
-        _initShopCanvas();
+        _initShopCanvas();   // no-ops if already init'd, just restarts anim
         _refreshShopRobot();
       }, 80);
     }
-    function closeShop() { closeGiftPanel(); document.getElementById('shop-overlay').classList.remove('open'); }
+    function closeShop() { closeGiftPanel(); _stopShopAnim(); document.getElementById('shop-overlay').classList.remove('open'); }
     document.getElementById('shop-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeShop(); });
 
     /* ── Avatar preview ─────────────────────────────────── */
@@ -5302,7 +5419,41 @@
     // ══════════════════════════════════════════════════════════
     //  UPDATE LOG
     // ══════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════
+    //  MOBILE DRAWER
+    // ══════════════════════════════════════════════════════════
+    function openMobileDrawer() {
+      document.getElementById('md-username').textContent = localStorage.getItem('ah_user') || '';
+      document.getElementById('md-bucks').textContent = parseInt(localStorage.getItem('ah_bucks') || '0').toLocaleString();
+      // Sync notification badges
+      const notifBadge = document.getElementById('notif-badge');
+      const mdNotif = document.getElementById('md-notif-count');
+      if (notifBadge && notifBadge.style.display !== 'none') {
+        mdNotif.textContent = notifBadge.textContent; mdNotif.style.display = '';
+      } else { mdNotif.style.display = 'none'; }
+      const friendsBadge = document.getElementById('friends-online-count');
+      const mdFriends = document.getElementById('md-friends-count');
+      if (friendsBadge && friendsBadge.style.display !== 'none') {
+        mdFriends.textContent = friendsBadge.textContent; mdFriends.style.display = '';
+      } else { mdFriends.style.display = 'none'; }
+      document.getElementById('mobile-drawer-overlay').classList.add('open');
+    }
+    function closeMobileDrawer() {
+      document.getElementById('mobile-drawer-overlay').classList.remove('open');
+    }
+
     const UPDATES = [
+      {
+        version: '1.5', date: 'May 2026', title: '3D SHOP AVATAR & MOBILE NAV',
+        changes: [
+          'Full 3D rotating robot avatar in the Shop — drag to spin it',
+          'Hover any item to preview it on your robot before buying',
+          'Mobile-friendly hamburger menu — all options in a slide-in drawer',
+          'Purchase confirmation required for items costing 500+ Bucks',
+          'Multi-select cosmetics with a one-tap Remove All button',
+          'Robot no longer walks backwards toward the player in FPS Arena',
+        ]
+      },
       {
         version: '1.4', date: 'May 2026', title: 'LEVELS, FEEDBACK & MORE',
         changes: [
