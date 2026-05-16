@@ -826,6 +826,7 @@
     .attach-gun-badge.smg     { background: #388e3c; }
     .attach-gun-badge.minigun { background: #c62828; }
     .attach-gun-badge.sniper  { background: #6a1b9a; }
+    .attach-gun-badge.all     { background: linear-gradient(120deg,#b8860b,#c0502a); letter-spacing: 1px; }
     .attach-uses {
       display: flex; gap: 5px; align-items: center; justify-content: center;
     }
@@ -1390,6 +1391,150 @@
       font-family: inherit; letter-spacing: 0.5px;
     }
     .side-panel-action:hover { color: #c0c0ee; border-color: rgba(255,255,255,0.2); }
+
+    /* ── Friends panel redesign ──────────────────────────── */
+    #friends-panel { width: 390px; overflow: hidden; }
+    .fl-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 15px 16px 13px;
+      border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;
+    }
+    .fl-header-title {
+      flex: 1; font-size: 11px; font-weight: 800; letter-spacing: 2.5px;
+      color: #c0c0ee; display: flex; align-items: center; gap: 8px;
+    }
+    .fl-header-stats {
+      font-size: 10px; font-weight: 700; letter-spacing: 1px;
+      color: #4caf50; padding: 3px 9px; border-radius: 20px;
+      background: rgba(76,175,80,0.1); border: 1px solid rgba(76,175,80,0.2);
+      white-space: nowrap;
+    }
+    .fl-add-row {
+      display: flex; gap: 8px; padding: 10px 12px 8px; flex-shrink: 0;
+    }
+    .fl-add-field {
+      flex: 1; display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px; padding: 0 11px; transition: border-color .15s;
+    }
+    .fl-add-field:focus-within { border-color: rgba(59,158,232,0.35); }
+    .fl-add-field input {
+      flex: 1; background: none; border: none; outline: none;
+      color: #c0c0ee; font-size: 12px; font-family: inherit; padding: 9px 0;
+    }
+    .fl-add-field input::placeholder { color: #3a3a58; }
+    .fl-add-btn {
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(59,158,232,0.1); border: 1px solid rgba(59,158,232,0.28);
+      color: #5aaeee; border-radius: 8px; padding: 0 14px; font-size: 10px;
+      font-weight: 800; letter-spacing: 1.5px; font-family: inherit;
+      cursor: pointer; transition: background .15s, border-color .15s, color .15s; white-space: nowrap;
+    }
+    .fl-add-btn:hover { background: rgba(59,158,232,0.2); border-color: rgba(59,158,232,0.5); color: #7bc8ff; }
+    #friends-list { flex: 1; overflow-y: auto; padding: 4px 0 16px; position: relative; }
+    #friends-list::-webkit-scrollbar { width: 4px; }
+    #friends-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+    .fl-section {
+      padding: 14px 18px 5px; font-size: 9px; font-weight: 800; letter-spacing: 2px;
+      text-transform: uppercase; color: #3a3a5a; display: flex; align-items: center; gap: 7px;
+    }
+    .fl-section-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .fl-section-dot.online  { background: #4caf50; }
+    .fl-section-dot.ingame  { background: #ffc107; }
+    .fl-section-dot.offline { background: #2e2e44; border: 1px solid #3a3a54; }
+    .fl-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px; margin: 1px 8px; border-radius: 11px;
+      cursor: pointer; transition: background .15s, transform .12s;
+      position: relative;
+    }
+    .fl-card:hover { background: rgba(255,255,255,0.055); transform: translateX(3px); }
+    .fl-card:hover .fl-remove { opacity: 1; transform: translateX(0); }
+    .fl-avatar {
+      width: 50px; height: 50px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 800; color: #888; flex-shrink: 0;
+      position: relative; background: #14142a;
+      outline: 2.5px solid var(--ring, #22223a); outline-offset: 2px;
+      transition: outline-color .3s;
+    }
+    .fl-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+    .fl-sdot {
+      position: absolute; bottom: 1px; right: 1px; width: 13px; height: 13px;
+      border-radius: 50%; border: 2.5px solid #0f0f24;
+    }
+    .fl-sdot.online  { background: #4caf50; box-shadow: 0 0 7px #4caf5077; }
+    .fl-sdot.ingame  { background: #ffc107; box-shadow: 0 0 7px #ffc10777; }
+    .fl-sdot.offline { background: #252540; }
+    .fl-body { flex: 1; min-width: 0; }
+    .fl-name {
+      font-size: 13px; font-weight: 700; color: #d8d8f0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .fl-tag {
+      display: inline-flex; align-items: center; font-size: 9px; font-weight: 700;
+      letter-spacing: 1px; padding: 2px 8px; border-radius: 20px; margin-top: 4px;
+    }
+    .fl-tag.online  { background: rgba(76,175,80,0.12);  color: #66bb6a; border: 1px solid rgba(76,175,80,0.25); }
+    .fl-tag.ingame  { background: rgba(255,193,7,0.12);   color: #ffd54f; border: 1px solid rgba(255,193,7,0.25); }
+    .fl-tag.offline { background: rgba(80,80,100,0.08);   color: #444;    border: 1px solid rgba(80,80,100,0.15); }
+    .fl-bio-hint {
+      font-size: 10px; color: #2e2e4e; white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; max-width: 200px; margin-top: 3px;
+    }
+    .fl-remove {
+      opacity: 0; transform: translateX(6px);
+      background: rgba(220,50,50,0.1); border: none; color: #c44;
+      width: 30px; height: 30px; border-radius: 7px; font-size: 12px;
+      cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      transition: opacity .15s, transform .15s, background .15s, color .15s;
+    }
+    .fl-remove:hover { background: rgba(220,50,50,0.22); color: #ff6060; }
+    /* Profile card overlay */
+    .fl-profile-card {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, #0d0d1c 0%, #0a0a18 100%);
+      z-index: 10; display: flex; flex-direction: column; align-items: center;
+      padding: 44px 20px 24px; gap: 10px;
+      animation: fl-pc-in .22s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes fl-pc-in { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+    .fl-pc-close {
+      position: absolute; top: 12px; right: 14px;
+      background: rgba(255,255,255,0.05); border: none; color: #555;
+      font-size: 14px; cursor: pointer; padding: 6px 10px; border-radius: 7px;
+      transition: color .15s, background .15s; font-family: inherit;
+    }
+    .fl-pc-close:hover { color: #fff; background: rgba(255,255,255,0.1); }
+    .fl-pc-avatar {
+      width: 94px; height: 94px; border-radius: 50%; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      outline: 3px solid var(--ring, #22223a); outline-offset: 4px;
+      background: #14142a; font-size: 30px; font-weight: 800; color: #888;
+    }
+    .fl-pc-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .fl-pc-name { font-size: 19px; font-weight: 800; color: #e4e4ff; letter-spacing: 0.5px; margin-top: 6px; }
+    .fl-pc-divider { width: 55%; height: 1px; background: rgba(255,255,255,0.05); margin: 4px 0; }
+    .fl-pc-bio {
+      font-size: 12px; color: #555; text-align: center; line-height: 1.7;
+      max-width: 270px; word-break: break-word; padding: 0 4px;
+    }
+    .fl-pc-remove {
+      margin-top: auto; width: 100%; max-width: 270px; padding: 11px;
+      background: rgba(200,40,40,0.08); border: 1px solid rgba(200,40,40,0.16);
+      color: #ae4040; border-radius: 9px; font-size: 10px; font-weight: 800;
+      letter-spacing: 2px; text-transform: uppercase; cursor: pointer; font-family: inherit;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+    .fl-pc-remove:hover { background: rgba(200,40,40,0.18); border-color: rgba(200,40,40,0.35); color: #e06060; }
+    /* Empty state */
+    .fl-empty {
+      text-align: center; padding: 52px 24px 32px;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    .fl-empty-icon { font-size: 44px; opacity: 0.2; }
+    .fl-empty-title { font-size: 13px; font-weight: 700; color: #3a3a58; }
+    .fl-empty-sub { font-size: 11px; color: #272744; line-height: 1.6; max-width: 220px; }
 
     /* ── Notifications ─────────────────────────────────────── */
     .notif-empty { text-align: center; color: #555; font-size: 12px; padding: 32px 16px; }
@@ -2421,7 +2566,8 @@
     const _ATTACH_P = { common:200, rare:350, epic:600, legendary:1200 };
     function _si(id,name,cat,type,col,rar,customPrice,gun){
       const effectKey = type.split('_')[0];
-      const price = gun ? _ATTACH_P[rar] : (customPrice || R[rar]);
+      // gun-specific (not 'all') gets rarity-based price; others use customPrice or cosmetic table
+      const price = (gun && gun !== 'all') ? _ATTACH_P[rar] : (customPrice || R[rar]);
       return {id,name,cat,type,col,rar,price,desc:D[type]||D[effectKey]||'',gun:gun||null};
     }
     const SHOP_ITEMS = [
@@ -2901,9 +3047,9 @@
       _si('hboots_red_epic',       'Holo Boots (Red)',     'feet','hboots','#c0392b','epic'),
       _si('hboots_legendary_legendary','Holo Boots (Legendary)','feet','hboots','#ff00cc','legendary'),
       // ── WEAPON ATTACHMENTS ──
-      _si('silencer_rare',         'Silencer',             'attachments','silencer','#666','rare',    300),
-      _si('scope_epic',            'Enhanced Scope',       'attachments','scope',   '#4ab4ff','epic',  600),
-      _si('extmag_rare',           'Extended Mag',         'attachments','extmag',  '#88ff88','rare',  300),
+      _si('silencer_rare',         'Silencer',             'attachments','silencer','#888','rare',    300, 'all'),
+      _si('scope_epic',            'Enhanced Scope',       'attachments','scope',   '#4ab4ff','epic',  600, 'all'),
+      _si('extmag_rare',           'Extended Mag',         'attachments','extmag',  '#88ff88','rare',  300, 'all'),
       // ── GUN-SPECIFIC ATTACHMENTS: PISTOL ──
       _si('sil_pistol_rare',       'Silencer (Pistol)',        'attachments','sil_pistol',   '#888','rare',    600, 'pistol'),
       _si('scope_pistol_rare',     'Red Dot (Pistol)',         'attachments','scope_pistol', '#4ab4ff','rare',600, 'pistol'),
@@ -3206,7 +3352,7 @@
       emote_party:      c=>`<svg viewBox="0 0 64 64"><text x="32" y="46" text-anchor="middle" font-size="40">🎉</text><rect x="10" y="52" width="44" height="6" rx="3" fill="${c}" opacity="0.3"/></svg>`,
     };
     function getItemSvg(it) {
-      const fn = _SVGF[it.type];
+      const fn = _SVGF[it.type] || _SVGF[it.type.split('_')[0]];
       return fn ? fn(it.col) : '';
     }
 
@@ -3381,7 +3527,8 @@
           const can = _bucks >= it.price;
           btn = `<button class="shop-btn buy${can?'':' disabled'}" onclick="buyItem('${it.id}')" ${can?'':'disabled'}>${BUCKS_ICON_SM} ${it.price}</button>`;
         }
-        const gunBadge = it.gun ? `<div class="attach-gun-badge ${it.gun}">${it.gun.toUpperCase()}</div>` : '';
+        const gunLabel = it.gun === 'all' ? 'ALL GUNS' : it.gun ? it.gun.toUpperCase() : '';
+        const gunBadge = it.gun ? `<div class="attach-gun-badge ${it.gun}">${gunLabel}</div>` : '';
         let usesBadge = '';
         if (it.cat === 'attachments') {
           if (owned || equipped) {
@@ -4281,57 +4428,96 @@
       _friendsList = list;
       const el = document.getElementById('friends-list');
       if (!el) return;
-      const online = list.filter(f => f.status !== 'offline').length;
+      // Remove any open profile card
+      document.getElementById('fl-profile-card')?.remove();
+      const onlineCount = list.filter(f => f.status !== 'offline').length;
       const oc = document.getElementById('friends-online-count');
-      if (oc) { oc.textContent = online; oc.style.display = online > 0 ? '' : 'none'; }
+      if (oc) { oc.textContent = onlineCount; oc.style.display = onlineCount > 0 ? '' : 'none'; }
+      const statsEl = document.getElementById('fl-stats');
+      if (statsEl) {
+        statsEl.style.display = list.length > 0 ? '' : 'none';
+        statsEl.textContent = onlineCount > 0 ? `${onlineCount} online` : `${list.length} friends`;
+        statsEl.style.color = onlineCount > 0 ? '#4caf50' : '#555';
+        statsEl.style.borderColor = onlineCount > 0 ? 'rgba(76,175,80,0.2)' : 'rgba(100,100,120,0.2)';
+        statsEl.style.background = onlineCount > 0 ? 'rgba(76,175,80,0.1)' : 'rgba(100,100,120,0.08)';
+      }
       if (list.length === 0) {
-        el.innerHTML = '<div class="notif-empty">No friends yet.<br>Add someone by username!</div>';
+        el.innerHTML = `<div class="fl-empty">
+          <div class="fl-empty-icon">👥</div>
+          <div class="fl-empty-title">No friends yet</div>
+          <div class="fl-empty-sub">Type a username above and press + ADD to send a friend request.</div>
+        </div>`;
         return;
       }
-      el.innerHTML = list.map(f => {
-        const dot = f.status === 'in-game' ? 'dot-ingame' : f.status === 'online' ? 'dot-online' : 'dot-offline';
-        const label = f.status === 'in-game' ? 'In Game' : f.status === 'online' ? 'Online' : 'Offline';
+      function mkCard(f) {
+        const s = f.status;
+        const dot = s === 'in-game' ? 'ingame' : s === 'online' ? 'online' : 'offline';
+        const tag = s === 'in-game' ? '🎮 In Game' : s === 'online' ? '● Online' : '○ Offline';
+        const ring = s === 'in-game' ? '#ffc107' : s === 'online' ? '#4caf50' : '#22223a';
         const av = f.avatar ? `<img src="${f.avatar}" alt="">` : f.username.slice(0,2).toUpperCase();
         const bioAttr    = (f.bio    || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
         const avatarAttr = (f.avatar || '').replace(/"/g,'&quot;');
-        const userAttr   = (f.username).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
-        return `<div class="friend-row" onclick="_showFriendProfile(this)"
+        const userAttr   = f.username.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+        const bioHint    = f.bio ? `<div class="fl-bio-hint">${_esc(f.bio.slice(0,44))}${f.bio.length>44?'…':''}</div>` : '';
+        return `<div class="fl-card" onclick="_showFriendProfile(this)"
             data-username="${userAttr}" data-bio="${bioAttr}"
-            data-status="${f.status}" data-avatar="${avatarAttr}">
-          <div class="friend-avatar">${av}</div>
-          <div class="friend-info">
-            <div class="friend-name">${_esc(f.username)}</div>
-            <div class="friend-status"><span class="friend-dot ${dot}"></span>${label}</div>
+            data-status="${s}" data-avatar="${avatarAttr}">
+          <div class="fl-avatar" style="--ring:${ring}">
+            ${av}<span class="fl-sdot ${dot}"></span>
           </div>
-          <button class="friend-remove-btn" onclick="event.stopPropagation();removeFriend('${_esc(f.username)}')" title="Remove friend">✕</button>
+          <div class="fl-body">
+            <div class="fl-name">${_esc(f.username)}</div>
+            <div class="fl-tag ${dot}">${tag}</div>
+            ${bioHint}
+          </div>
+          <button class="fl-remove" onclick="event.stopPropagation();removeFriend('${_esc(f.username)}')" title="Remove">✕</button>
         </div>`;
-      }).join('');
+      }
+      const groups = [
+        { key:'online',  label:'ONLINE',  dot:'online',  items: list.filter(f=>f.status==='online') },
+        { key:'in-game', label:'IN GAME', dot:'ingame',  items: list.filter(f=>f.status==='in-game') },
+        { key:'offline', label:'OFFLINE', dot:'offline', items: list.filter(f=>f.status==='offline') },
+      ];
+      el.innerHTML = groups.filter(g=>g.items.length>0).map(g=>`
+        <div class="fl-section">
+          <span class="fl-section-dot ${g.dot}"></span>${g.label} · ${g.items.length}
+        </div>
+        ${g.items.map(mkCard).join('')}
+      `).join('');
     }
 
     function _showFriendProfile(rowEl) {
-      const existing = document.getElementById('friend-profile-popup');
-      if (existing) existing.remove();
+      const existing = document.getElementById('fl-profile-card');
+      if (existing) { existing.remove(); return; }
       const username = rowEl.dataset.username || '';
       const bio      = rowEl.dataset.bio      || '';
       const status   = rowEl.dataset.status   || 'offline';
       const avatar   = rowEl.dataset.avatar   || '';
-      const dot   = status === 'in-game' ? 'dot-ingame' : status === 'online' ? 'dot-online' : 'dot-offline';
-      const label = status === 'in-game' ? 'In Game'   : status === 'online'  ? 'Online'     : 'Offline';
+      const dot  = status==='in-game' ? 'ingame'   : status==='online' ? 'online'  : 'offline';
+      const tag  = status==='in-game' ? '🎮 In Game': status==='online' ? '● Online': '○ Offline';
+      const ring = status==='in-game' ? '#ffc107'  : status==='online' ? '#4caf50' : '#22223a';
       const avHtml = avatar
-        ? `<img src="${avatar}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
-        : `<span style="font-size:22px;font-weight:700;color:#888">${_esc(username.slice(0,2).toUpperCase())}</span>`;
-      const popup = document.createElement('div');
-      popup.id = 'friend-profile-popup';
-      popup.className = 'friend-profile-popup';
-      popup.innerHTML = `
-        <button class="friend-pp-close" onclick="document.getElementById('friend-profile-popup').remove()">✕</button>
-        <div class="friend-pp-avatar">${avHtml}</div>
-        <div class="friend-pp-username">${_esc(username)}</div>
-        <div class="friend-pp-status"><span class="friend-dot ${dot}" style="display:inline-block"></span> ${label}</div>
-        ${bio ? `<div class="friend-pp-bio">${_esc(bio)}</div>` : '<div class="friend-pp-bio" style="color:#444;font-style:italic">No bio set</div>'}
-      `;
-      popup.addEventListener('click', e => e.stopPropagation());
-      document.getElementById('friends-list').appendChild(popup);
+        ? `<img src="${avatar}" alt="">`
+        : username.slice(0,2).toUpperCase();
+      const card = document.createElement('div');
+      card.id = 'fl-profile-card';
+      card.className = 'fl-profile-card';
+      card.innerHTML = `
+        <button class="fl-pc-close" onclick="document.getElementById('fl-profile-card')?.remove()">✕</button>
+        <div class="fl-pc-avatar" style="--ring:${ring}">${avHtml}</div>
+        <div class="fl-pc-name">${_esc(username)}</div>
+        <div class="fl-tag ${dot}" style="font-size:10px;padding:3px 11px;margin-top:2px">${tag}</div>
+        <div class="fl-pc-divider"></div>
+        ${bio
+          ? `<div class="fl-pc-bio">${_esc(bio)}</div>`
+          : `<div class="fl-pc-bio" style="color:#252540;font-style:italic">No bio written yet.</div>`}
+        <div style="flex:1;min-height:16px"></div>
+        <button class="fl-pc-remove"
+          onclick="removeFriend('${_esc(username)}');document.getElementById('fl-profile-card')?.remove()">
+          Remove Friend
+        </button>`;
+      card.addEventListener('click', e => e.stopPropagation());
+      document.getElementById('friends-panel').appendChild(card);
     }
 
     async function sendFriendRequest() {
@@ -4520,16 +4706,23 @@
   <!-- ── Friends Panel ───────────────────────────────────── -->
   <div class="panel-overlay" id="friends-overlay" onclick="closeFriends()"></div>
   <div class="side-panel" id="friends-panel">
-    <div class="side-panel-header">
-      <span>👥 FRIENDS</span>
+    <div class="fl-header">
+      <div class="fl-header-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:.7"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        FRIENDS
+      </div>
+      <span class="fl-header-stats" id="fl-stats" style="display:none">0 online</span>
       <button class="side-panel-close" onclick="closeFriends()">✕</button>
     </div>
-    <div class="friends-add-row">
-      <input id="friend-add-input" type="text" placeholder="Add by username…" maxlength="24" autocomplete="off"
-             onkeydown="if(event.key==='Enter') sendFriendRequest()">
-      <button class="friends-add-btn" onclick="sendFriendRequest()">ADD</button>
+    <div class="fl-add-row">
+      <div class="fl-add-field">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3a3a5a" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="friend-add-input" type="text" placeholder="Add by username…" maxlength="24" autocomplete="off"
+               onkeydown="if(event.key==='Enter') sendFriendRequest()">
+      </div>
+      <button class="fl-add-btn" onclick="sendFriendRequest()">+ ADD</button>
     </div>
-    <div id="friends-list"><div class="notif-empty">No friends yet</div></div>
+    <div id="friends-list"></div>
   </div>
 
   <!-- ── Profile Settings Modal ─────────────────────────── -->
