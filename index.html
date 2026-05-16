@@ -7,6 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="/robot-builder.js"></script>
   <style>
     /* ── Reset & base ─────────────────────────────────────── */
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -688,39 +690,9 @@
       border-bottom: 1px solid rgba(255,255,255,0.04);
     }
     .sap-robot-wrap {
-      position: relative; width: 190px; height: 268px;
-      margin: 14px auto 10px; flex-shrink: 0;
+      position: relative; width: 226px; height: 310px;
+      margin: 10px auto 8px; flex-shrink: 0;
     }
-    .sap-robot-svg { width: 190px; height: 268px; display: block; }
-    .sap-slot {
-      position: absolute; width: 34px; height: 34px; border-radius: 9px;
-      border: 1px dashed rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.02);
-      display: flex; align-items: center; justify-content: center;
-      transition: all .22s;
-    }
-    .sap-slot.has-item {
-      border: 1px solid rgba(255,215,0,0.45); border-style: solid;
-      background: rgba(255,215,0,0.07);
-      box-shadow: 0 0 14px rgba(255,215,0,0.12);
-    }
-    .sap-slot svg { width: 26px; height: 26px; }
-    .sap-slot-hat      { top:  -2px; left:  78px; }
-    .sap-slot-eyewear  { top:  28px; left:  78px; }
-    .sap-slot-face     { top:  52px; left:  78px; }
-    .sap-slot-neck     { top:  82px; left:  78px; }
-    .sap-slot-shl      { top:  96px; left:   4px; }
-    .sap-slot-shr      { top:  96px; right:  4px; }
-    .sap-slot-back     { top: 112px; left:  78px; }
-    .sap-slot-wrist    { top: 154px; left:   2px; }
-    .sap-slot-feet     { top: 232px; left:  78px; }
-    .sap-slot-lbl {
-      position: absolute; bottom: -14px; left: 50%;
-      transform: translateX(-50%); white-space: nowrap;
-      font-size: 6px; letter-spacing: 1px; color: #1e1e36;
-      text-transform: uppercase; pointer-events: none;
-    }
-    .sap-slot.has-item .sap-slot-lbl { color: rgba(255,215,0,0.45); }
     .sap-divider {
       width: calc(100% - 28px); height: 1px;
       background: rgba(255,255,255,0.04); margin: 4px 14px 8px;
@@ -1070,8 +1042,6 @@
       .shop-avatar-panel { width: 100%; min-width: unset; flex-direction: row; height: auto; border-right: none; border-bottom: 1px solid rgba(255,215,0,0.09); padding: 10px 14px; gap: 12px; }
       .sap-header { display: none; }
       .sap-robot-wrap { width: 90px; height: 126px; margin: 0; flex-shrink: 0; }
-      .sap-robot-svg { width: 90px; height: 126px; }
-      .sap-slot { transform: scale(0.55); transform-origin: top left; }
       .sap-equipped-list { max-height: 90px; }
       .sap-list-header { display: none; }
       .sap-deselect-btn { margin: 0; width: auto; padding: 8px 14px; }
@@ -2319,53 +2289,8 @@
       <div class="shop-avatar-panel">
         <div class="sap-header">YOUR AVATAR</div>
         <div class="sap-robot-wrap" id="sap-robot-wrap">
-          <!-- Robot silhouette SVG -->
-          <svg class="sap-robot-svg" viewBox="0 0 190 268" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- Head -->
-            <rect x="58" y="18" width="74" height="66" rx="9" fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.10)" stroke-width="1.5"/>
-            <!-- Visor slit -->
-            <rect x="68" y="42" width="54" height="13" rx="3" fill="rgba(255,215,0,0.04)" stroke="rgba(255,215,0,0.15)" stroke-width="1"/>
-            <!-- Eyes -->
-            <circle cx="84" cy="48" r="4" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
-            <circle cx="106" cy="48" r="4" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
-            <!-- Jaw -->
-            <rect x="66" y="68" width="58" height="14" rx="4" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-            <!-- Neck -->
-            <rect x="82" y="84" width="26" height="16" rx="4" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-            <!-- Torso -->
-            <rect x="44" y="100" width="102" height="94" rx="10" fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.09)" stroke-width="1.5"/>
-            <!-- Chest core -->
-            <rect x="77" y="116" width="36" height="36" rx="6" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-            <!-- Core cross -->
-            <line x1="95" y1="119" x2="95" y2="149" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-            <line x1="80" y1="134" x2="110" y2="134" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-            <!-- Torso seams -->
-            <line x1="44" y1="128" x2="146" y2="128" stroke="rgba(255,255,255,0.05)" stroke-width="0.8"/>
-            <line x1="44" y1="158" x2="146" y2="158" stroke="rgba(255,255,255,0.05)" stroke-width="0.8"/>
-            <!-- Left arm -->
-            <rect x="10" y="105" width="28" height="78" rx="8" fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
-            <rect x="13" y="142" width="22" height="14" rx="3" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-            <!-- Right arm -->
-            <rect x="152" y="105" width="28" height="78" rx="8" fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
-            <rect x="155" y="142" width="22" height="14" rx="3" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-            <!-- Left leg -->
-            <rect x="56" y="196" width="36" height="68" rx="8" fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
-            <!-- Right leg -->
-            <rect x="98" y="196" width="36" height="68" rx="8" fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
-            <!-- Feet -->
-            <rect x="52" y="256" width="44" height="10" rx="4" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-            <rect x="94" y="256" width="44" height="10" rx="4" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-          </svg>
-          <!-- Item slots overlaid on robot -->
-          <div class="sap-slot sap-slot-hat" id="sap-slot-hats"><span class="sap-slot-lbl">HAT</span></div>
-          <div class="sap-slot sap-slot-eyewear" id="sap-slot-eyewear"><span class="sap-slot-lbl">VISOR</span></div>
-          <div class="sap-slot sap-slot-face" id="sap-slot-face"><span class="sap-slot-lbl">FACE</span></div>
-          <div class="sap-slot sap-slot-neck" id="sap-slot-neck"><span class="sap-slot-lbl">NECK</span></div>
-          <div class="sap-slot sap-slot-shl" id="sap-slot-shoulders"><span class="sap-slot-lbl">SHLD</span></div>
-          <div class="sap-slot sap-slot-shr" id="sap-slot-shoulders-r"></div>
-          <div class="sap-slot sap-slot-back" id="sap-slot-back"><span class="sap-slot-lbl">BACK</span></div>
-          <div class="sap-slot sap-slot-wrist" id="sap-slot-wrist"><span class="sap-slot-lbl">WRIST</span></div>
-          <div class="sap-slot sap-slot-feet" id="sap-slot-feet"><span class="sap-slot-lbl">FEET</span></div>
+          <canvas id="shop-robot-canvas" style="width:100%;height:100%;display:block;cursor:grab;border-radius:10px;"></canvas>
+          <div id="sap-preview-badge" style="display:none;position:absolute;bottom:6px;left:50%;transform:translateX(-50%);background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.4);border-radius:6px;padding:3px 10px;font-size:8px;letter-spacing:2px;color:#ffd700;font-weight:800;pointer-events:none;">PREVIEW</div>
         </div>
 
         <div class="sap-divider"></div>
@@ -3874,6 +3799,159 @@
       } catch { /* use cached */ }
     }
 
+    /* ── Shop 3D Robot Preview ──────────────────────────────── */
+    let _sr = null;   // { renderer, scene, camera, rob, yaw, raf }
+    let _srPreviewIds = [];  // currently previewed accessory node lists
+
+    function _initShopCanvas() {
+      if (!window.THREE || !window.buildRobot) return;
+      const canvas = document.getElementById('shop-robot-canvas');
+      if (!canvas) return;
+      if (_sr) return; // already initialized
+
+      const W = 226, H = 310;
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer.setSize(W, H, false);
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      renderer.shadowMap.enabled = false;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 100);
+      camera.position.set(0, 1.28, 3.9);
+      camera.lookAt(0, 1.15, 0);
+
+      // Lighting — mirrors game lighting
+      scene.add(new THREE.AmbientLight(0x506070, 0.55));
+      const dl1 = new THREE.DirectionalLight(0xb0c8e0, 1.1);
+      dl1.position.set(2, 4, 3); scene.add(dl1);
+      const dl2 = new THREE.DirectionalLight(0x2244aa, 0.35);
+      dl2.position.set(-2, 1, -3); scene.add(dl2);
+      const rim = new THREE.DirectionalLight(0x88aacc, 0.5);
+      rim.position.set(0, 2, -4); scene.add(rim);
+      const fill = new THREE.PointLight(0x4466aa, 0.3, 8);
+      fill.position.set(0, 1, 2); scene.add(fill);
+
+      // Ground reflection plane (subtle)
+      const floor = new THREE.Mesh(
+        new THREE.CircleGeometry(1.4, 32),
+        new THREE.MeshStandardMaterial({ color: 0x080818, roughness: 0.9, metalness: 0.1 })
+      );
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = -0.74;
+      scene.add(floor);
+
+      // Build the robot
+      const rob = buildRobot();
+      rob.group.position.set(0, -0.74, 0);
+      rob.group.rotation.y = Math.PI; // face toward camera
+      rob._accNodes = [];   // nodes added for equipped accessories
+      rob._prevNodes = [];  // nodes added for preview accessories
+      scene.add(rob.group);
+
+      let yaw = Math.PI;
+      let autoRotate = true;
+
+      // Drag to orbit
+      let dragging = false, lastX = 0;
+      canvas.addEventListener('mousedown', e => {
+        dragging = true; lastX = e.clientX;
+        autoRotate = false;
+        canvas.style.cursor = 'grabbing';
+      });
+      window.addEventListener('mousemove', e => {
+        if (!dragging) return;
+        yaw += (e.clientX - lastX) * 0.008;
+        rob.group.rotation.y = yaw;
+        lastX = e.clientX;
+      });
+      window.addEventListener('mouseup', () => {
+        if (dragging) { dragging = false; canvas.style.cursor = 'grab'; }
+      });
+
+      // Touch drag
+      let lastTX = 0;
+      canvas.addEventListener('touchstart', e => { lastTX = e.touches[0].clientX; autoRotate = false; });
+      canvas.addEventListener('touchmove', e => {
+        yaw += (e.touches[0].clientX - lastTX) * 0.010;
+        rob.group.rotation.y = yaw;
+        lastTX = e.touches[0].clientX;
+      });
+
+      let raf;
+      function animate() {
+        raf = requestAnimationFrame(animate);
+        if (autoRotate) { yaw += 0.003; rob.group.rotation.y = yaw; }
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      _sr = { renderer, scene, camera, rob, yaw, raf, autoRotate };
+    }
+
+    function _srAddAcc(accessoryId, isPreview) {
+      if (!_sr) return [];
+      const rob = _sr.rob;
+      const gBefore  = rob.group.children.length;
+      const aLBefore = rob.armGroupL ? rob.armGroupL.children.length : 0;
+      addRobotAccessory(rob, accessoryId);
+      const gNew  = rob.group.children.slice(gBefore);
+      const aLNew = rob.armGroupL ? rob.armGroupL.children.slice(aLBefore) : [];
+      const nodes = [...gNew, ...aLNew];
+      if (isPreview) {
+        nodes.forEach(child => child.traverse(o => {
+          if (o.isMesh) {
+            o.material = o.material.clone();
+            o.material.transparent = true;
+            o.material.opacity = 0.62;
+          }
+        }));
+      }
+      return nodes;
+    }
+
+    function _srClearNodes(nodeList) {
+      if (!_sr) return;
+      const rob = _sr.rob;
+      nodeList.forEach(n => {
+        if (n.parent) n.parent.remove(n);
+      });
+    }
+
+    function _refreshShopRobot() {
+      if (!_sr) return;
+      const rob = _sr.rob;
+      _srClearNodes(rob._accNodes);
+      rob._accNodes = [];
+      for (const id of _equippedItems) {
+        if (id.startsWith('emote_')) continue;
+        const it = SHOP_ITEMS.find(x => x.id === id);
+        if (!it || it.cat === 'attachments') continue;
+        const nodes = _srAddAcc(id, false);
+        rob._accNodes.push(...nodes);
+      }
+    }
+
+    function _shopPreviewItem(id) {
+      if (!_sr) return;
+      const rob = _sr.rob;
+      _srClearNodes(rob._prevNodes);
+      rob._prevNodes = [];
+      const it = SHOP_ITEMS.find(x => x.id === id);
+      if (!it || it.cat === 'attachments' || it.cat === 'emotes') return;
+      const badge = document.getElementById('sap-preview-badge');
+      if (badge) badge.style.display = 'block';
+      const nodes = _srAddAcc(id, true);
+      rob._prevNodes.push(...nodes);
+    }
+
+    function _shopClearPreview() {
+      if (!_sr) return;
+      _srClearNodes(_sr.rob._prevNodes);
+      _sr.rob._prevNodes = [];
+      const badge = document.getElementById('sap-preview-badge');
+      if (badge) badge.style.display = 'none';
+    }
+
     function openShop() {
       _bucks = parseInt(localStorage.getItem('ah_bucks') || '0');
       _ownedItems    = new Set(JSON.parse(localStorage.getItem('ah_owned')    || '[]'));
@@ -3883,33 +3961,17 @@
       _renderShopGrid();
       _renderShopAvatar();
       document.getElementById('shop-overlay').classList.add('open');
+      // Initialize 3D canvas on first open (deferred so shop is visible first)
+      setTimeout(() => {
+        _initShopCanvas();
+        _refreshShopRobot();
+      }, 80);
     }
     function closeShop() { closeGiftPanel(); document.getElementById('shop-overlay').classList.remove('open'); }
     document.getElementById('shop-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeShop(); });
 
     /* ── Avatar preview ─────────────────────────────────── */
     function _renderShopAvatar() {
-      // slot key → element id map
-      const slotMap = {
-        hats: 'sap-slot-hats', eyewear: 'sap-slot-eyewear',
-        face: 'sap-slot-face', neck: 'sap-slot-neck',
-        shoulders: 'sap-slot-shoulders', back: 'sap-slot-back',
-        wrist: 'sap-slot-wrist', feet: 'sap-slot-feet',
-      };
-      // Clear all slots
-      Object.values(slotMap).forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.classList.remove('has-item');
-        // preserve label spans, remove icon content
-        const lbl = el.querySelector('.sap-slot-lbl');
-        el.innerHTML = '';
-        if (lbl) el.appendChild(lbl);
-      });
-      // Also clear mirror shoulder slot
-      const shr = document.getElementById('sap-slot-shoulders-r');
-      if (shr) { shr.classList.remove('has-item'); shr.innerHTML = ''; }
-
       const equippedCosmetics = [];
       for (const id of _equippedItems) {
         if (id.startsWith('emote_') || id.startsWith('attach_') ||
@@ -3917,30 +3979,6 @@
         const it = SHOP_ITEMS.find(x => x.id === id);
         if (!it) continue;
         equippedCosmetics.push(it);
-        const slotId = slotMap[it.cat];
-        if (slotId) {
-          const el = document.getElementById(slotId);
-          if (el) {
-            const lbl = el.querySelector('.sap-slot-lbl');
-            el.innerHTML = '';
-            if (lbl) el.appendChild(lbl);
-            const iconWrap = document.createElement('div');
-            iconWrap.style.cssText = 'width:26px;height:26px;display:flex;align-items:center;justify-content:center;';
-            iconWrap.innerHTML = getItemSvg(it);
-            const svg = iconWrap.querySelector('svg');
-            if (svg) { svg.style.width='26px'; svg.style.height='26px'; }
-            el.insertBefore(iconWrap, lbl);
-            el.classList.add('has-item');
-            // Mirror shoulders to right slot too
-            if (it.cat === 'shoulders') {
-              const shr2 = document.getElementById('sap-slot-shoulders-r');
-              if (shr2) {
-                shr2.innerHTML = iconWrap.cloneNode(true).outerHTML;
-                shr2.classList.add('has-item');
-              }
-            }
-          }
-        }
       }
 
       // Equipped list
@@ -3965,6 +4003,7 @@
       // Deselect button
       const btn = document.getElementById('sap-deselect-btn');
       if (btn) btn.disabled = equippedCosmetics.length === 0;
+      _refreshShopRobot();
     }
 
     /* ── Deselect all cosmetics ─────────────────────────── */
@@ -4139,7 +4178,9 @@
             usesBadge = `<div class="attach-uses-hint">2 uses</div>`;
           }
         }
-        return `<div class="shop-card${equipped?' is-equipped':''}">
+        const previewAttr = (it.cat !== 'attachments' && it.cat !== 'emotes')
+          ? `onmouseenter="_shopPreviewItem('${it.id}')" onmouseleave="_shopClearPreview()"` : '';
+        return `<div class="shop-card${equipped?' is-equipped':''}" ${previewAttr}>
           ${gunBadge}
           <div class="shop-card-icon">${getItemSvg(it)}</div>
           ${_rarityBadge(it.rar)}
