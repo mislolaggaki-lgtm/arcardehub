@@ -800,6 +800,7 @@
       gap: 18px; padding: 28px 32px;
     }
     .shop-card {
+      position: relative;
       background: #141420; border: 1px solid rgba(255,255,255,0.06);
       border-radius: 10px; padding: 20px 16px 16px;
       display: flex; flex-direction: column; align-items: center; gap: 10px;
@@ -814,6 +815,26 @@
       text-transform: uppercase; color: #c0c0ee; text-align: center;
     }
     .shop-card-desc { font-size: 11px; color: #3a3a58; text-align: center; line-height: 1.5; }
+    .attach-gun-badge {
+      position: absolute; top: 7px; left: 7px;
+      font-size: 8px; font-weight: 800; letter-spacing: 1.5px;
+      padding: 2px 6px; border-radius: 4px;
+      text-transform: uppercase; color: #fff;
+      pointer-events: none;
+    }
+    .attach-gun-badge.pistol  { background: #1976d2; }
+    .attach-gun-badge.smg     { background: #388e3c; }
+    .attach-gun-badge.minigun { background: #c62828; }
+    .attach-gun-badge.sniper  { background: #6a1b9a; }
+    .attach-uses {
+      display: flex; gap: 5px; align-items: center; justify-content: center;
+    }
+    .attach-use-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+    }
+    .attach-use-dot.full  { background: #4caf50; box-shadow: 0 0 5px #4caf5077; }
+    .attach-use-dot.empty { background: #1a1a1a; border: 1px solid #444; }
+    .attach-uses-hint { font-size: 9px; color: #3a3a58; letter-spacing: 1px; text-transform: uppercase; text-align: center; }
     .shop-btn {
       width: 100%; padding: 9px 0;
       border-radius: 6px; border: none;
@@ -2367,12 +2388,41 @@
       visor2:'Face visor equipped', moustache:'Distinguished', respirator:'Filtered aggression',
       tattoo:'Permanent commitment', blush:'Adorably deadly', fangs:'Bite back',
       silencer:'Spread −45% — stay on target', scope:'Enhanced zoom depth for sniping', extmag:'+50% magazine capacity',
+      sil:'Spread −45% — near-silent shots',
+      laser:'Spread −30% — tight beam aim assist',
+      brake:'Recoil kick −25% — stay on target',
+      comp:'Spread −20%, kick −15% — balanced control',
+      foregrip:'Spread −25% — firm vertical grip',
+      bipod:'Spread −35% — deployable field stability',
+      suppressor:'Spread −50% — fully suppressed fire',
+      rapidfire:'Fire rate +15% — faster trigger group',
+      overclocked:'Fire rate +20% — maximum cycle speed',
+      quickbolt:'Fire rate +20% — upgraded bolt carrier',
+      longbarrel:'Damage +15% — extended barrel range',
+      heavybarrel:'Damage +15% — sustained heavy fire',
+      titanbarrel:'Damage +25% — titanium-grade barrel',
+      hollowpoint:'Damage +20% — expanding hollow rounds',
+      armor:'Damage +25% — armor-piercing rounds',
+      match:'Damage +20% — precision match-grade ammo',
+      quickmag:'+30% magazine capacity — swift reload',
+      infernomag:'+75% magazine capacity — inferno drum',
+      flashhider:'Removes muzzle flash — stay concealed',
+      quickdraw:'Faster aim-down-sights — rapid draw',
+      stockless:'Compact folding stock — lighter carry',
+      tracer:'Tracer rounds — track your shots visually',
+      tracker:'Highlights hit targets briefly on impact',
+      nightforce:'Ultra-zoom scope — extreme long range',
+      cheekrest:'Kick −35% — precision rifle cheek weld',
+      comprecoil:'Recoil buffer −30% — heavy suppression',
       boots:'Ground-level power', heels:'Elevated threat level', skates:'Glide to victory',
       hoverboots:'Hover mode active', claws:'Foot claws engaged', fins:'Aquatic mode',
       springs:'Bounce into battle', platforms:'Elevated status', hboots:'Holographic soles',
     };
-    function _si(id,name,cat,type,col,rar,customPrice){
-      return {id,name,cat,type,col,rar,price:customPrice||R[rar],desc:D[type]||''};
+    const _ATTACH_P = { common:200, rare:350, epic:600, legendary:1200 };
+    function _si(id,name,cat,type,col,rar,customPrice,gun){
+      const effectKey = type.split('_')[0];
+      const price = gun ? _ATTACH_P[rar] : (customPrice || R[rar]);
+      return {id,name,cat,type,col,rar,price,desc:D[type]||D[effectKey]||'',gun:gun||null};
     }
     const SHOP_ITEMS = [
       // ── HATS (common=50, rare=100, epic=200, legendary=500) ──
@@ -2851,9 +2901,64 @@
       _si('hboots_red_epic',       'Holo Boots (Red)',     'feet','hboots','#c0392b','epic'),
       _si('hboots_legendary_legendary','Holo Boots (Legendary)','feet','hboots','#ff00cc','legendary'),
       // ── WEAPON ATTACHMENTS ──
-      _si('silencer_rare',         'Silencer',             'attachments','silencer','#666','rare',    500),
-      _si('scope_epic',            'Enhanced Scope',       'attachments','scope',   '#4ab4ff','epic', 1000),
-      _si('extmag_rare',           'Extended Mag',         'attachments','extmag',  '#88ff88','rare',  500),
+      _si('silencer_rare',         'Silencer',             'attachments','silencer','#666','rare',    300),
+      _si('scope_epic',            'Enhanced Scope',       'attachments','scope',   '#4ab4ff','epic',  600),
+      _si('extmag_rare',           'Extended Mag',         'attachments','extmag',  '#88ff88','rare',  300),
+      // ── GUN-SPECIFIC ATTACHMENTS: PISTOL ──
+      _si('sil_pistol_rare',       'Silencer (Pistol)',        'attachments','sil_pistol',   '#888','rare',    600, 'pistol'),
+      _si('scope_pistol_rare',     'Red Dot (Pistol)',         'attachments','scope_pistol', '#4ab4ff','rare',600, 'pistol'),
+      _si('extmag_pistol_rare',    'Ext Mag (Pistol)',         'attachments','extmag_pistol','#88ff88','rare',600, 'pistol'),
+      _si('laser_pistol_rare',     'Laser Sight (Pistol)',     'attachments','laser_pistol', '#f44336','rare',600, 'pistol'),
+      _si('brake_pistol_common',   'Muzzle Brake (Pistol)',    'attachments','brake_pistol', '#aaa','common',350, 'pistol'),
+      _si('comp_pistol_rare',      'Compensator (Pistol)',     'attachments','comp_pistol',  '#78909c','rare',600, 'pistol'),
+      _si('longbarrel_pistol_rare','Long Barrel (Pistol)',     'attachments','longbarrel_pistol','#8d6e63','rare',600, 'pistol'),
+      _si('flashhider_pistol_common','Flash Hider (Pistol)',   'attachments','flashhider_pistol','#bdbdbd','common',350, 'pistol'),
+      _si('quickdraw_pistol_rare', 'Quick Draw (Pistol)',      'attachments','quickdraw_pistol','#ffcc02','rare',600, 'pistol'),
+      _si('hollowpoint_pistol_epic','Hollow Point (Pistol)',   'attachments','hollowpoint_pistol','#ff7043','epic',1000, 'pistol'),
+      _si('rapidfire_pistol_epic', 'Rapid Fire (Pistol)',      'attachments','rapidfire_pistol','#ff5722','epic',1000, 'pistol'),
+      _si('armor_pistol_epic',     'Armor Pierce (Pistol)',    'attachments','armor_pistol', '#90a4ae','epic',1000, 'pistol'),
+      _si('tracer_pistol_legendary','Tracer Rounds (Pistol)',  'attachments','tracer_pistol','#ff00cc','legendary',2000, 'pistol'),
+      // ── GUN-SPECIFIC ATTACHMENTS: SMG ──
+      _si('sil_smg_rare',          'Silencer (SMG)',           'attachments','sil_smg',      '#888','rare',    600, 'smg'),
+      _si('scope_smg_rare',        'Holo Sight (SMG)',         'attachments','scope_smg',    '#4ab4ff','rare',600, 'smg'),
+      _si('extmag_smg_rare',       'Ext Mag (SMG)',            'attachments','extmag_smg',   '#88ff88','rare',600, 'smg'),
+      _si('laser_smg_rare',        'Laser Sight (SMG)',        'attachments','laser_smg',    '#f44336','rare',600, 'smg'),
+      _si('foregrip_smg_rare',     'Foregrip (SMG)',           'attachments','foregrip_smg', '#6d4c41','rare',600, 'smg'),
+      _si('brake_smg_common',      'Muzzle Brake (SMG)',       'attachments','brake_smg',    '#aaa','common',350, 'smg'),
+      _si('comp_smg_rare',         'Compensator (SMG)',        'attachments','comp_smg',     '#78909c','rare',600, 'smg'),
+      _si('quickmag_smg_rare',     'Quick Mag (SMG)',          'attachments','quickmag_smg', '#aed581','rare',600, 'smg'),
+      _si('rapidfire_smg_epic',    'Rapid Fire (SMG)',         'attachments','rapidfire_smg','#ff5722','epic',1000, 'smg'),
+      _si('longbarrel_smg_rare',   'Long Barrel (SMG)',        'attachments','longbarrel_smg','#8d6e63','rare',600, 'smg'),
+      _si('suppressor_smg_epic',   'Suppressor (SMG)',         'attachments','suppressor_smg','#546e7a','epic',1000, 'smg'),
+      _si('stockless_smg_rare',    'Stockless (SMG)',          'attachments','stockless_smg','#b0bec5','rare',600, 'smg'),
+      _si('tracer_smg_legendary',  'Tracer Rounds (SMG)',      'attachments','tracer_smg',   '#ff00cc','legendary',2000, 'smg'),
+      // ── GUN-SPECIFIC ATTACHMENTS: MINIGUN ──
+      _si('sil_minigun_epic',      'Silencer (Minigun)',       'attachments','sil_minigun',  '#888','epic',   1000, 'minigun'),
+      _si('extmag_minigun_epic',   'Ext Mag (Minigun)',        'attachments','extmag_minigun','#88ff88','epic',1000, 'minigun'),
+      _si('bipod_minigun_rare',    'Bipod (Minigun)',          'attachments','bipod_minigun','#795548','rare',600, 'minigun'),
+      _si('laser_minigun_rare',    'Laser Sight (Minigun)',    'attachments','laser_minigun','#f44336','rare',600, 'minigun'),
+      _si('brake_minigun_rare',    'Muzzle Brake (Minigun)',   'attachments','brake_minigun','#aaa','rare',  600, 'minigun'),
+      _si('rapidfire_minigun_epic','Rapid Fire (Minigun)',     'attachments','rapidfire_minigun','#ff5722','epic',1000, 'minigun'),
+      _si('heavybarrel_minigun_epic','Heavy Barrel (Minigun)', 'attachments','heavybarrel_minigun','#5d4037','epic',1000, 'minigun'),
+      _si('infernomag_minigun_legendary','Inferno Mag (Minigun)','attachments','infernomag_minigun','#ff6d00','legendary',2000, 'minigun'),
+      _si('overclocked_minigun_legendary','Overclocked (Minigun)','attachments','overclocked_minigun','#ffd600','legendary',2000, 'minigun'),
+      _si('comprecoil_minigun_rare','Comp Recoil (Minigun)',   'attachments','comprecoil_minigun','#78909c','rare',600, 'minigun'),
+      _si('tracker_minigun_epic',  'Tracker (Minigun)',        'attachments','tracker_minigun','#66bb6a','epic',1000, 'minigun'),
+      _si('titanbarrel_minigun_legendary','Titan Barrel (Minigun)','attachments','titanbarrel_minigun','#b0bec5','legendary',2000, 'minigun'),
+      // ── GUN-SPECIFIC ATTACHMENTS: SNIPER ──
+      _si('sil_sniper_epic',       'Silencer (Sniper)',        'attachments','sil_sniper',   '#888','epic',   1000, 'sniper'),
+      _si('scope_sniper_epic',     '10x Scope (Sniper)',       'attachments','scope_sniper', '#4ab4ff','epic',1000, 'sniper'),
+      _si('extmag_sniper_rare',    'Ext Mag (Sniper)',         'attachments','extmag_sniper','#88ff88','rare',600, 'sniper'),
+      _si('bipod_sniper_rare',     'Bipod (Sniper)',           'attachments','bipod_sniper', '#795548','rare',600, 'sniper'),
+      _si('laser_sniper_rare',     'Laser Sight (Sniper)',     'attachments','laser_sniper', '#f44336','rare',600, 'sniper'),
+      _si('brake_sniper_rare',     'Muzzle Brake (Sniper)',    'attachments','brake_sniper', '#aaa','rare',  600, 'sniper'),
+      _si('longbarrel_sniper_epic','Long Barrel (Sniper)',     'attachments','longbarrel_sniper','#8d6e63','epic',1000, 'sniper'),
+      _si('quickbolt_sniper_epic', 'Quick Bolt (Sniper)',      'attachments','quickbolt_sniper','#ffcc02','epic',1000, 'sniper'),
+      _si('match_sniper_epic',     'Match Ammo (Sniper)',      'attachments','match_sniper', '#e0e0e0','epic',1000, 'sniper'),
+      _si('flashhider_sniper_rare','Flash Hider (Sniper)',     'attachments','flashhider_sniper','#bdbdbd','rare',600, 'sniper'),
+      _si('cheekrest_sniper_rare', 'Cheek Rest (Sniper)',      'attachments','cheekrest_sniper','#a1887f','rare',600, 'sniper'),
+      _si('nightforce_sniper_legendary','NightForce (Sniper)', 'attachments','nightforce_sniper','#1a237e','legendary',2000, 'sniper'),
+      _si('armor_sniper_legendary','Armor Pierce (Sniper)',    'attachments','armor_sniper', '#90a4ae','legendary',2000, 'sniper'),
       // ── EMOTES ──
       _si('emote_wave',       'Wave',       'emotes','emote_wave',       '#64b5f6','common', 300),
       _si('emote_dance',      'Dance',      'emotes','emote_dance',      '#ba68c8','rare',   400),
@@ -3011,6 +3116,33 @@
       silencer:    c=>`<svg viewBox="0 0 64 64"><rect x="6" y="27" width="44" height="10" rx="3" fill="${c}"/><rect x="46" y="20" width="14" height="24" rx="4" fill="${_dk(c)}"/><rect x="48" y="23" width="10" height="3" rx="1" fill="${_lt(c)}" opacity="0.5"/><rect x="48" y="29" width="10" height="3" rx="1" fill="${_lt(c)}" opacity="0.5"/><rect x="48" y="35" width="10" height="3" rx="1" fill="${_lt(c)}" opacity="0.5"/><circle cx="9" cy="32" r="4" fill="${_lt(c)}" opacity="0.5"/></svg>`,
       scope:       c=>`<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="22" fill="none" stroke="${c}" stroke-width="4"/><circle cx="32" cy="32" r="15" fill="${c}" opacity="0.15"/><line x1="32" y1="10" x2="32" y2="54" stroke="${c}" stroke-width="2"/><line x1="10" y1="32" x2="54" y2="32" stroke="${c}" stroke-width="2"/><circle cx="32" cy="32" r="4" fill="${c}" opacity="0.7"/><rect x="10" y="28" width="9" height="8" rx="3" fill="${c}"/><rect x="45" y="28" width="9" height="8" rx="3" fill="${c}"/></svg>`,
       extmag:      c=>`<svg viewBox="0 0 64 64"><rect x="20" y="6" width="24" height="52" rx="5" fill="${c}"/><rect x="16" y="6" width="32" height="10" rx="4" fill="${_dk(c)}"/>${[20,30,40].map(y=>`<rect x="24" y="${y}" width="6" height="5" rx="1" fill="${_dk(c)}" opacity="0.55"/><rect x="34" y="${y}" width="6" height="5" rx="1" fill="${_dk(c)}" opacity="0.55"/>`).join('')}</svg>`,
+      // Gun-specific attachment effect SVGs (keyed by effect prefix for fallback lookup)
+      sil:         c=>`<svg viewBox="0 0 64 64"><rect x="4" y="28" width="40" height="8" rx="2" fill="${c}"/><rect x="40" y="19" width="18" height="26" rx="5" fill="${_dk(c)}"/>${[23,31,39].map(y=>`<rect x="43" y="${y}" width="12" height="2" rx="1" fill="${_lt(c)}" opacity="0.55"/>`).join('')}<circle cx="7" cy="32" r="3" fill="${_lt(c)}" opacity="0.6"/></svg>`,
+      laser:       c=>`<svg viewBox="0 0 64 64"><rect x="10" y="28" width="44" height="8" rx="3" fill="${c}"/><rect x="10" y="24" width="18" height="16" rx="4" fill="${_dk(c)}"/><circle cx="54" cy="32" r="5" fill="${_lt(c)}" opacity="0.9"/><line x1="6" y1="32" x2="14" y2="32" stroke="${_lt(c)}" stroke-width="2" opacity="0.7"/><circle cx="54" cy="32" r="2" fill="white" opacity="0.8"/></svg>`,
+      brake:       c=>`<svg viewBox="0 0 64 64"><rect x="8" y="28" width="36" height="8" rx="2" fill="${c}"/><rect x="40" y="21" width="16" height="22" rx="4" fill="${_dk(c)}"/>${[25,31,37].map(y=>`<rect x="42" y="${y}" width="5" height="3" rx="1" fill="${_lt(c)}" opacity="0.6"/><rect x="51" y="${y}" width="4" height="3" rx="1" fill="${_lt(c)}" opacity="0.6"/>`).join('')}</svg>`,
+      comp:        c=>`<svg viewBox="0 0 64 64"><rect x="6" y="29" width="40" height="6" rx="2" fill="${c}"/><rect x="42" y="22" width="14" height="20" rx="3" fill="${_dk(c)}"/>${[25,29,33,37].map(y=>`<rect x="44" y="${y}" width="10" height="2" rx="1" fill="${_lt(c)}" opacity="0.5"/>`).join('')}<circle cx="9" cy="32" r="3.5" fill="${_lt(c)}" opacity="0.5"/></svg>`,
+      foregrip:    c=>`<svg viewBox="0 0 64 64"><rect x="10" y="22" width="44" height="10" rx="3" fill="${c}"/><rect x="28" y="32" width="10" height="22" rx="4" fill="${_dk(c)}"/><rect x="26" y="50" width="14" height="5" rx="2" fill="${_lt(c)}" opacity="0.5"/></svg>`,
+      bipod:       c=>`<svg viewBox="0 0 64 64"><rect x="6" y="26" width="52" height="8" rx="3" fill="${c}"/><line x1="22" y1="34" x2="10" y2="58" stroke="${_dk(c)}" stroke-width="5" stroke-linecap="round"/><line x1="42" y1="34" x2="54" y2="58" stroke="${_dk(c)}" stroke-width="5" stroke-linecap="round"/><rect x="6" y="55" width="10" height="4" rx="2" fill="${_lt(c)}" opacity="0.6"/><rect x="48" y="55" width="10" height="4" rx="2" fill="${_lt(c)}" opacity="0.6"/></svg>`,
+      suppressor:  c=>`<svg viewBox="0 0 64 64"><rect x="4" y="28" width="38" height="8" rx="2" fill="${c}"/><rect x="38" y="17" width="22" height="30" rx="6" fill="${_dk(c)}"/>${[21,27,33,39].map(y=>`<rect x="41" y="${y}" width="16" height="2.5" rx="1" fill="${_lt(c)}" opacity="0.45"/>`).join('')}<circle cx="7" cy="32" r="3" fill="${_lt(c)}" opacity="0.55"/></svg>`,
+      rapidfire:   c=>`<svg viewBox="0 0 64 64"><polygon points="8,20 44,32 8,44" fill="${c}" opacity="0.9"/><polygon points="24,20 60,32 24,44" fill="${_dk(c)}" opacity="0.8"/><circle cx="52" cy="32" r="6" fill="${_lt(c)}" opacity="0.7"/></svg>`,
+      overclocked: c=>`<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="none" stroke="${c}" stroke-width="3"/><polygon points="32,12 38,28 54,28 42,38 46,54 32,44 18,54 22,38 10,28 26,28" fill="${c}" opacity="0.7"/><circle cx="32" cy="32" r="5" fill="${_lt(c)}"/></svg>`,
+      quickbolt:   c=>`<svg viewBox="0 0 64 64"><rect x="6" y="28" width="52" height="8" rx="3" fill="${c}"/><polygon points="40,14 54,32 40,50 36,50 50,32 36,14" fill="${_lt(c)}" opacity="0.8"/><polygon points="24,14 38,32 24,50 20,50 34,32 20,14" fill="${_lt(c)}" opacity="0.5"/></svg>`,
+      longbarrel:  c=>`<svg viewBox="0 0 64 64"><rect x="4" y="28" width="56" height="8" rx="3" fill="${c}"/><rect x="4" y="24" width="16" height="16" rx="3" fill="${_dk(c)}"/><circle cx="58" cy="32" r="4" fill="${_lt(c)}" opacity="0.7"/></svg>`,
+      heavybarrel: c=>`<svg viewBox="0 0 64 64"><rect x="4" y="26" width="52" height="12" rx="4" fill="${c}"/><rect x="4" y="22" width="18" height="20" rx="4" fill="${_dk(c)}"/><circle cx="56" cy="32" r="5" fill="${_lt(c)}" opacity="0.6"/><rect x="54" y="28" width="6" height="8" rx="2" fill="${_dk(c)}"/></svg>`,
+      titanbarrel: c=>`<svg viewBox="0 0 64 64"><rect x="4" y="26" width="54" height="12" rx="4" fill="${c}"/><rect x="4" y="20" width="20" height="24" rx="5" fill="${_dk(c)}"/><circle cx="58" cy="32" r="5" fill="${_lt(c)}" opacity="0.8"/>${[24,28,32,36].map(y=>`<rect x="56" y="${y}" width="4" height="2" rx="1" fill="${_dk(c)}"/>`).join('')}</svg>`,
+      hollowpoint: c=>`<svg viewBox="0 0 64 64"><rect x="24" y="8" width="16" height="40" rx="5" fill="${c}"/><polygon points="32,6 26,22 38,22" fill="${_lt(c)}" opacity="0.7"/><rect x="22" y="48" width="20" height="8" rx="3" fill="${_dk(c)}"/><circle cx="32" cy="18" r="5" fill="none" stroke="${_lt(c)}" stroke-width="2" opacity="0.8"/></svg>`,
+      armor:       c=>`<svg viewBox="0 0 64 64"><rect x="24" y="8" width="16" height="44" rx="4" fill="${c}"/><polygon points="32,4 24,20 40,20" fill="${_lt(c)}" opacity="0.8"/><rect x="20" y="50" width="24" height="8" rx="3" fill="${_dk(c)}"/><line x1="32" y1="8" x2="32" y2="50" stroke="${_lt(c)}" stroke-width="2" opacity="0.4"/></svg>`,
+      match:       c=>`<svg viewBox="0 0 64 64"><rect x="25" y="10" width="14" height="38" rx="4" fill="${c}"/><polygon points="32,6 27,18 37,18" fill="${_lt(c)}" opacity="0.9"/><rect x="22" y="48" width="20" height="8" rx="3" fill="${_dk(c)}"/><rect x="27" y="22" width="10" height="2" rx="1" fill="${_lt(c)}" opacity="0.5"/><rect x="27" y="28" width="10" height="2" rx="1" fill="${_lt(c)}" opacity="0.5"/></svg>`,
+      quickmag:    c=>`<svg viewBox="0 0 64 64"><rect x="18" y="6" width="28" height="48" rx="5" fill="${c}"/><rect x="14" y="6" width="36" height="11" rx="4" fill="${_dk(c)}"/>${[20,28,36].map(y=>`<rect x="22" y="${y}" width="8" height="5" rx="1" fill="${_dk(c)}" opacity="0.55"/><rect x="34" y="${y}" width="8" height="5" rx="1" fill="${_dk(c)}" opacity="0.55"/>`).join('')}<polygon points="46,46 58,32 46,18" fill="${_lt(c)}" opacity="0.7"/></svg>`,
+      infernomag:  c=>`<svg viewBox="0 0 64 64"><rect x="14" y="4" width="36" height="54" rx="6" fill="${c}"/><rect x="10" y="4" width="44" height="12" rx="5" fill="${_dk(c)}"/>${[18,24,30,36,42].map(y=>`<rect x="18" y="${y}" width="8" height="4" rx="1" fill="${_dk(c)}" opacity="0.5"/><rect x="30" y="${y}" width="8" height="4" rx="1" fill="${_dk(c)}" opacity="0.5"/><rect x="42" y="${y}" width="6" height="4" rx="1" fill="${_dk(c)}" opacity="0.5"/>`).join('')}</svg>`,
+      flashhider:  c=>`<svg viewBox="0 0 64 64"><rect x="6" y="28" width="42" height="8" rx="2" fill="${c}"/><rect x="44" y="22" width="14" height="20" rx="3" fill="${_dk(c)}"/>${[8,0,-8].map((a,i)=>`<line x1="51" y1="22" x2="${48+12*Math.sin((a+10)*Math.PI/180)}" y2="${10+12*Math.cos((a+10)*Math.PI/180)}" stroke="${_lt(c)}" stroke-width="3" stroke-linecap="round" opacity="0.5"/>`).join('')}</svg>`,
+      quickdraw:   c=>`<svg viewBox="0 0 64 64"><rect x="12" y="24" width="36" height="16" rx="5" fill="${c}"/><rect x="24" y="38" width="12" height="16" rx="4" fill="${_dk(c)}"/><polygon points="46,32 58,26 58,38" fill="${_lt(c)}" opacity="0.8"/><circle cx="18" cy="32" r="4" fill="${_lt(c)}" opacity="0.6"/></svg>`,
+      stockless:   c=>`<svg viewBox="0 0 64 64"><rect x="8" y="26" width="40" height="12" rx="4" fill="${c}"/><rect x="8" y="22" width="14" height="20" rx="4" fill="${_dk(c)}"/><rect x="44" y="26" width="12" height="12" rx="3" fill="${_lt(c)}" opacity="0.55"/></svg>`,
+      tracer:      c=>`<svg viewBox="0 0 64 64"><rect x="22" y="10" width="12" height="44" rx="4" fill="${c}"/><rect x="20" y="50" width="16" height="8" rx="3" fill="${_dk(c)}"/><line x1="28" y1="10" x2="56" y2="6" stroke="${_lt(c)}" stroke-width="2" stroke-dasharray="4 3" opacity="0.8"/><circle cx="57" cy="5" r="3" fill="${_lt(c)}" opacity="0.9"/></svg>`,
+      tracker:     c=>`<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="22" fill="none" stroke="${c}" stroke-width="3"/><circle cx="32" cy="32" r="14" fill="${c}" opacity="0.15"/><circle cx="32" cy="32" r="6" fill="${c}" opacity="0.6"/><line x1="32" y1="10" x2="32" y2="24" stroke="${c}" stroke-width="2"/><line x1="54" y1="32" x2="40" y2="32" stroke="${c}" stroke-width="2"/><polygon points="28,14 36,14 32,8" fill="${_lt(c)}" opacity="0.7"/></svg>`,
+      nightforce:  c=>`<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="none" stroke="${c}" stroke-width="5"/><circle cx="32" cy="32" r="16" fill="${c}" opacity="0.12"/><line x1="32" y1="8" x2="32" y2="56" stroke="${c}" stroke-width="1.5"/><line x1="8" y1="32" x2="56" y2="32" stroke="${c}" stroke-width="1.5"/><circle cx="32" cy="32" r="5" fill="${c}" opacity="0.75"/><rect x="6" y="28" width="8" height="8" rx="2" fill="${c}"/><rect x="50" y="28" width="8" height="8" rx="2" fill="${c}"/><rect x="28" y="6" width="8" height="8" rx="2" fill="${c}"/></svg>`,
+      cheekrest:   c=>`<svg viewBox="0 0 64 64"><rect x="6" y="26" width="52" height="10" rx="3" fill="${c}"/><rect x="6" y="22" width="26" height="18" rx="4" fill="${_dk(c)}"/><rect x="28" y="28" width="8" height="6" rx="2" fill="${_lt(c)}" opacity="0.55"/><rect x="48" y="30" width="14" height="6" rx="3" fill="${_lt(c)}" opacity="0.4"/></svg>`,
+      comprecoil:  c=>`<svg viewBox="0 0 64 64"><rect x="4" y="27" width="36" height="10" rx="3" fill="${c}"/><rect x="36" y="18" width="24" height="28" rx="6" fill="${_dk(c)}"/>${[22,28,34,40].map(y=>`<rect x="39" y="${y}" width="18" height="3" rx="1.5" fill="${_lt(c)}" opacity="0.5"/>`).join('')}<circle cx="7" cy="32" r="3" fill="${_lt(c)}" opacity="0.55"/></svg>`,
       emote_wave:   c=>`<svg viewBox="0 0 64 64"><text x="32" y="46" text-anchor="middle" font-size="40">👋</text><rect x="10" y="52" width="44" height="6" rx="3" fill="${c}" opacity="0.3"/></svg>`,
       emote_dance:  c=>`<svg viewBox="0 0 64 64"><text x="32" y="46" text-anchor="middle" font-size="40">💃</text><rect x="10" y="52" width="44" height="6" rx="3" fill="${c}" opacity="0.3"/></svg>`,
       emote_salute: c=>`<svg viewBox="0 0 64 64"><text x="32" y="46" text-anchor="middle" font-size="40">🫡</text><rect x="10" y="52" width="44" height="6" rx="3" fill="${c}" opacity="0.3"/></svg>`,
@@ -3249,11 +3381,23 @@
           const can = _bucks >= it.price;
           btn = `<button class="shop-btn buy${can?'':' disabled'}" onclick="buyItem('${it.id}')" ${can?'':'disabled'}>${BUCKS_ICON_SM} ${it.price}</button>`;
         }
+        const gunBadge = it.gun ? `<div class="attach-gun-badge ${it.gun}">${it.gun.toUpperCase()}</div>` : '';
+        let usesBadge = '';
+        if (it.cat === 'attachments') {
+          if (owned || equipped) {
+            const u = _getAttachUses(it.id);
+            usesBadge = `<div class="attach-uses">${'<span class="attach-use-dot full"></span>'.repeat(u)}${'<span class="attach-use-dot empty"></span>'.repeat(2 - u)}</div>`;
+          } else {
+            usesBadge = `<div class="attach-uses-hint">2 uses</div>`;
+          }
+        }
         return `<div class="shop-card${equipped?' is-equipped':''}">
+          ${gunBadge}
           <div class="shop-card-icon">${getItemSvg(it)}</div>
           ${_rarityBadge(it.rar)}
           <div class="shop-card-name">${it.name}</div>
           <div class="shop-card-desc">${it.desc}</div>
+          ${usesBadge}
           ${btn}
         </div>`;
       }).join('');
@@ -3266,6 +3410,16 @@
           <button class="shop-page-btn" onclick="_shopNext(${total})" ${curPage>=pages?'disabled':''}>NEXT ›</button>
         </div>` : '';
       document.getElementById('shop-grid').innerHTML = banner + grid + pagination;
+    }
+
+    function _getAttachUses(id) {
+      const map = JSON.parse(localStorage.getItem('ah_attach_uses') || '{}');
+      return map[id] !== undefined ? map[id] : 2;
+    }
+    function _setAttachUses(id, n) {
+      const map = JSON.parse(localStorage.getItem('ah_attach_uses') || '{}');
+      if (n <= 0) delete map[id]; else map[id] = n;
+      localStorage.setItem('ah_attach_uses', JSON.stringify(map));
     }
 
     async function buyItem(id) {
@@ -3284,6 +3438,7 @@
         } catch { _bucks -= it.price; }
       } else { _bucks -= it.price; }
       _ownedItems.add(id);
+      if (it.cat === 'attachments') _setAttachUses(id, 2);
       _saveBucksLocal(); updateBucksDisplay(); _renderShopGrid();
     }
 

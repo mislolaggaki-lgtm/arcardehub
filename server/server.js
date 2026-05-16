@@ -1079,9 +1079,10 @@ async function start() {
       const payload = verifyToken(req.headers.authorization);
       const { itemId } = req.body;
       const RARITY_PRICES = { common:50, rare:100, epic:200, legendary:500 };
+      const ATTACH_RARITY_PRICES = { common:200, rare:350, epic:600, legendary:1200 };
       const ITEM_PRICES = {
-        // Weapon attachments
-        silencer_rare:500, scope_epic:1000, extmag_rare:500,
+        // Generic weapon attachments
+        silencer_rare:300, scope_epic:600, extmag_rare:300,
         // Emotes — common (300)
         emote_wave:300, emote_salute:300, emote_point:300, emote_bow:300,
         emote_clap:300, emote_thumbsup:300, emote_facepalm:300, emote_shrug:300,
@@ -1103,8 +1104,11 @@ async function start() {
         emote_floss:500, emote_worm:500, emote_splits:500, emote_party:500,
       };
       if (!/^[a-z0-9_]+$/.test(itemId)) return res.status(400).json({ error: 'Invalid item.' });
-      const rarity = itemId.split('_').pop();
-      const price  = ITEM_PRICES[itemId] ?? RARITY_PRICES[rarity];
+      const parts  = itemId.split('_');
+      const rarity = parts[parts.length - 1];
+      // 3-part IDs like sil_pistol_rare are gun-specific attachments
+      const isGunAttach = parts.length >= 3 && ['pistol','smg','minigun','sniper'].includes(parts[parts.length - 2]);
+      const price  = ITEM_PRICES[itemId] ?? (isGunAttach ? ATTACH_RARITY_PRICES[rarity] : RARITY_PRICES[rarity]);
       if (!price) return res.status(400).json({ error: 'Invalid item.' });
       const { ObjectId } = require('mongodb');
       const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { bucks:1, ownedItems:1 } });
@@ -1133,6 +1137,24 @@ async function start() {
       if (!(user.ownedItems || []).includes(itemId)) return res.status(403).json({ error: 'Item not owned.' });
       const op = equipped ? { $addToSet: { equippedItems: itemId } } : { $pull: { equippedItems: itemId } };
       await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, op);
+      res.json({ success: true });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── DELETE /api/shop/attachment/:itemId ────────────────────
+  app.delete('/api/shop/attachment/:itemId', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { itemId } = req.params;
+      if (!/^[a-z0-9_]+$/.test(itemId)) return res.status(400).json({ error: 'Invalid item.' });
+      const { ObjectId } = require('mongodb');
+      await usersCol.updateOne(
+        { _id: new ObjectId(payload.userId) },
+        { $pull: { ownedItems: itemId, equippedItems: itemId } }
+      );
       res.json({ success: true });
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });

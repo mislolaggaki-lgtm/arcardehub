@@ -1764,13 +1764,54 @@ function findRemotePlayer(obj) {
 }
 
 // Called when game starts or gun is switched from start screen
-function getAttachments() {
-  const eq = new Set(JSON.parse(localStorage.getItem('ah_equipped') || '[]'));
-  return {
-    silencer: eq.has('silencer_rare'),
-    scope:    eq.has('scope_epic'),
-    extmag:   eq.has('extmag_rare'),
-  };
+function getAttachments(gunId) {
+  const eq = Array.from(JSON.parse(localStorage.getItem('ah_equipped') || '[]'));
+  const out = { spread:1, kick:1, damage:1, ammoMult:1, fireRateMult:1, scope:false, hasScope:false };
+
+  // Legacy generic attachments
+  if (eq.includes('silencer_rare')) { out.spread *= 0.38; }
+  if (eq.includes('scope_epic'))    { out.scope = true; out.hasScope = true; }
+  if (eq.includes('extmag_rare'))   { out.ammoMult *= 2.0; }
+
+  // Gun-specific attachments: only apply if they match current gun
+  eq.forEach(id => {
+    const parts = id.split('_');
+    if (parts.length < 3) return;
+    const effect = parts[0];
+    const gun    = parts[1];
+    if (gun !== gunId) return;
+    switch (effect) {
+      case 'sil':         out.spread       *= 0.38; break;
+      case 'scope':       out.scope = true; out.hasScope = true; break;
+      case 'extmag':      out.ammoMult     *= 2.0;  break;
+      case 'laser':       out.spread       *= 0.52; break;
+      case 'brake':       out.kick         *= 0.55; break;
+      case 'comp':        out.spread       *= 0.62; out.kick *= 0.68; break;
+      case 'foregrip':    out.spread       *= 0.58; break;
+      case 'bipod':       out.spread       *= 0.45; break;
+      case 'longbarrel':  out.damage       *= 1.30; break;
+      case 'heavybarrel': out.damage       *= 1.30; break;
+      case 'titanbarrel': out.damage       *= 1.45; break;
+      case 'flashhider':  out.spread       *= 0.70; break;
+      case 'quickdraw':   out.fireRateMult *= 1.25; break;
+      case 'hollowpoint': out.damage       *= 1.40; break;
+      case 'rapidfire':   out.fireRateMult *= 1.35; break;
+      case 'armor':       out.damage       *= 1.45; break;
+      case 'tracer':      /* visual only */ break;
+      case 'quickmag':    out.ammoMult     *= 1.65; break;
+      case 'infernomag':  out.ammoMult     *= 2.20; break;
+      case 'overclocked': out.fireRateMult *= 1.45; break;
+      case 'comprecoil':  out.kick         *= 0.48; break;
+      case 'tracker':     /* visual only */ break;
+      case 'suppressor':  out.spread       *= 0.32; break;
+      case 'stockless':   out.fireRateMult *= 1.18; break;
+      case 'quickbolt':   out.fireRateMult *= 1.40; break;
+      case 'match':       out.damage       *= 1.38; break;
+      case 'cheekrest':   out.kick         *= 0.42; break;
+      case 'nightforce':  out.scope = true; out.hasScope = true; break;
+    }
+  });
+  return out;
 }
 
 function setupWeapon(id) {
@@ -1779,10 +1820,16 @@ function setupWeapon(id) {
   barrelCluster = null;
   mgSpinSpeed = 0;
 
-  const att = getAttachments();
+  const att = getAttachments(id);
   const def = Object.assign({}, GUN_DEFS[id]);
-  if (att.silencer) def.spread = Math.max(0, def.spread * 0.55);
-  if (att.extmag)   { def.ammo = Math.ceil(def.ammo * 1.5); def.reserve = Math.ceil(def.reserve * 1.5); }
+  def.spread   = Math.max(0.002, def.spread * att.spread);
+  def.damage   = Math.round(def.damage * att.damage);
+  def.fireRate = def.fireRate / att.fireRateMult;
+  def.kick     = def.kick * att.kick;
+  if (att.ammoMult > 1) {
+    def.ammo    = Math.ceil(def.ammo    * att.ammoMult);
+    def.reserve = Math.ceil(def.reserve * att.ammoMult);
+  }
   gun.def = def; gun.ammo = def.ammo; gun.reserve = def.reserve;
   gun.shootTimer = 0; gun.canShoot = true;
 
@@ -1792,12 +1839,15 @@ function setupWeapon(id) {
   else if (id==='sniper')  buildSniper(weaponRoot);
 
   if (gunNameEl) {
-    const att = getAttachments();
-    const tags = [att.silencer?'SIL':'', att.scope?'SC':'', att.extmag?'EM':''].filter(Boolean);
+    const tags = [];
+    if (att.spread   < 1)  tags.push('SIL');
+    if (att.hasScope)      tags.push('SC');
+    if (att.ammoMult > 1)  tags.push('EM');
+    if (att.damage   > 1)  tags.push('DMG');
+    if (att.fireRateMult>1)tags.push('FR');
     gunNameEl.textContent = def.name + (tags.length ? ' [' + tags.join('+') + ']' : '');
   }
   updateAmmoHUD();
-  // Cache the base Y/X set by the build function so bob can offset from it
   weaponRoot.userData.baseY = weaponRoot.position.y;
   weaponRoot.userData.baseX = weaponRoot.position.x;
   weaponRoot.userData.baseZ = weaponRoot.position.z;
@@ -2507,7 +2557,7 @@ document.addEventListener('mouseup', e=>{
 
 function activateScope(){
   scopeActive=true;
-  targetFov = getAttachments().scope ? 7 : SCOPE_FOV;
+  targetFov = getAttachments(selectedGunId).scope ? 7 : SCOPE_FOV;
   scopeOverlay.style.display='block';
   crosshairEl.style.display='none';
   weaponRoot.visible=false;
@@ -3209,6 +3259,7 @@ function killPlayer(killerRef) {
   deactivateScope();
   player.dead=true; player.health=0; updateHealthHUD();
   trackDeath();
+  _decrementAttachDurability();
   hudEl.style.display='none';
   enterKillcam(killerRef || null);
 }
@@ -3218,8 +3269,49 @@ function respawnPlayer(){
   deathScreen.style.display='none';
   if(pointerLocked() || mobileGameActive) hudEl.style.display='block';
   updateHealthHUD();
-  // Restore ammo
   gun.ammo=gun.def.ammo; gun.reserve=gun.def.reserve; updateAmmoHUD();
+}
+
+function _decrementAttachDurability() {
+  const equipped = JSON.parse(localStorage.getItem('ah_equipped') || '[]');
+  const owned    = JSON.parse(localStorage.getItem('ah_owned')    || '[]');
+  const uses     = JSON.parse(localStorage.getItem('ah_attach_uses') || '{}');
+  const GUN_NAMES = new Set(['pistol','smg','minigun','sniper']);
+  const GENERIC   = new Set(['silencer_rare','scope_epic','extmag_rare']);
+  let changed = false;
+
+  for (let i = equipped.length - 1; i >= 0; i--) {
+    const id    = equipped[i];
+    const parts = id.split('_');
+    const isGunAttach = parts.length >= 3 && GUN_NAMES.has(parts[parts.length - 2]);
+    if (!isGunAttach && !GENERIC.has(id)) continue;
+
+    if (uses[id] === undefined) uses[id] = 2;
+    uses[id]--;
+    changed = true;
+
+    if (uses[id] <= 0) {
+      delete uses[id];
+      equipped.splice(i, 1);
+      const oi = owned.indexOf(id);
+      if (oi !== -1) owned.splice(oi, 1);
+      // Tell server to remove the item from ownedItems so it can be repurchased
+      const tok = localStorage.getItem('ah_token');
+      if (tok) {
+        fetch(`${_API_BASE}/api/shop/attachment/${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${tok}` }
+        }).catch(() => {});
+      }
+    }
+  }
+
+  if (changed) {
+    localStorage.setItem('ah_equipped',      JSON.stringify(equipped));
+    localStorage.setItem('ah_owned',         JSON.stringify(owned));
+    localStorage.setItem('ah_attach_uses',   JSON.stringify(uses));
+    setupWeapon(selectedGunId);
+  }
 }
 
 // ============================================================
