@@ -2159,20 +2159,6 @@ function buildRobot() {
   box(0.372,0.242,0.030, 0,1.984,0.230, ARMOR);
   box(0.290,0.078,0.038, 0,1.948,0.230, DARK);
   for(let i=0;i<4;i++) box(0.250,0.012,0.030, 0,1.935+i*0.022,0.232, DARK);
-  // ── CROWN SPIKES (dramatic fan — 5 bladed fins) ────────────
-  [[-0.205,0.50, 0.62],[-0.100,0.62, 0.28],[0.000,0.72, 0.00],[0.100,0.62,-0.28],[0.205,0.50,-0.62]]
-  .forEach(([dx,h,rZ])=>{
-    const cy = 2.295 + h*0.50;
-    // Outer spike plate (4-sided tapered)
-    const sm = new THREE.Mesh(new THREE.CylinderGeometry(0.007,0.044,h,4), ARMOR);
-    sm.position.set(dx, cy, -0.042); sm.rotation.z = rZ; sm.rotation.x = -0.055; g.add(sm);
-    // Inner bright highlight
-    const si = new THREE.Mesh(new THREE.CylinderGeometry(0.004,0.028,h*0.82,4), ACCENT);
-    si.position.set(dx*0.90, cy-h*0.06, -0.040); si.rotation.z = rZ; si.rotation.x = -0.055; g.add(si);
-    // Dark seam down spike face
-    const ss = new THREE.Mesh(new THREE.BoxGeometry(0.005,h*0.78,0.004), DARK);
-    ss.position.set(dx, cy-h*0.04, -0.050); ss.rotation.z = rZ; ss.rotation.x = -0.055; g.add(ss);
-  });
 
   // ════════════════════════════════════════════════════════
   // SHOULDERS

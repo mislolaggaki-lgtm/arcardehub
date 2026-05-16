@@ -659,235 +659,423 @@
     /* ── Shop Modal ──────────────────────────────────────── */
     .shop-overlay {
       display: none; position: fixed; inset: 0; z-index: 500;
-      background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      align-items: flex-start; justify-content: center;
-      padding: 48px 16px 32px; overflow-y: auto;
+      background: rgba(0,3,14,0.94); backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      align-items: center; justify-content: center;
     }
     .shop-overlay.open { display: flex; }
     .shop-modal-inner {
-      width: 100%; max-width: 900px;
-      background: #0d0d1a; border: 1px solid rgba(200,162,21,0.18);
-      border-radius: 14px; overflow: hidden;
-      box-shadow: 0 0 60px rgba(0,0,0,0.9);
+      width: 96vw; max-width: 1180px;
+      height: 88vh; max-height: 820px;
+      background: linear-gradient(150deg, #0b0b1f 0%, #080816 100%);
+      border: 1px solid rgba(255,215,0,0.14);
+      border-radius: 18px; overflow: hidden;
+      display: flex; flex-direction: row;
+      box-shadow: 0 0 100px rgba(0,0,0,0.98), 0 0 40px rgba(255,215,0,0.03);
+    }
+
+    /* ── Avatar Panel (left) ────────────────────────────── */
+    .shop-avatar-panel {
+      width: 252px; min-width: 252px;
+      background: linear-gradient(180deg, #090916 0%, #060612 100%);
+      border-right: 1px solid rgba(255,215,0,0.09);
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .sap-header {
+      width: 100%; padding: 16px 0 10px;
+      text-align: center;
+      font-size: 8px; font-weight: 800; letter-spacing: 4px; color: #2a2a44;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .sap-robot-wrap {
+      position: relative; width: 190px; height: 268px;
+      margin: 14px auto 10px; flex-shrink: 0;
+    }
+    .sap-robot-svg { width: 190px; height: 268px; display: block; }
+    .sap-slot {
+      position: absolute; width: 34px; height: 34px; border-radius: 9px;
+      border: 1px dashed rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.02);
+      display: flex; align-items: center; justify-content: center;
+      transition: all .22s;
+    }
+    .sap-slot.has-item {
+      border: 1px solid rgba(255,215,0,0.45); border-style: solid;
+      background: rgba(255,215,0,0.07);
+      box-shadow: 0 0 14px rgba(255,215,0,0.12);
+    }
+    .sap-slot svg { width: 26px; height: 26px; }
+    .sap-slot-hat      { top:  -2px; left:  78px; }
+    .sap-slot-eyewear  { top:  28px; left:  78px; }
+    .sap-slot-face     { top:  52px; left:  78px; }
+    .sap-slot-neck     { top:  82px; left:  78px; }
+    .sap-slot-shl      { top:  96px; left:   4px; }
+    .sap-slot-shr      { top:  96px; right:  4px; }
+    .sap-slot-back     { top: 112px; left:  78px; }
+    .sap-slot-wrist    { top: 154px; left:   2px; }
+    .sap-slot-feet     { top: 232px; left:  78px; }
+    .sap-slot-lbl {
+      position: absolute; bottom: -14px; left: 50%;
+      transform: translateX(-50%); white-space: nowrap;
+      font-size: 6px; letter-spacing: 1px; color: #1e1e36;
+      text-transform: uppercase; pointer-events: none;
+    }
+    .sap-slot.has-item .sap-slot-lbl { color: rgba(255,215,0,0.45); }
+    .sap-divider {
+      width: calc(100% - 28px); height: 1px;
+      background: rgba(255,255,255,0.04); margin: 4px 14px 8px;
+      flex-shrink: 0;
+    }
+    .sap-list-header {
+      font-size: 8px; letter-spacing: 3px; color: #2a2a44; font-weight: 800;
+      width: 100%; padding: 0 14px 6px; flex-shrink: 0;
+    }
+    .sap-equipped-list {
+      flex: 1; overflow-y: auto; width: 100%;
+      scrollbar-width: none;
+    }
+    .sap-equipped-list::-webkit-scrollbar { display: none; }
+    .sap-equipped-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 14px; border-bottom: 1px solid rgba(255,255,255,0.03);
+      font-size: 10px; color: #7878aa; letter-spacing: 1px;
+    }
+    .sap-equipped-item svg { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.8; }
+    .sap-equipped-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .sap-equipped-item .sap-cat-tag {
+      font-size: 7px; letter-spacing: 1px; color: #2a2a44; background: rgba(255,255,255,0.04);
+      padding: 1px 5px; border-radius: 3px; flex-shrink: 0;
+    }
+    .sap-empty-note {
+      padding: 18px 14px; text-align: center;
+      font-size: 9px; color: #1e1e36; letter-spacing: 2px; line-height: 1.8;
+    }
+    .sap-deselect-btn {
+      margin: 8px 14px 14px; padding: 10px;
+      width: calc(100% - 28px); flex-shrink: 0;
+      background: rgba(231,76,60,0.07);
+      border: 1px solid rgba(231,76,60,0.20);
+      border-radius: 8px; color: #c0453a;
+      font-size: 9px; font-weight: 800; letter-spacing: 2px;
+      text-transform: uppercase; cursor: pointer;
+      transition: all .18s; font-family: 'Inter', sans-serif;
+    }
+    .sap-deselect-btn:hover { background: rgba(231,76,60,0.16); border-color: rgba(231,76,60,0.45); color: #e74c3c; }
+    .sap-deselect-btn:disabled { opacity: 0.22; cursor: not-allowed; }
+
+    /* ── Catalog (right side) ──────────────────────────── */
+    .shop-catalog {
+      flex: 1; display: flex; flex-direction: column; overflow: hidden;
     }
     .shop-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 24px 32px;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
-      background: rgba(200,162,21,0.05);
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px 22px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(0,0,0,0.25);
     }
     .shop-title {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 32px; letter-spacing: 6px; color: #ffd700;
-      text-shadow: 0 0 20px rgba(255,215,0,0.3);
+      font-size: 26px; letter-spacing: 5px; color: #ffd700;
+      text-shadow: 0 0 18px rgba(255,215,0,0.22);
+      flex: 1;
     }
     .shop-header-bucks {
-      display: flex; align-items: center; gap: 10px;
-      font-size: 22px; font-weight: 800; color: #ffd700; letter-spacing: 2px;
+      display: flex; align-items: center; gap: 7px;
+      font-size: 17px; font-weight: 800; color: #ffd700; letter-spacing: 1px;
+      background: rgba(255,215,0,0.07); border: 1px solid rgba(255,215,0,0.18);
+      border-radius: 8px; padding: 6px 13px;
     }
-    .shop-close {
-      width: 36px; height: 36px; border-radius: 50%;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: transparent; color: #666; font-size: 16px;
-      cursor: pointer; transition: background .15s, color .15s;
-    }
-    .shop-close:hover { background: rgba(255,255,255,0.08); color: #fff; }
-    .shop-earn-note {
-      padding: 8px 32px;
-      font-size: 11px; color: #556; letter-spacing: 2px; text-align: center;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
-    .shop-earn-note span { color: #ffd700; }
-    /* ── Shop: rarity badges ────────────────────────────── */
-    .rarity-badge {
-      display: inline-block; font-size: 9px; font-weight: 700;
-      letter-spacing: 2px; padding: 2px 7px; border-radius: 30px;
-      text-transform: uppercase; margin-bottom: 2px;
-    }
-    .rarity-common    { background: rgba(140,140,140,0.12); color: #888; border: 1px solid #555; }
-    .rarity-rare      { background: rgba(59,158,232,0.14);  color: #3b9ee8; border: 1px solid rgba(59,158,232,0.5); }
-    .rarity-epic      { background: rgba(168,85,247,0.14);  color: #c084fc; border: 1px solid rgba(168,85,247,0.5); }
-    .rarity-legendary { background: rgba(255,170,0,0.16);   color: #ffaa00; border: 1px solid rgba(255,170,0,0.55); }
-    /* ── Shop: search ────────────────────────────────────── */
-    .shop-search-wrap {
-      padding: 10px 24px;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      background: rgba(0,0,0,0.18);
-    }
-    .shop-search {
-      width: 100%; box-sizing: border-box;
-      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 7px; padding: 8px 14px;
-      color: #ccc; font-size: 12px; font-family: 'Inter', sans-serif;
-      letter-spacing: 1px; outline: none; transition: border-color .15s;
-    }
-    .shop-search:focus { border-color: rgba(255,215,0,0.4); }
-    .shop-search::placeholder { color: #445; }
-    /* ── Shop: pagination ────────────────────────────────── */
-    .shop-pagination {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 14px 24px; border-top: 1px solid rgba(255,255,255,0.05);
-    }
-    .shop-page-btn {
-      min-width: 32px; height: 32px; padding: 0 10px;
-      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 6px; color: #888; font-size: 13px; font-weight: 700;
-      cursor: pointer; font-family: 'Inter', sans-serif;
-      transition: background .15s, color .15s, border-color .15s;
-    }
-    .shop-page-btn:hover:not(:disabled) { background: rgba(255,215,0,0.10); color: #ffd700; border-color: rgba(255,215,0,0.3); }
-    .shop-page-btn.active { background: rgba(255,215,0,0.15); color: #ffd700; border-color: rgba(255,215,0,0.45); }
-    .shop-page-btn:disabled { opacity: 0.25; cursor: not-allowed; }
-    .shop-page-info { font-size: 10px; color: #445; letter-spacing: 2px; }
-    /* ── Shop: gift button ──────────────────────────────── */
     .shop-gift-btn {
-      padding: 5px 12px; font-size: 10px; letter-spacing: 2px;
-      font-family: 'Courier New', monospace; cursor: pointer;
-      background: rgba(255,215,0,0.08); color: #ffd700;
-      border: 1px solid rgba(255,215,0,0.3); border-radius: 3px;
+      padding: 6px 13px; font-size: 9px; letter-spacing: 2px; font-weight: 800;
+      font-family: 'Inter', sans-serif; cursor: pointer;
+      background: rgba(255,215,0,0.06); color: #b8941a;
+      border: 1px solid rgba(255,215,0,0.22); border-radius: 7px;
       transition: all .15s;
     }
-    .shop-gift-btn:hover { background: rgba(255,215,0,0.18); border-color: #ffd700; }
+    .shop-gift-btn:hover { background: rgba(255,215,0,0.14); border-color: rgba(255,215,0,0.5); color: #ffd700; }
+    .shop-close {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: transparent; color: #555; font-size: 14px;
+      cursor: pointer; transition: all .15s; flex-shrink: 0;
+    }
+    .shop-close:hover { background: rgba(255,60,60,0.14); border-color: rgba(255,60,60,0.35); color: #ff5555; }
+    .shop-earn-note {
+      padding: 5px 22px;
+      font-size: 9px; color: #2a2a44; letter-spacing: 2px; text-align: center;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .shop-earn-note span { color: rgba(255,215,0,0.6); }
+
     /* ── Gift panel ─────────────────────────────────────── */
     #gift-panel {
-      background: rgba(8,8,22,0.98); border-bottom: 1px solid #1a2a50;
-      padding: 14px 18px; font-family: 'Courier New', monospace;
+      background: rgba(6,6,18,0.98); border-bottom: 1px solid rgba(255,215,0,0.09);
+      padding: 14px 20px;
     }
-    .gift-panel-title { font-size: 12px; letter-spacing: 3px; color: #ffd700; margin-bottom: 4px; }
-    .gift-panel-note  { font-size: 10px; color: #555; margin-bottom: 10px; }
+    .gift-panel-title { font-size: 10px; letter-spacing: 3px; color: #ffd700; margin-bottom: 4px; font-weight: 800; }
+    .gift-panel-note  { font-size: 9px; color: #334; margin-bottom: 10px; }
     .gift-panel-row   { display: flex; gap: 8px; flex-wrap: wrap; }
     .gift-panel-row input {
-      flex: 1; min-width: 120px; background: #0a0a1e; border: 1px solid #2a2a4a;
-      color: #ccc; font-family: 'Courier New', monospace; font-size: 12px;
-      padding: 6px 10px; border-radius: 3px; outline: none;
+      flex: 1; min-width: 110px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10);
+      color: #ccc; font-family: 'Inter', sans-serif; font-size: 12px;
+      padding: 7px 10px; border-radius: 6px; outline: none;
     }
-    .gift-panel-row input:focus { border-color: #ffd700; }
+    .gift-panel-row input:focus { border-color: rgba(255,215,0,0.4); }
     .gift-panel-row button {
-      padding: 6px 16px; font-size: 11px; letter-spacing: 2px;
-      font-family: 'Courier New', monospace;
+      padding: 7px 16px; font-size: 9px; letter-spacing: 2px; font-weight: 800;
+      font-family: 'Inter', sans-serif;
       background: rgba(255,215,0,0.12); color: #ffd700;
-      border: 1px solid rgba(255,215,0,0.4); border-radius: 3px; cursor: pointer;
+      border: 1px solid rgba(255,215,0,0.38); border-radius: 6px; cursor: pointer;
     }
     .gift-panel-row button:hover { background: rgba(255,215,0,0.22); }
-    #gift-status { font-size: 11px; margin-top: 6px; min-height: 16px; }
+    #gift-status { font-size: 10px; margin-top: 6px; min-height: 16px; }
     .gift-close-btn {
-      margin-top: 8px; background: none; border: none; color: #444;
-      font-size: 11px; cursor: pointer; font-family: 'Courier New', monospace; letter-spacing: 1px;
+      margin-top: 8px; background: none; border: none; color: #2a2a44;
+      font-size: 9px; cursor: pointer; letter-spacing: 1px;
     }
-    .gift-close-btn:hover { color: #888; }
-    /* ── Shop: tabs (scrollable for 8 categories) ────────── */
+    .gift-close-btn:hover { color: #666; }
+
+    /* ── Tabs ───────────────────────────────────────────── */
     .shop-tabs {
-      display: flex; gap: 0; overflow-x: auto;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
-      scrollbar-width: none;
+      display: flex; overflow-x: auto; scrollbar-width: none;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(0,0,0,0.18);
     }
     .shop-tabs::-webkit-scrollbar { display: none; }
     .shop-tab-btn {
-      flex-shrink: 0; padding: 12px 16px;
-      background: transparent;
-      border: none; border-bottom: 2px solid transparent;
-      color: #446; font-size: 10px; font-weight: 700;
+      flex-shrink: 0; padding: 8px 14px;
+      background: transparent; border: none;
+      border-bottom: 2px solid transparent;
+      color: #2a2a44; font-size: 8px; font-weight: 800;
       letter-spacing: 2px; text-transform: uppercase;
-      cursor: pointer; transition: color .15s, border-color .15s;
+      cursor: pointer; transition: all .15s;
       font-family: 'Inter', sans-serif; white-space: nowrap;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
     }
-    .shop-tab-btn:hover { color: #aaa; }
-    .shop-tab-btn.active { color: #ffd700; border-bottom-color: #ffd700; }
+    .shop-tab-icon { font-size: 14px; line-height: 1; }
+    .shop-tab-btn:hover { color: #888; }
+    .shop-tab-btn.active { color: #ffd700; border-bottom-color: #ffd700; background: rgba(255,215,0,0.03); }
+
+    /* ── Search ─────────────────────────────────────────── */
+    .shop-search-wrap {
+      padding: 9px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      background: rgba(0,0,0,0.12);
+    }
+    .shop-search-inner { position: relative; }
+    .shop-search-icon {
+      position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+      font-size: 12px; color: #2a2a44; pointer-events: none;
+    }
+    .shop-search {
+      width: 100%; box-sizing: border-box;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 8px; padding: 8px 12px 8px 32px;
+      color: #ccc; font-size: 11px; font-family: 'Inter', sans-serif;
+      letter-spacing: 1px; outline: none; transition: all .15s;
+    }
+    .shop-search:focus { border-color: rgba(255,215,0,0.32); background: rgba(255,255,255,0.06); }
+    .shop-search::placeholder { color: #1e1e36; }
+
+    /* ── Grid ───────────────────────────────────────────── */
+    .shop-grid-wrap {
+      flex: 1; overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: rgba(255,215,0,0.12) transparent;
+    }
+    .shop-grid-wrap::-webkit-scrollbar { width: 4px; }
+    .shop-grid-wrap::-webkit-scrollbar-track { background: transparent; }
+    .shop-grid-wrap::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.12); border-radius: 2px; }
     .shop-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-      gap: 18px; padding: 28px 32px;
+      grid-template-columns: repeat(auto-fill, minmax(162px, 1fr));
+      gap: 12px; padding: 16px;
     }
     .shop-card {
       position: relative;
-      background: #141420; border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 10px; padding: 20px 16px 16px;
-      display: flex; flex-direction: column; align-items: center; gap: 10px;
-      transition: border-color .18s, box-shadow .18s;
+      background: linear-gradient(150deg, #0f0f20, #0d0d1c);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px; padding: 16px 13px 13px;
+      display: flex; flex-direction: column; align-items: center; gap: 7px;
+      transition: all .2s; cursor: default;
     }
-    .shop-card:hover { border-color: rgba(200,162,21,0.28); box-shadow: 0 0 18px rgba(200,162,21,0.08); }
-    .shop-card.is-equipped { border-color: rgba(255,215,0,0.45); box-shadow: 0 0 22px rgba(255,215,0,0.10); }
-    .shop-card-icon { width: 80px; height: 80px; }
-    .shop-card-icon svg { width: 80px; height: 80px; display: block; }
+    .shop-card::before {
+      content: ''; position: absolute; inset: 0; border-radius: 12px;
+      background: radial-gradient(ellipse at top, rgba(255,215,0,0.05), transparent 65%);
+      opacity: 0; transition: opacity .2s; pointer-events: none;
+    }
+    .shop-card:hover {
+      border-color: rgba(255,215,0,0.28); transform: translateY(-3px);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.45), 0 0 22px rgba(255,215,0,0.05);
+    }
+    .shop-card:hover::before { opacity: 1; }
+    .shop-card.is-equipped {
+      border-color: rgba(255,215,0,0.48);
+      box-shadow: 0 0 22px rgba(255,215,0,0.07), inset 0 0 18px rgba(255,215,0,0.025);
+      background: linear-gradient(150deg, #131325, #10101f);
+    }
+    .shop-card.is-equipped::before { opacity: 1; }
+    .shop-card-icon { width: 68px; height: 68px; }
+    .shop-card-icon svg { width: 68px; height: 68px; display: block; }
     .shop-card-name {
-      font-size: 11px; font-weight: 700; letter-spacing: 2px;
-      text-transform: uppercase; color: #c0c0ee; text-align: center;
+      font-size: 9px; font-weight: 800; letter-spacing: 2px;
+      text-transform: uppercase; color: #b0b0d8; text-align: center; line-height: 1.4;
     }
-    .shop-card-desc { font-size: 11px; color: #3a3a58; text-align: center; line-height: 1.5; }
+    .shop-card-desc { font-size: 9px; color: #2a2a44; text-align: center; line-height: 1.5; }
+
+    /* ── Rarity badges ─────────────────────────────────── */
+    .rarity-badge {
+      display: inline-block; font-size: 7px; font-weight: 800;
+      letter-spacing: 2px; padding: 2px 8px; border-radius: 30px;
+      text-transform: uppercase;
+    }
+    .rarity-common    { background: rgba(120,120,120,0.09); color: #666; border: 1px solid #333; }
+    .rarity-rare      { background: rgba(59,158,232,0.11);  color: #3b9ee8; border: 1px solid rgba(59,158,232,0.38); }
+    .rarity-epic      { background: rgba(168,85,247,0.11);  color: #c084fc; border: 1px solid rgba(168,85,247,0.38); }
+    .rarity-legendary {
+      background: rgba(255,170,0,0.13); color: #ffaa00; border: 1px solid rgba(255,170,0,0.48);
+      animation: legend-pulse 2.2s ease-in-out infinite;
+    }
+    @keyframes legend-pulse {
+      0%,100% { box-shadow: 0 0 0 rgba(255,170,0,0); }
+      50% { box-shadow: 0 0 10px rgba(255,170,0,0.28); }
+    }
+
+    /* ── Attachment badges ─────────────────────────────── */
     .attach-gun-badge {
       position: absolute; top: 7px; left: 7px;
-      font-size: 8px; font-weight: 800; letter-spacing: 1.5px;
+      font-size: 7px; font-weight: 800; letter-spacing: 1px;
       padding: 2px 6px; border-radius: 4px;
-      text-transform: uppercase; color: #fff;
-      pointer-events: none;
+      text-transform: uppercase; color: #fff; pointer-events: none;
     }
-    .attach-gun-badge.pistol  { background: #1976d2; }
-    .attach-gun-badge.smg     { background: #388e3c; }
-    .attach-gun-badge.minigun { background: #c62828; }
-    .attach-gun-badge.sniper  { background: #6a1b9a; }
-    .attach-gun-badge.all     { background: linear-gradient(120deg,#b8860b,#c0502a); letter-spacing: 1px; }
-    .attach-uses {
-      display: flex; gap: 5px; align-items: center; justify-content: center;
-    }
-    .attach-use-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-    }
-    .attach-use-dot.full  { background: #4caf50; box-shadow: 0 0 5px #4caf5077; }
-    .attach-use-dot.empty { background: #1a1a1a; border: 1px solid #444; }
-    .attach-uses-hint { font-size: 9px; color: #3a3a58; letter-spacing: 1px; text-transform: uppercase; text-align: center; }
+    .attach-gun-badge.pistol  { background: #1565c0; }
+    .attach-gun-badge.smg     { background: #2e7d32; }
+    .attach-gun-badge.minigun { background: #b71c1c; }
+    .attach-gun-badge.sniper  { background: #4a148c; }
+    .attach-gun-badge.all     { background: linear-gradient(120deg,#b8860b,#c0502a); }
+    .attach-uses { display: flex; gap: 5px; align-items: center; justify-content: center; }
+    .attach-use-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .attach-use-dot.full  { background: #4caf50; box-shadow: 0 0 5px #4caf5055; }
+    .attach-use-dot.empty { background: #0d0d1c; border: 1px solid #2a2a3a; }
+    .attach-uses-hint { font-size: 8px; color: #2a2a44; letter-spacing: 1px; text-transform: uppercase; }
+
+    /* ── Buttons ───────────────────────────────────────── */
     .shop-btn {
       width: 100%; padding: 9px 0;
-      border-radius: 6px; border: none;
+      border-radius: 8px; border: none;
       font-family: 'Inter', sans-serif;
-      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      font-size: 9px; font-weight: 800; letter-spacing: 2px;
       text-transform: uppercase; cursor: pointer;
       display: flex; align-items: center; justify-content: center; gap: 5px;
-      transition: filter .15s;
+      transition: all .18s; position: relative; overflow: hidden;
     }
-    .shop-btn:hover:not(:disabled) { filter: brightness(1.18); }
+    .shop-btn:hover:not(:disabled) { transform: scale(1.03); filter: brightness(1.22); }
     .shop-btn.buy {
-      background: rgba(200,162,21,0.15); color: #ffd700;
-      border: 1px solid rgba(200,162,21,0.35);
+      background: linear-gradient(135deg, rgba(200,162,21,0.18), rgba(180,140,16,0.08));
+      color: #ffd700; border: 1px solid rgba(200,162,21,0.35);
     }
-    .shop-btn.buy.disabled { opacity: 0.35; cursor: not-allowed; }
-    .emote-wheel-banner {
-      grid-column: 1 / -1;
-      background: rgba(59,158,232,0.08);
-      border: 1px solid rgba(59,158,232,0.22);
-      border-radius: 10px;
-      padding: 10px 16px;
-      font-size: 12px;
-      color: #8ab4d4;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .emote-slot {
-      display: inline-block;
-      width: 14px; height: 14px;
-      border-radius: 50%;
-      border: 2px solid rgba(59,158,232,0.4);
-      background: transparent;
-      vertical-align: middle;
-    }
-    .emote-slot.filled {
-      background: #3b9ee8;
-      border-color: #3b9ee8;
-    }
+    .shop-btn.buy.disabled { opacity: 0.28; cursor: not-allowed; }
+    .shop-btn.buy.disabled:hover { transform: none; filter: none; }
     .shop-btn.owned {
-      background: rgba(59,158,232,0.12); color: #3b9ee8;
-      border: 1px solid rgba(59,158,232,0.28);
+      background: linear-gradient(135deg, rgba(59,158,232,0.14), rgba(59,158,232,0.05));
+      color: #3b9ee8; border: 1px solid rgba(59,158,232,0.30);
     }
     .shop-btn.equipped {
-      background: rgba(34,221,100,0.12); color: #22dd64;
-      border: 1px solid rgba(34,221,100,0.35);
+      background: linear-gradient(135deg, rgba(34,221,100,0.14), rgba(34,221,100,0.05));
+      color: #22dd64; border: 1px solid rgba(34,221,100,0.32);
     }
-    @media (max-width: 580px) {
-      .shop-grid { grid-template-columns: repeat(2, 1fr); padding: 16px; gap: 12px; }
-      .shop-header { padding: 18px 20px; }
-      .shop-title { font-size: 24px; }
+
+    /* ── Emote wheel banner ─────────────────────────────── */
+    .emote-wheel-banner {
+      grid-column: 1 / -1;
+      background: rgba(59,158,232,0.05); border: 1px solid rgba(59,158,232,0.16);
+      border-radius: 10px; padding: 10px 14px;
+      font-size: 10px; color: #4a7a9c;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .emote-slot {
+      display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid rgba(59,158,232,0.30); vertical-align: middle;
+    }
+    .emote-slot.filled { background: #3b9ee8; border-color: #3b9ee8; }
+
+    /* ── Pagination ─────────────────────────────────────── */
+    .shop-pagination {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px 16px; border-top: 1px solid rgba(255,255,255,0.04);
+    }
+    .shop-page-btn {
+      min-width: 30px; height: 30px; padding: 0 10px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 6px; color: #445; font-size: 12px; font-weight: 700;
+      cursor: pointer; font-family: 'Inter', sans-serif; transition: all .15s;
+    }
+    .shop-page-btn:hover:not(:disabled) { background: rgba(255,215,0,0.09); color: #ffd700; border-color: rgba(255,215,0,0.25); }
+    .shop-page-btn.active { background: rgba(255,215,0,0.13); color: #ffd700; border-color: rgba(255,215,0,0.38); }
+    .shop-page-btn:disabled { opacity: 0.18; cursor: not-allowed; }
+    .shop-page-info { font-size: 9px; color: #2a2a44; letter-spacing: 2px; }
+
+    /* ── Buy Confirmation Modal ─────────────────────────── */
+    .shop-confirm-overlay {
+      display: none; position: fixed; inset: 0; z-index: 600;
+      background: rgba(0,0,0,0.72); backdrop-filter: blur(6px);
+      align-items: center; justify-content: center;
+    }
+    .shop-confirm-overlay.open { display: flex; }
+    .shop-confirm-box {
+      background: linear-gradient(150deg, #0f0f24, #0b0b1a);
+      border: 1px solid rgba(255,215,0,0.22);
+      border-radius: 16px; padding: 34px 38px 28px;
+      max-width: 340px; width: 90%; text-align: center;
+      box-shadow: 0 0 80px rgba(0,0,0,0.95), 0 0 40px rgba(255,215,0,0.05);
+      animation: confirmPop .22s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes confirmPop {
+      from { transform: scale(0.88); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+    .scf-eyebrow {
+      font-size: 8px; letter-spacing: 4px; color: #ffd700; margin-bottom: 14px;
+      font-weight: 800; opacity: 0.7;
+    }
+    .scf-icon { margin: 0 auto 12px; width: 62px; height: 62px; }
+    .scf-icon svg { width: 62px; height: 62px; }
+    .scf-name { font-size: 15px; font-weight: 800; color: #d8d8ff; letter-spacing: 2px; }
+    .scf-price {
+      font-size: 24px; font-weight: 900; color: #ffd700; margin: 12px 0 6px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .scf-after { font-size: 9px; color: #2a2a44; letter-spacing: 2px; margin-bottom: 22px; }
+    .scf-after span { color: #55aa88; }
+    .scf-btns { display: flex; gap: 10px; }
+    .scf-yes {
+      flex: 1; padding: 13px; border-radius: 9px; border: none; cursor: pointer;
+      background: linear-gradient(135deg, rgba(255,215,0,0.22), rgba(200,162,21,0.11));
+      color: #ffd700; font-size: 10px; font-weight: 800; letter-spacing: 2px;
+      border: 1px solid rgba(255,215,0,0.38); transition: all .15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .scf-yes:hover { background: rgba(255,215,0,0.30); }
+    .scf-no {
+      flex: 1; padding: 13px; border-radius: 9px; border: none; cursor: pointer;
+      background: rgba(255,255,255,0.04); color: #445;
+      font-size: 10px; font-weight: 800; letter-spacing: 2px;
+      border: 1px solid rgba(255,255,255,0.07); transition: all .15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .scf-no:hover { background: rgba(255,255,255,0.08); color: #888; }
+
+    @media (max-width: 700px) {
+      .shop-modal-inner { flex-direction: column; width: 100vw; height: 96vh; border-radius: 14px 14px 0 0; margin-top: auto; max-width: 100%; }
+      .shop-avatar-panel { width: 100%; min-width: unset; flex-direction: row; height: auto; border-right: none; border-bottom: 1px solid rgba(255,215,0,0.09); padding: 10px 14px; gap: 12px; }
+      .sap-header { display: none; }
+      .sap-robot-wrap { width: 90px; height: 126px; margin: 0; flex-shrink: 0; }
+      .sap-robot-svg { width: 90px; height: 126px; }
+      .sap-slot { transform: scale(0.55); transform-origin: top left; }
+      .sap-equipped-list { max-height: 90px; }
+      .sap-list-header { display: none; }
+      .sap-deselect-btn { margin: 0; width: auto; padding: 8px 14px; }
+      .shop-grid { grid-template-columns: repeat(2, 1fr); padding: 12px; gap: 10px; }
     }
 
     /* ── Badges / Achievements ────────────────────────────── */
@@ -2126,36 +2314,124 @@
   <!-- ── Avatar Shop Modal ────────────────────────────────── -->
   <div class="shop-overlay" id="shop-overlay">
     <div class="shop-modal-inner">
-      <div class="shop-header">
-        <div class="shop-title">AVATAR SHOP</div>
-        <div class="shop-header-bucks">
-          <svg width="22" height="22" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>
-          <span id="shop-bucks-balance">0</span> BUCKS
+
+      <!-- LEFT: Avatar Preview Panel -->
+      <div class="shop-avatar-panel">
+        <div class="sap-header">YOUR AVATAR</div>
+        <div class="sap-robot-wrap" id="sap-robot-wrap">
+          <!-- Robot silhouette SVG -->
+          <svg class="sap-robot-svg" viewBox="0 0 190 268" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Head -->
+            <rect x="58" y="18" width="74" height="66" rx="9" fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.10)" stroke-width="1.5"/>
+            <!-- Visor slit -->
+            <rect x="68" y="42" width="54" height="13" rx="3" fill="rgba(255,215,0,0.04)" stroke="rgba(255,215,0,0.15)" stroke-width="1"/>
+            <!-- Eyes -->
+            <circle cx="84" cy="48" r="4" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+            <circle cx="106" cy="48" r="4" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+            <!-- Jaw -->
+            <rect x="66" y="68" width="58" height="14" rx="4" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+            <!-- Neck -->
+            <rect x="82" y="84" width="26" height="16" rx="4" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+            <!-- Torso -->
+            <rect x="44" y="100" width="102" height="94" rx="10" fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.09)" stroke-width="1.5"/>
+            <!-- Chest core -->
+            <rect x="77" y="116" width="36" height="36" rx="6" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+            <!-- Core cross -->
+            <line x1="95" y1="119" x2="95" y2="149" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <line x1="80" y1="134" x2="110" y2="134" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <!-- Torso seams -->
+            <line x1="44" y1="128" x2="146" y2="128" stroke="rgba(255,255,255,0.05)" stroke-width="0.8"/>
+            <line x1="44" y1="158" x2="146" y2="158" stroke="rgba(255,255,255,0.05)" stroke-width="0.8"/>
+            <!-- Left arm -->
+            <rect x="10" y="105" width="28" height="78" rx="8" fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+            <rect x="13" y="142" width="22" height="14" rx="3" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+            <!-- Right arm -->
+            <rect x="152" y="105" width="28" height="78" rx="8" fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+            <rect x="155" y="142" width="22" height="14" rx="3" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+            <!-- Left leg -->
+            <rect x="56" y="196" width="36" height="68" rx="8" fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+            <!-- Right leg -->
+            <rect x="98" y="196" width="36" height="68" rx="8" fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+            <!-- Feet -->
+            <rect x="52" y="256" width="44" height="10" rx="4" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+            <rect x="94" y="256" width="44" height="10" rx="4" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+          </svg>
+          <!-- Item slots overlaid on robot -->
+          <div class="sap-slot sap-slot-hat" id="sap-slot-hats"><span class="sap-slot-lbl">HAT</span></div>
+          <div class="sap-slot sap-slot-eyewear" id="sap-slot-eyewear"><span class="sap-slot-lbl">VISOR</span></div>
+          <div class="sap-slot sap-slot-face" id="sap-slot-face"><span class="sap-slot-lbl">FACE</span></div>
+          <div class="sap-slot sap-slot-neck" id="sap-slot-neck"><span class="sap-slot-lbl">NECK</span></div>
+          <div class="sap-slot sap-slot-shl" id="sap-slot-shoulders"><span class="sap-slot-lbl">SHLD</span></div>
+          <div class="sap-slot sap-slot-shr" id="sap-slot-shoulders-r"></div>
+          <div class="sap-slot sap-slot-back" id="sap-slot-back"><span class="sap-slot-lbl">BACK</span></div>
+          <div class="sap-slot sap-slot-wrist" id="sap-slot-wrist"><span class="sap-slot-lbl">WRIST</span></div>
+          <div class="sap-slot sap-slot-feet" id="sap-slot-feet"><span class="sap-slot-lbl">FEET</span></div>
         </div>
-        <button class="shop-gift-btn" onclick="openGiftPanel()" title="Gift Bucks to a friend">🎁 GIFT</button>
-        <button class="shop-close" onclick="closeShop()">✕</button>
+
+        <div class="sap-divider"></div>
+        <div class="sap-list-header">EQUIPPED</div>
+        <div class="sap-equipped-list" id="sap-equipped-list">
+          <div class="sap-empty-note">Nothing equipped yet.<br>Browse the shop →</div>
+        </div>
+        <button class="sap-deselect-btn" id="sap-deselect-btn" onclick="deselectAll()" disabled>
+          ✕ &nbsp;REMOVE ALL
+        </button>
       </div>
 
-      <!-- Gift Bucks panel (inside shop modal) -->
-      <div id="gift-panel" style="display:none">
-        <div class="gift-panel-title">🎁 GIFT BUCKS TO A FRIEND</div>
-        <div class="gift-panel-note">You will be charged the amount you send.</div>
-        <div class="gift-panel-row">
-          <input id="gift-target-input" type="text" placeholder="Friend's username…" maxlength="24" autocomplete="off">
-          <input id="gift-amount-input" type="number" placeholder="Amount" min="1" max="10000">
-          <button onclick="sendGift()">SEND</button>
+      <!-- RIGHT: Shop Catalog -->
+      <div class="shop-catalog">
+        <div class="shop-header">
+          <div class="shop-title">SHOP</div>
+          <div class="shop-header-bucks">
+            <svg width="18" height="18" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>
+            <span id="shop-bucks-balance">0</span>
+          </div>
+          <button class="shop-gift-btn" onclick="openGiftPanel()">🎁 GIFT</button>
+          <button class="shop-close" onclick="closeShop()">✕</button>
         </div>
-        <div id="gift-status"></div>
-        <button class="gift-close-btn" onclick="closeGiftPanel()">✕ CLOSE</button>
+
+        <div id="gift-panel" style="display:none">
+          <div class="gift-panel-title">🎁 GIFT BUCKS TO A FRIEND</div>
+          <div class="gift-panel-note">You will be charged the amount you send.</div>
+          <div class="gift-panel-row">
+            <input id="gift-target-input" type="text" placeholder="Friend's username…" maxlength="24" autocomplete="off">
+            <input id="gift-amount-input" type="number" placeholder="Amount" min="1" max="10000">
+            <button onclick="sendGift()">SEND</button>
+          </div>
+          <div id="gift-status"></div>
+          <button class="gift-close-btn" onclick="closeGiftPanel()">✕ CLOSE</button>
+        </div>
+
+        <div class="shop-earn-note">
+          Reach <span>Level 100</span> in FPS Arena to earn <span>100 Bucks</span>
+        </div>
+        <div class="shop-tabs" id="shop-tabs"></div>
+        <div class="shop-search-wrap">
+          <div class="shop-search-inner">
+            <span class="shop-search-icon">🔍</span>
+            <input class="shop-search" id="shop-search" placeholder="Search items…" oninput="_shopSearchInput(this.value)">
+          </div>
+        </div>
+        <div class="shop-grid-wrap">
+          <div class="shop-grid" id="shop-grid"></div>
+        </div>
       </div>
-      <div class="shop-earn-note">
-        Complete <span>Level 100</span> in FPS Arena to earn <span>100 Bucks</span>
+
+    </div>
+  </div>
+
+  <!-- ── Buy Confirmation Dialog ──────────────────────────── -->
+  <div class="shop-confirm-overlay" id="shop-confirm-overlay">
+    <div class="shop-confirm-box">
+      <div class="scf-eyebrow">CONFIRM PURCHASE</div>
+      <div class="scf-icon" id="scf-icon"></div>
+      <div class="scf-name" id="scf-name"></div>
+      <div class="scf-price" id="scf-price"></div>
+      <div class="scf-after" id="scf-after"></div>
+      <div class="scf-btns">
+        <button class="scf-no" onclick="_confirmBuyNo()">CANCEL</button>
+        <button class="scf-yes" onclick="_confirmBuyYes()">BUY NOW</button>
       </div>
-      <div class="shop-tabs" id="shop-tabs"></div>
-      <div class="shop-search-wrap">
-        <input class="shop-search" id="shop-search" placeholder="Search accessories…" oninput="_shopSearchInput(this.value)">
-      </div>
-      <div class="shop-grid" id="shop-grid"></div>
     </div>
   </div>
 
@@ -3549,18 +3825,19 @@
     const BUCKS_ICON_SM = `<svg width="13" height="13" viewBox="0 0 32 32" style="vertical-align:middle"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>`;
 
     const SHOP_CATS = [
-      { key:'attachments',label:'ATTACHMENTS' },
-      { key:'emotes',    label:'EMOTES' },
-      { key:'hats',      label:'HATS' },
-      { key:'eyewear',   label:'EYEWEAR' },
-      { key:'neck',      label:'NECK' },
-      { key:'wrist',     label:'WRIST' },
-      { key:'back',      label:'BACK' },
-      { key:'shoulders', label:'SHOULDERS' },
-      { key:'face',      label:'FACE' },
-      { key:'feet',      label:'FEET' },
+      { key:'attachments',label:'ATTACHMENTS', icon:'🔧' },
+      { key:'emotes',    label:'EMOTES',       icon:'💃' },
+      { key:'hats',      label:'HATS',         icon:'🎩' },
+      { key:'eyewear',   label:'EYEWEAR',      icon:'🕶️' },
+      { key:'neck',      label:'NECK',         icon:'📿' },
+      { key:'wrist',     label:'WRIST',        icon:'⌚' },
+      { key:'back',      label:'BACK',         icon:'🎒' },
+      { key:'shoulders', label:'SHOULDERS',    icon:'💪' },
+      { key:'face',      label:'FACE',         icon:'🎭' },
+      { key:'feet',      label:'FEET',         icon:'👟' },
     ];
     let _shopTab = 'attachments';
+    let _pendingBuyId = null;
 
     let _bucks        = parseInt(localStorage.getItem('ah_bucks') || '0');
     let _ownedItems   = new Set(JSON.parse(localStorage.getItem('ah_owned')    || '[]'));
@@ -3604,10 +3881,142 @@
       updateBucksDisplay();
       _renderShopTabs();
       _renderShopGrid();
+      _renderShopAvatar();
       document.getElementById('shop-overlay').classList.add('open');
     }
     function closeShop() { closeGiftPanel(); document.getElementById('shop-overlay').classList.remove('open'); }
     document.getElementById('shop-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeShop(); });
+
+    /* ── Avatar preview ─────────────────────────────────── */
+    function _renderShopAvatar() {
+      // slot key → element id map
+      const slotMap = {
+        hats: 'sap-slot-hats', eyewear: 'sap-slot-eyewear',
+        face: 'sap-slot-face', neck: 'sap-slot-neck',
+        shoulders: 'sap-slot-shoulders', back: 'sap-slot-back',
+        wrist: 'sap-slot-wrist', feet: 'sap-slot-feet',
+      };
+      // Clear all slots
+      Object.values(slotMap).forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove('has-item');
+        // preserve label spans, remove icon content
+        const lbl = el.querySelector('.sap-slot-lbl');
+        el.innerHTML = '';
+        if (lbl) el.appendChild(lbl);
+      });
+      // Also clear mirror shoulder slot
+      const shr = document.getElementById('sap-slot-shoulders-r');
+      if (shr) { shr.classList.remove('has-item'); shr.innerHTML = ''; }
+
+      const equippedCosmetics = [];
+      for (const id of _equippedItems) {
+        if (id.startsWith('emote_') || id.startsWith('attach_') ||
+            SHOP_ITEMS.find(x=>x.id===id)?.cat==='attachments') continue;
+        const it = SHOP_ITEMS.find(x => x.id === id);
+        if (!it) continue;
+        equippedCosmetics.push(it);
+        const slotId = slotMap[it.cat];
+        if (slotId) {
+          const el = document.getElementById(slotId);
+          if (el) {
+            const lbl = el.querySelector('.sap-slot-lbl');
+            el.innerHTML = '';
+            if (lbl) el.appendChild(lbl);
+            const iconWrap = document.createElement('div');
+            iconWrap.style.cssText = 'width:26px;height:26px;display:flex;align-items:center;justify-content:center;';
+            iconWrap.innerHTML = getItemSvg(it);
+            const svg = iconWrap.querySelector('svg');
+            if (svg) { svg.style.width='26px'; svg.style.height='26px'; }
+            el.insertBefore(iconWrap, lbl);
+            el.classList.add('has-item');
+            // Mirror shoulders to right slot too
+            if (it.cat === 'shoulders') {
+              const shr2 = document.getElementById('sap-slot-shoulders-r');
+              if (shr2) {
+                shr2.innerHTML = iconWrap.cloneNode(true).outerHTML;
+                shr2.classList.add('has-item');
+              }
+            }
+          }
+        }
+      }
+
+      // Equipped list
+      const listEl = document.getElementById('sap-equipped-list');
+      if (listEl) {
+        if (equippedCosmetics.length === 0) {
+          listEl.innerHTML = `<div class="sap-empty-note">Nothing equipped yet.<br>Browse the shop →</div>`;
+        } else {
+          listEl.innerHTML = equippedCosmetics.map(it => `
+            <div class="sap-equipped-item">
+              <div style="width:18px;height:18px;flex-shrink:0">${getItemSvg(it)}</div>
+              <span>${it.name}</span>
+              <span class="sap-cat-tag">${it.cat.toUpperCase()}</span>
+            </div>`).join('');
+          // Fix SVG sizes in list
+          listEl.querySelectorAll('.sap-equipped-item svg').forEach(s => {
+            s.style.width='18px'; s.style.height='18px';
+          });
+        }
+      }
+
+      // Deselect button
+      const btn = document.getElementById('sap-deselect-btn');
+      if (btn) btn.disabled = equippedCosmetics.length === 0;
+    }
+
+    /* ── Deselect all cosmetics ─────────────────────────── */
+    async function deselectAll() {
+      const toRemove = [..._equippedItems].filter(id => {
+        if (id.startsWith('emote_')) return false;
+        const it = SHOP_ITEMS.find(x => x.id === id);
+        return it && it.cat !== 'attachments';
+      });
+      if (!toRemove.length) return;
+      toRemove.forEach(id => _equippedItems.delete(id));
+      const token = localStorage.getItem('ah_token');
+      if (token) {
+        await Promise.all(toRemove.map(id =>
+          fetch(`${API}/shop/equip`, { method:'POST',
+            headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+            body: JSON.stringify({ itemId:id, equipped:false }) }).catch(()=>{})
+        ));
+      }
+      _saveBucksLocal(); _renderShopGrid(); _renderShopAvatar();
+    }
+
+    /* ── Purchase confirmation (≥500 bucks) ─────────────── */
+    function _maybeConfirmBuy(id) {
+      const it = SHOP_ITEMS.find(x => x.id === id);
+      if (!it || _bucks < it.price) return;
+      if (it.price >= 500) {
+        _pendingBuyId = id;
+        const overlay = document.getElementById('shop-confirm-overlay');
+        const iconEl  = document.getElementById('scf-icon');
+        iconEl.innerHTML = getItemSvg(it);
+        const svg = iconEl.querySelector('svg');
+        if (svg) { svg.style.width='62px'; svg.style.height='62px'; }
+        document.getElementById('scf-name').textContent = it.name;
+        document.getElementById('scf-price').innerHTML =
+          `<svg width="20" height="20" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg> ${it.price}`;
+        const after = _bucks - it.price;
+        document.getElementById('scf-after').innerHTML =
+          `You'll have <span>${after} BUCKS</span> left after this`;
+        overlay.classList.add('open');
+      } else {
+        buyItem(id);
+      }
+    }
+    function _confirmBuyYes() {
+      document.getElementById('shop-confirm-overlay').classList.remove('open');
+      if (_pendingBuyId) { buyItem(_pendingBuyId); _pendingBuyId = null; }
+    }
+    function _confirmBuyNo() {
+      document.getElementById('shop-confirm-overlay').classList.remove('open');
+      _pendingBuyId = null;
+    }
 
     function openGiftPanel() {
       const token = localStorage.getItem('ah_token');
@@ -3651,7 +4060,9 @@
 
     function _renderShopTabs() {
       document.getElementById('shop-tabs').innerHTML = SHOP_CATS.map(c =>
-        `<button class="shop-tab-btn ${c.key===_shopTab?'active':''}" data-cat="${c.key}" onclick="setShopTab('${c.key}')">${c.label}</button>`
+        `<button class="shop-tab-btn ${c.key===_shopTab?'active':''}" data-cat="${c.key}" onclick="setShopTab('${c.key}')">
+          <span class="shop-tab-icon">${c.icon}</span>${c.label}
+        </button>`
       ).join('');
     }
 
@@ -3698,7 +4109,7 @@
         if (it.cat === 'emotes') {
           if (!owned) {
             const can = _bucks >= it.price;
-            btn = `<button class="shop-btn buy${can?'':' disabled'}" onclick="buyItem('${it.id}')" ${can?'':'disabled'}>${BUCKS_ICON_SM} ${it.price}</button>`;
+            btn = `<button class="shop-btn buy${can?'':' disabled'}" onclick="_maybeConfirmBuy('${it.id}')" ${can?'':'disabled'}>${BUCKS_ICON_SM} ${it.price}</button>`;
           } else if (equipped) {
             btn = `<button class="shop-btn equipped" onclick="unequipItem('${it.id}')">IN WHEEL ✓</button>`;
           } else {
@@ -3715,7 +4126,7 @@
           btn = `<button class="shop-btn owned" onclick="equipItem('${it.id}')">EQUIP</button>`;
         } else {
           const can = _bucks >= it.price;
-          btn = `<button class="shop-btn buy${can?'':' disabled'}" onclick="buyItem('${it.id}')" ${can?'':'disabled'}>${BUCKS_ICON_SM} ${it.price}</button>`;
+          btn = `<button class="shop-btn buy${can?'':' disabled'}" onclick="_maybeConfirmBuy('${it.id}')" ${can?'':'disabled'}>${BUCKS_ICON_SM} ${it.price}</button>`;
         }
         const gunLabel = it.gun === 'all' ? 'ALL GUNS' : it.gun ? it.gun.toUpperCase() : '';
         const gunBadge = it.gun ? `<div class="attach-gun-badge ${it.gun}">${gunLabel}</div>` : '';
@@ -3776,7 +4187,7 @@
       } else { _bucks -= it.price; }
       _ownedItems.add(id);
       if (it.cat === 'attachments') _setAttachUses(id, 2);
-      _saveBucksLocal(); updateBucksDisplay(); _renderShopGrid();
+      _saveBucksLocal(); updateBucksDisplay(); _renderShopGrid(); _renderShopAvatar();
     }
 
     async function equipItem(id) {
@@ -3795,7 +4206,7 @@
             await fetch(`${API}/shop/equip`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({itemId:id,equipped:true})});
           } catch {}
         }
-        _saveBucksLocal(); _renderShopGrid(); return;
+        _saveBucksLocal(); _renderShopGrid(); _renderShopAvatar(); return;
       }
       if (it.cat === 'emotes') {
         // Emotes: up to 5 can be equipped on the wheel simultaneously
@@ -3805,7 +4216,7 @@
         if (token) {
           try { await fetch(`${API}/shop/equip`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({itemId:id,equipped:true})}); } catch {}
         }
-        _saveBucksLocal(); _renderShopGrid(); return;
+        _saveBucksLocal(); _renderShopGrid(); _renderShopAvatar(); return;
       }
       // Cosmetics: one item per category
       SHOP_ITEMS.filter(x => x.cat === it.cat).forEach(x => _equippedItems.delete(x.id));
@@ -3821,7 +4232,7 @@
           });
         } catch {}
       }
-      _saveBucksLocal(); _renderShopGrid();
+      _saveBucksLocal(); _renderShopGrid(); _renderShopAvatar();
     }
 
     async function unequipItem(id) {
@@ -3835,7 +4246,7 @@
           });
         } catch {}
       }
-      _saveBucksLocal(); _renderShopGrid();
+      _saveBucksLocal(); _renderShopGrid(); _renderShopAvatar();
     }
 
     // ── Chat + voice state (pre-declared so restoreSession → chatConnect can use them) ──
