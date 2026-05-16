@@ -1895,17 +1895,21 @@ function buildRobot() {
   const g = new THREE.Group();
 
   // ── Materials ─────────────────────────────────────────────
-  const HULL   = new THREE.MeshStandardMaterial({color:0x18202a, roughness:0.58, metalness:0.76});
-  const ARMOR  = new THREE.MeshStandardMaterial({color:0x242c3a, roughness:0.65, metalness:0.55});
-  const PANEL  = new THREE.MeshStandardMaterial({color:0x2c3448, roughness:0.74, metalness:0.42});
-  const DARK   = new THREE.MeshStandardMaterial({color:0x08090e, roughness:0.92, metalness:0.12});
-  const STEEL  = new THREE.MeshStandardMaterial({color:0x7c8ea2, roughness:0.04, metalness:0.99});
-  const SERVO  = new THREE.MeshStandardMaterial({color:0x2a2e3c, roughness:0.10, metalness:0.97});
-  const PIPE   = new THREE.MeshStandardMaterial({color:0x48525e, roughness:0.30, metalness:0.90});
-  const ACCENT = new THREE.MeshStandardMaterial({color:0x580c10, roughness:0.42, metalness:0.62});
-  const WORN   = new THREE.MeshStandardMaterial({color:0x3a1e1e, roughness:0.82, metalness:0.38});
-  const EYE_L  = new THREE.MeshBasicMaterial({color:0xff0800});
-  const EYE_R  = new THREE.MeshBasicMaterial({color:0xff0800});
+  // Organic white-plate armour (Garou-style)
+  const HULL   = new THREE.MeshStandardMaterial({color:0xa8c2d4, roughness:0.30, metalness:0.18});
+  const ARMOR  = new THREE.MeshStandardMaterial({color:0xc8dce8, roughness:0.24, metalness:0.12});
+  const PANEL  = new THREE.MeshStandardMaterial({color:0x7898b0, roughness:0.42, metalness:0.32});
+  const DARK   = new THREE.MeshStandardMaterial({color:0x060a0e, roughness:0.96, metalness:0.08});
+  const STEEL  = new THREE.MeshStandardMaterial({color:0x182838, roughness:0.82, metalness:0.35});
+  const SERVO  = new THREE.MeshStandardMaterial({color:0x0c1a26, roughness:0.88, metalness:0.22});
+  const PIPE   = new THREE.MeshStandardMaterial({color:0x283c4e, roughness:0.68, metalness:0.52});
+  const ACCENT = new THREE.MeshStandardMaterial({color:0xe0eef8, roughness:0.18, metalness:0.06});
+  const WORN   = new THREE.MeshStandardMaterial({color:0x3c5268, roughness:0.60, metalness:0.40});
+  const EYE_L  = new THREE.MeshBasicMaterial({color:0xffffff});
+  const EYE_R  = new THREE.MeshBasicMaterial({color:0xffffff});
+  // remap all legacy red/orange glows to icy blue-white
+  const _GR = {0xff0800:0x88ccff,0xff2200:0x66aaee,0xff1800:0x77bbff,0xff3300:0x55aadd,
+               0xff4400:0x4499cc,0xff0000:0xaaddff,0x0022cc:0x77bbff,0xff3300:0x55aadd};
 
   // ── Root-level helpers ─────────────────────────────────────
   function box(w,h,d,x,y,z,mat,rX=0,rZ=0){
@@ -1923,11 +1927,11 @@ function buildRobot() {
     m.position.set(x,y,z); g.add(m); return m;
   }
   function glow(w,h,d,x,y,z,col){
-    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:col}));
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:_GR[col]??col}));
     m.position.set(x,y,z); g.add(m); return m;
   }
   function glowCyl(rt,rb,h,segs,x,y,z,col,rX=0,rZ=0){
-    const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,segs),new THREE.MeshBasicMaterial({color:col}));
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,segs),new THREE.MeshBasicMaterial({color:_GR[col]??col}));
     m.position.set(x,y,z); if(rX)m.rotation.x=rX; if(rZ)m.rotation.z=rZ;
     g.add(m); return m;
   }
@@ -1941,7 +1945,7 @@ function buildRobot() {
     function lbox(w,h,d,x,y,z,mat,rZ=0){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z); if(rZ)m.rotation.z=rZ; lg.add(m); }
     function lcyl(rt,rb,h,n,x,y,z,mat,rX=0,rZ=0){ const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,n),mat); m.position.set(x,y,z); if(rX)m.rotation.x=rX; if(rZ)m.rotation.z=rZ; lg.add(m); }
     function lsph(r,n,x,y,z,mat){ const m=new THREE.Mesh(new THREE.SphereGeometry(r,n,Math.ceil(n*.72)),mat); m.position.set(x,y,z); lg.add(m); }
-    function lglow(w,h,d,x,y,z,col){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:col})); m.position.set(x,y,z); lg.add(m); }
+    function lglow(w,h,d,x,y,z,col){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:_GR[col]??col})); m.position.set(x,y,z); lg.add(m); }
 
     // ── Hip joint cluster ──
     lsph(0.148,13,  0,0,0, SERVO);      // outer housing sphere
@@ -2098,60 +2102,77 @@ function buildRobot() {
   box(0.208,0.022,0.208, 0,1.740,0, ACCENT);
 
   // ════════════════════════════════════════════════════════
-  // HEAD
+  // HEAD  (Garou-style organic monster)
   // ════════════════════════════════════════════════════════
-  box(0.462,0.388,0.450, 0,1.982,0, HULL);           // skull main
-  box(0.408,0.148,0.388, 0,2.168,0, HULL);            // cranial dome
-  box(0.372,0.055,0.368, 0,2.248,-0.008, ARMOR);      // dome cap
-  box(0.280,0.022,0.320, 0,2.278,0.018, DARK);        // top vent strip
-  for(let i=0;i<4;i++) box(0.240,0.014,0.016, 0,2.275,-i*0.075+0.030, DARK);
-  // Brow ridge
-  box(0.480,0.070,0.102, 0,2.118,-0.220, DARK);
-  box(0.442,0.024,0.092, 0,2.154,-0.228, ACCENT);
-  glow(0.380,0.010,0.010, 0,2.084,-0.268, 0x0044ff);
-  for(let s=-1;s<=1;s+=2) box(0.032,0.065,0.095, s*0.228,2.118,-0.228, WORN);
-  // Cheeks
-  box(0.068,0.238,0.318, -0.268,1.982,0, ARMOR);
-  box(0.068,0.238,0.318,  0.268,1.982,0, ARMOR);
-  box(0.062,0.210,0.285, -0.272,1.982,0, PANEL);
-  box(0.062,0.210,0.285,  0.272,1.982,0, PANEL);
-  box(0.065,0.040,0.105, -0.268,1.858,-0.060, WORN); // lower cheek notch
-  box(0.065,0.040,0.105,  0.268,1.858,-0.060, WORN);
-  // Visor system
-  box(0.408,0.130,0.062, 0,1.982,-0.232, DARK);
-  box(0.382,0.108,0.030, 0,1.982,-0.252, WORN);
-  glow(0.348,0.065,0.010, 0,1.982,-0.270, 0xff0800);
-  // Eye socket rings (two per side)
+  // Main cranium — slightly narrower/taller for imposing look
+  box(0.430,0.395,0.430, 0,1.984,0, HULL);
+  box(0.385,0.158,0.375, 0,2.172,0, HULL);
+  box(0.355,0.052,0.348, 0,2.246, 0, ARMOR);
+  // Organic plate seams on skull
+  box(0.005,0.345,0.400, 0,2.002,0, DARK);                          // center vertical seam
+  for(let s=-1;s<=1;s+=2) box(0.005,0.240,0.365, s*0.138,2.010,0, DARK);  // side seams
+  box(0.005,0.148,0.365, 0,2.168,0, DARK);                          // upper seam
+  // Brow ridge — dramatic angular overhang
+  box(0.468,0.095,0.118, 0,2.112,-0.195, DARK);
+  box(0.428,0.058,0.096, 0,2.150,-0.212, ARMOR);
+  box(0.006,0.072,0.090, 0,2.125,-0.212, DARK);                     // brow center notch
+  for(let s=-1;s<=1;s+=2) box(0.034,0.068,0.090, s*0.198,2.120,-0.215, WORN);
+  // Visor — single menacing white slit
+  box(0.398,0.120,0.062, 0,1.985,-0.222, DARK);
+  box(0.370,0.095,0.030, 0,1.985,-0.248, STEEL);
+  glow(0.335,0.028,0.012, 0,1.985,-0.258, 0xffffff);               // white horizontal visor slit
+  glow(0.295,0.014,0.010, 0,1.985,-0.262, 0xbbddff);               // inner blue edge
+  // Eye sockets (housed in visor)
   for(let s=-1;s<=1;s+=2){
-    cyl(0.065,0.065,0.016,10, s*0.100,1.982,-0.256, DARK, Math.PI/2);
-    cyl(0.058,0.058,0.010,10, s*0.100,1.982,-0.262, WORN, Math.PI/2);
+    cyl(0.052,0.052,0.018,10, s*0.098,1.985,-0.248, DARK, Math.PI/2);
   }
-  // Eye spheres
-  const eyeL=new THREE.Mesh(new THREE.SphereGeometry(0.054,11,8),EYE_L); eyeL.position.set( 0.100,1.982,-0.250); g.add(eyeL);
-  const eyeR=new THREE.Mesh(new THREE.SphereGeometry(0.054,11,8),EYE_R); eyeR.position.set(-0.100,1.982,-0.250); g.add(eyeR);
-  glowCyl(0.056,0.056,0.008,10,  0.100,1.982,-0.254, 0xff3300, Math.PI/2); // eye scan ring
-  glowCyl(0.056,0.056,0.008,10, -0.100,1.982,-0.254, 0xff3300, Math.PI/2);
-  // Chin/jaw
-  box(0.348,0.106,0.100, 0,1.804,-0.202, DARK);
-  box(0.292,0.062,0.060, 0,1.756,-0.236, ACCENT);
-  for(let i=0;i<3;i++) box(0.048,0.022,0.015, -0.072+i*0.072,1.820,-0.272, DARK);
-  glow(0.228,0.009,0.010, 0,1.804,-0.274, 0xff2200);
-  // Side sensor pods
+  const eyeL=new THREE.Mesh(new THREE.SphereGeometry(0.038,11,8),EYE_L); eyeL.position.set( 0.098,1.985,-0.244); g.add(eyeL);
+  const eyeR=new THREE.Mesh(new THREE.SphereGeometry(0.038,11,8),EYE_R); eyeR.position.set(-0.098,1.985,-0.244); g.add(eyeR);
+  glowCyl(0.042,0.042,0.010,10,  0.098,1.985,-0.248, 0xffffff, Math.PI/2);
+  glowCyl(0.042,0.042,0.010,10, -0.098,1.985,-0.248, 0xffffff, Math.PI/2);
+  // Cheeks — organic segmented plates
   for(let s=-1;s<=1;s+=2){
-    cyl(0.044,0.038,0.086,10, s*0.290,2.028,-0.055, STEEL, 0,Math.PI/2);
-    cyl(0.038,0.038,0.012,10, s*0.312,2.028,-0.055, DARK, 0,Math.PI/2);
-    glowCyl(0.036,0.036,0.008,10, s*0.314,2.028,-0.055, 0x00aaff, 0,Math.PI/2);
-    cyl(0.011,0.007,0.096,6, s*0.274,2.086,-0.042, STEEL);
-    sph(0.016,8, s*0.274,2.138,-0.042, new THREE.MeshBasicMaterial({color:0x00aaff}));
-    cyl(0.024,0.020,0.058,8, s*0.282,1.948,-0.078, PIPE, 0,Math.PI/2);
-    glowCyl(0.018,0.018,0.008,7, s*0.308,1.948,-0.078, 0xff0000, 0,Math.PI/2);
+    box(0.062,0.242,0.308, s*0.258,1.984,0.002, HULL);
+    box(0.056,0.212,0.272, s*0.264,1.984,0.002, ARMOR);
+    box(0.005,0.198,0.258, s*0.235,1.984,0.002, DARK);             // cheek seam line
+    box(0.060,0.038,0.098, s*0.258,1.855,-0.055, WORN);
   }
-  // Back of head
-  box(0.388,0.248,0.030, 0,1.982,0.248, ARMOR);
-  box(0.302,0.082,0.038, 0,1.950,0.244, DARK);
-  box(0.255,0.042,0.038, 0,2.062,0.244, DARK);
-  for(let i=0;i<5;i++) box(0.248,0.014,0.030, 0,1.933+i*0.018,0.248, DARK);
-  for(let i=0;i<3;i++) box(0.062,0.024,0.022, -0.068+i*0.068,2.065,0.230, new THREE.MeshBasicMaterial({color:0x0022cc}));
+  // Chin/jaw — wide aggressive jaw plate
+  box(0.368,0.118,0.105, 0,1.805,-0.188, DARK);
+  box(0.330,0.080,0.068, 0,1.808,-0.222, HULL);
+  box(0.288,0.038,0.055, 0,1.762,-0.240, ACCENT);                  // chin highlight plate
+  // Grin slit — menacing teeth line
+  glow(0.248,0.011,0.010, 0,1.818,-0.258, 0xffffff);
+  glow(0.195,0.006,0.008, 0,1.818,-0.261, 0xbbddff);
+  // Jaw seam
+  box(0.005,0.100,0.095, 0,1.808,-0.195, DARK);
+  for(let i=0;i<4;i++) box(0.042,0.008,0.012, -0.084+i*0.056,1.825,-0.268, DARK); // teeth gaps
+  // Side sensor pods (sleek)
+  for(let s=-1;s<=1;s+=2){
+    cyl(0.038,0.032,0.078,10, s*0.284,2.032,-0.048, PANEL, 0,Math.PI/2);
+    cyl(0.032,0.032,0.010,10, s*0.305,2.032,-0.048, DARK,  0,Math.PI/2);
+    glowCyl(0.028,0.028,0.008,10, s*0.307,2.032,-0.048, 0xbbddff, 0,Math.PI/2);
+    cyl(0.009,0.005,0.082,5, s*0.265,2.086,-0.038, STEEL);
+    sph(0.014,8, s*0.265,2.136,-0.038, new THREE.MeshBasicMaterial({color:0xbbddff}));
+  }
+  // Back of head — plate lines
+  box(0.372,0.242,0.030, 0,1.984,0.230, ARMOR);
+  box(0.290,0.078,0.038, 0,1.948,0.230, DARK);
+  for(let i=0;i<4;i++) box(0.250,0.012,0.030, 0,1.935+i*0.022,0.232, DARK);
+  // ── CROWN SPIKES (dramatic fan — 5 bladed fins) ────────────
+  [[-0.205,0.50, 0.62],[-0.100,0.62, 0.28],[0.000,0.72, 0.00],[0.100,0.62,-0.28],[0.205,0.50,-0.62]]
+  .forEach(([dx,h,rZ])=>{
+    const cy = 2.295 + h*0.50;
+    // Outer spike plate (4-sided tapered)
+    const sm = new THREE.Mesh(new THREE.CylinderGeometry(0.007,0.044,h,4), ARMOR);
+    sm.position.set(dx, cy, -0.042); sm.rotation.z = rZ; sm.rotation.x = -0.055; g.add(sm);
+    // Inner bright highlight
+    const si = new THREE.Mesh(new THREE.CylinderGeometry(0.004,0.028,h*0.82,4), ACCENT);
+    si.position.set(dx*0.90, cy-h*0.06, -0.040); si.rotation.z = rZ; si.rotation.x = -0.055; g.add(si);
+    // Dark seam down spike face
+    const ss = new THREE.Mesh(new THREE.BoxGeometry(0.005,h*0.78,0.004), DARK);
+    ss.position.set(dx, cy-h*0.04, -0.050); ss.rotation.z = rZ; ss.rotation.x = -0.055; g.add(ss);
+  });
 
   // ════════════════════════════════════════════════════════
   // SHOULDERS
@@ -2166,7 +2187,7 @@ function buildRobot() {
     box(0.030,0.138,0.194, s*0.622,1.700,-0.115, PANEL);
     box(0.026,0.105,0.042, s*0.624,1.700,-0.222, DARK);
     cyl(0.022,0.009,0.230,8, s*0.620,1.968,-0.036, STEEL);
-    sph(0.020,8, s*0.620,2.086,-0.036, new THREE.MeshBasicMaterial({color:0xff0800}));
+    sph(0.020,8, s*0.620,2.086,-0.036, new THREE.MeshBasicMaterial({color:0xaaddff}));
     glow(0.010,0.148,0.358, s*0.518,1.700,0, 0xff0800);
     for(let i=-1;i<=1;i+=2)
       cyl(0.015,0.015,0.032,8, s*0.624,1.700+i*0.058,-0.254, STEEL, 0,Math.PI/2);
@@ -2182,7 +2203,7 @@ function buildRobot() {
     function abx(w,h,d,x,y,z,mat){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z); ag.add(m); }
     function acy(rt,rb,h,n,x,y,z,mat,rX=0,rZ=0){ const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,n),mat); m.position.set(x,y,z); if(rX)m.rotation.x=rX; if(rZ)m.rotation.z=rZ; ag.add(m); }
     function asp(r,n,x,y,z,mat){ const m=new THREE.Mesh(new THREE.SphereGeometry(r,n,Math.ceil(n*.72)),mat); m.position.set(x,y,z); ag.add(m); }
-    function agl(w,h,d,x,y,z,col){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:col})); m.position.set(x,y,z); ag.add(m); }
+    function agl(w,h,d,x,y,z,col){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:_GR[col]??col})); m.position.set(x,y,z); ag.add(m); }
 
     // ── Upper arm ──
     acy(0.116,0.094,0.48,13, sx,-0.390,0, HULL);
@@ -2216,7 +2237,7 @@ function buildRobot() {
     abx(0.058,0.208,0.195, sx+side*0.116,-0.875,0.008, ARMOR); // outer plate
     acy(0.010,0.010,0.34,8, sx+side*0.086,-0.862,0.054, new THREE.MeshBasicMaterial({color:0x0055cc})); // cables
     acy(0.008,0.008,0.30,7, sx+side*0.075,-0.862,0.068, STEEL);
-    acy(0.009,0.009,0.26,6, sx+side*0.062,-0.862,0.058, new THREE.MeshBasicMaterial({color:0xcc3300}));
+    acy(0.009,0.009,0.26,6, sx+side*0.062,-0.862,0.058, new THREE.MeshBasicMaterial({color:0x55aadd}));
     acy(0.015,0.015,0.32,8, sx-side*0.085,-0.862,0.072, PIPE);
     agl(0.062,0.012,0.034, sx,-0.776,-0.125, 0xff0800);
     agl(0.046,0.008,0.030, sx,-0.934,-0.125, 0xff2200);
@@ -2250,7 +2271,7 @@ function buildRobot() {
       asp(0.024,8, fx,-1.330,-0.102, SERVO);              // knuckle joint
       acy(0.017,0.013,0.105,7, fx,-1.248,-0.188, STEEL);  // distal
       asp(0.018,7, fx,-1.248,-0.248, ACCENT);              // fingertip
-      if(f===0) agl(0.010,0.008,0.010, fx,-1.248,-0.200, 0xff0000); // mid-finger LED
+      if(f===0) agl(0.010,0.008,0.010, fx,-1.248,-0.200, 0xaaddff); // mid-finger LED
     }
 
     g.add(ag);
@@ -2920,65 +2941,35 @@ function toggleEmoteWheel() {
 
 function showEmoteWheel() {
   const equipped  = new Set(JSON.parse(localStorage.getItem('ah_equipped') || '[]'));
-  const available = EMOTE_DEFS.filter(e => equipped.has(e.id));
-  _emotePage      = 0;
-  _renderEmoteWheelPage(available, 0);
+  const available = EMOTE_DEFS.filter(e => equipped.has(e.id)).slice(0, 5);
+  _renderEmoteWheel(available);
   document.getElementById('emote-wheel').style.display = 'flex';
   document.exitPointerLock();
   emoteWheelOpen = true;
 }
 
-function _renderEmoteWheelPage(available, page) {
+function _renderEmoteWheel(available) {
   const ring = document.getElementById('emote-wheel-ring');
   if (!ring) return;
   ring.innerHTML = '';
-  if (available.length === 0) {
-    ring.innerHTML = '<div id="emote-wheel-none">No emotes in wheel.<br>Equip some in the shop!</div>';
-    return;
+  const SLOTS = 5, cx = 250, cy = 250, r = 165, sw = 115, sh = 115;
+  for (let i = 0; i < SLOTS; i++) {
+    const angle = (i / SLOTS) * Math.PI * 2 - Math.PI / 2;
+    const x = cx + r * Math.cos(angle) - sw / 2;
+    const y = cy + r * Math.sin(angle) - sh / 2;
+    const em  = available[i];
+    const el  = document.createElement('div');
+    el.style.cssText = `left:${x}px;top:${y}px;width:${sw}px;height:${sh}px`;
+    if (em) {
+      el.className = 'emote-seg';
+      el.innerHTML = `<div class="emote-seg-emoji">${em.emoji}</div><div class="emote-seg-label">${em.label}</div>`;
+      el.addEventListener('click', () => selectEmote(em));
+    } else {
+      el.className = 'emote-slot-empty';
+      el.innerHTML = `<div class="emote-slot-empty-icon">＋</div><div class="emote-slot-empty-text">EMPTY</div>`;
+    }
+    ring.appendChild(el);
   }
-  const PAGE  = 12;
-  const total = Math.ceil(available.length / PAGE);
-  const items = available.slice(page * PAGE, (page + 1) * PAGE);
-  const n     = items.length;
-  const cx = 200, cy = 200;
-  // Adaptive radius and segment size
-  let r, w;
-  if      (n <= 6)  { r = 118; w = 88; }
-  else if (n <= 9)  { r = 148; w = 76; }
-  else              { r = 168; w = 64; }
-  const h = w;
-  items.forEach((em, i) => {
-    const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
-    const x     = cx + r * Math.cos(angle) - w / 2;
-    const y     = cy + r * Math.sin(angle) - h / 2;
-    const seg   = document.createElement('div');
-    seg.className  = 'emote-seg';
-    seg.style.left = x + 'px';
-    seg.style.top  = y + 'px';
-    seg.style.width  = w + 'px';
-    seg.style.height = h + 'px';
-    const fs = w <= 64 ? '28px' : w <= 76 ? '30px' : '34px';
-    seg.innerHTML = `<div class="emote-seg-emoji" style="font-size:${fs}">${em.emoji}</div><div class="emote-seg-label">${em.label}</div>`;
-    seg.addEventListener('click', () => selectEmote(em));
-    ring.appendChild(seg);
-  });
-  if (total > 1) {
-    const nav = document.createElement('div');
-    nav.id = 'emote-page-nav';
-    nav.innerHTML = `
-      <button class="emote-page-btn" onclick="_emotePageNav(-1)">◀</button>
-      <span>${page + 1} / ${total}</span>
-      <button class="emote-page-btn" onclick="_emotePageNav(1)">▶</button>`;
-    ring.appendChild(nav);
-  }
-}
-
-function _emotePageNav(dir) {
-  const equipped  = new Set(JSON.parse(localStorage.getItem('ah_equipped') || '[]'));
-  const available = EMOTE_DEFS.filter(e => equipped.has(e.id));
-  const total     = Math.ceil(available.length / 12);
-  _emotePage      = (_emotePage + dir + total) % total;
-  _renderEmoteWheelPage(available, _emotePage);
 }
 
 function hideEmoteWheel() {
@@ -3064,221 +3055,332 @@ function _tickEmoteBody(ea, rp, dt) {
 
   switch (anim) {
     case 'ea-wave': {
-      rp.armGroupR.rotation.x = 1.10 + Math.sin(t * 4) * 0.8;
-      rp.armGroupR.rotation.z = -0.32 + Math.sin(t * 4) * 0.3;
+      // Full raised-arm wave with natural wrist oscillation and body sway
+      const ph = t * 5.0;
+      rp.armGroupR.rotation.x = 2.05 + Math.sin(ph) * 0.42;
+      rp.armGroupR.rotation.z = -0.88 + Math.sin(ph * 0.8) * 0.22;
       rp.armGroupL.rotation.x = 1.10;
       rp.armGroupL.rotation.z = 0.32;
+      rp.group.rotation.z     = Math.sin(ph * 0.4) * 0.05;
+      ea._pyOffset             = 0.02;
       break;
     }
     case 'ea-dance': {
-      const s = Math.sin(t * 3);
-      rp.armGroupR.rotation.x = 1.10 + s * 0.6;
-      rp.armGroupL.rotation.x = 1.10 - s * 0.6;
-      rp.armGroupR.rotation.z = -0.32 - s * 0.2;
-      rp.armGroupL.rotation.z =  0.32 + s * 0.2;
-      rp.group.rotation.z     = s * 0.08;
-      ea._pyOffset = Math.abs(Math.sin(t * 3)) * 0.15;
+      // Full-body rhythmic: alternating arm pumps, leg kicks, hip sway, bounce
+      const beat = t * 3.8;
+      rp.armGroupR.rotation.x = 1.10 + Math.sin(beat + Math.PI) * 0.95;
+      rp.armGroupL.rotation.x = 1.10 + Math.sin(beat) * 0.95;
+      rp.armGroupR.rotation.z = -0.32 + Math.cos(beat) * 0.20;
+      rp.armGroupL.rotation.z =  0.32 - Math.cos(beat) * 0.20;
+      rp.legL.rotation.x      =  Math.sin(beat + 0.6) * 0.28;
+      rp.legR.rotation.x      = -Math.sin(beat + 0.6) * 0.28;
+      rp.group.rotation.z     =  Math.sin(beat * 0.9) * 0.14;
+      ea._pyOffset             =  Math.abs(Math.sin(beat)) * 0.26;
       break;
     }
     case 'ea-bow': {
-      const b = Math.sin(t * 1.5);
-      rp.group.rotation.x     = b * 0.35;
-      rp.armGroupL.rotation.x = 1.10 + b * 0.4;
-      rp.armGroupR.rotation.x = 1.10 + b * 0.4;
+      // Deep respectful bow — torso bends forward, arms sweep down and back
+      const bv  = Math.max(0, Math.sin(t * 1.4));
+      rp.group.rotation.x     =  bv * 0.62;
+      rp.armGroupL.rotation.x = 1.10 + bv * 0.70;
+      rp.armGroupR.rotation.x = 1.10 + bv * 0.70;
+      rp.armGroupL.rotation.z =  0.32 + bv * 0.35;
+      rp.armGroupR.rotation.z = -0.32 - bv * 0.35;
+      ea._pyOffset             = -bv * 0.12;
       break;
     }
     case 'ea-salute': {
-      rp.armGroupR.rotation.x = 1.70 + Math.sin(t * 2) * 0.1;
-      rp.armGroupR.rotation.z = -0.72;
-      rp.armGroupL.rotation.x = 1.10;
+      // Military salute: right hand rises to brow and holds, slight body straighten
+      const hold = Math.min(1, t * 2.5);
+      rp.armGroupR.rotation.x =  1.10 + hold * 1.10;
+      rp.armGroupR.rotation.z = -0.32 - hold * 0.60;
+      rp.armGroupL.rotation.x =  1.10;
       rp.armGroupL.rotation.z =  0.32;
+      rp.group.rotation.x     = -hold * 0.04;
       break;
     }
     case 'ea-pulse':
     case 'ea-heartbeat': {
-      rp.group.scale.setScalar(1 + Math.sin(t * 5) * 0.06);
+      // Double-beat pulse with arm raise on each beat
+      const hb = t * 6;
+      const sc = 1 + Math.max(0, Math.sin(hb) * 0.5) * 0.14;
+      rp.group.scale.setScalar(sc);
+      rp.armGroupL.rotation.x = 1.10 + Math.max(0, Math.sin(hb)) * 0.5;
+      rp.armGroupR.rotation.x = 1.10 + Math.max(0, Math.sin(hb)) * 0.5;
       break;
     }
     case 'ea-shake':
     case 'ea-wiggle': {
-      rp.group.rotation.z     = Math.sin(t * 8) * 0.12;
-      rp.armGroupR.rotation.z = -0.32 + Math.sin(t * 8) * 0.15;
-      rp.armGroupL.rotation.z =  0.32 + Math.sin(t * 8) * 0.15;
+      // Angry rapid whole-body shake with flailing arms
+      const sh = t * 9;
+      rp.group.rotation.z     =  Math.sin(sh) * 0.16;
+      rp.armGroupR.rotation.z = -0.32 + Math.sin(sh) * 0.30;
+      rp.armGroupL.rotation.z =  0.32 + Math.sin(sh) * 0.30;
+      rp.armGroupR.rotation.x =  1.10 + Math.sin(sh + 1) * 0.22;
+      rp.armGroupL.rotation.x =  1.10 - Math.sin(sh + 1) * 0.22;
+      ea._pyOffset             =  Math.abs(Math.sin(sh * 0.5)) * 0.08;
       break;
     }
     case 'ea-swing': {
-      const sw = Math.sin(t * 3);
-      rp.armGroupR.rotation.x = 1.10 + sw * 0.7;
-      rp.armGroupL.rotation.x = 1.10 - sw * 0.7;
+      // Pendulum swing with alternating arms and hip counter-rotation
+      const sw = Math.sin(t * 3.2);
+      rp.armGroupR.rotation.x = 1.10 + sw * 0.88;
+      rp.armGroupL.rotation.x = 1.10 - sw * 0.88;
+      rp.armGroupR.rotation.z = -0.32 - sw * 0.15;
+      rp.armGroupL.rotation.z =  0.32 + sw * 0.15;
+      rp.group.rotation.z     =  sw * 0.07;
       break;
     }
-    case 'ea-zoom':
+    case 'ea-zoom': {
+      // Bicep flex — both arms curl up to flex position, body pulses
+      const fl = 0.65 + Math.sin(t * 2.2) * 0.35;
+      rp.armGroupR.rotation.x =  1.10 + fl * 0.95;
+      rp.armGroupL.rotation.x =  1.10 + fl * 0.95;
+      rp.armGroupR.rotation.z = -0.88;
+      rp.armGroupL.rotation.z =  0.88;
+      rp.group.scale.setScalar(1 + Math.sin(t * 3) * 0.05);
+      ea._pyOffset             = fl * 0.08;
+      break;
+    }
     case 'ea-explode': {
-      rp.group.scale.setScalar(Math.max(0.8, 1 + Math.sin(t * 2) * 0.15));
+      rp.group.scale.setScalar(Math.max(0.8, 1 + Math.sin(t * 2.5) * 0.18));
+      rp.armGroupR.rotation.z = -0.62 - Math.sin(t * 2.5) * 0.25;
+      rp.armGroupL.rotation.z =  0.62 + Math.sin(t * 2.5) * 0.25;
       break;
     }
     case 'ea-bounce':
     case 'ea-jump': {
-      ea._pyOffset       = Math.max(0, Math.sin(t * 4) * 0.5);
-      rp.legL.rotation.x =  Math.sin(t * 4) * 0.25;
-      rp.legR.rotation.x = -Math.sin(t * 4) * 0.25;
+      // Springy jump with squat prep and leg tuck
+      const jt  = t * 4.2;
+      const air = Math.max(0, Math.sin(jt));
+      ea._pyOffset       = air * 0.62;
+      rp.legL.rotation.x =  air * 0.30;
+      rp.legR.rotation.x =  air * 0.30;
+      rp.armGroupL.rotation.x = 1.10 - air * 0.45;
+      rp.armGroupR.rotation.x = 1.10 - air * 0.45;
+      rp.group.rotation.x     = -air * 0.08;
       break;
     }
     case 'ea-float': {
-      ea._pyOffset        = Math.sin(t * 1.5) * 0.3 + 0.35;
-      rp.armGroupL.rotation.x = 1.10 - 0.3 + Math.sin(t * 1.5) * 0.1;
-      rp.armGroupR.rotation.x = 1.10 - 0.3 + Math.sin(t * 1.5) * 0.1;
-      rp.armGroupL.rotation.z =  0.52;
-      rp.armGroupR.rotation.z = -0.52;
+      // Serene floating — gentle rise, arms spread wide, slow sway
+      ea._pyOffset             = Math.sin(t * 1.4) * 0.35 + 0.40;
+      rp.armGroupL.rotation.x  = 0.72 + Math.sin(t * 1.4) * 0.12;
+      rp.armGroupR.rotation.x  = 0.72 + Math.sin(t * 1.4) * 0.12;
+      rp.armGroupL.rotation.z  =  0.65;
+      rp.armGroupR.rotation.z  = -0.65;
+      rp.group.rotation.z      =  Math.sin(t * 0.9) * 0.04;
       break;
     }
     case 'ea-spin': {
-      ea._spinY += dt * 4;
+      ea._spinY += dt * 5;
       rp.group.rotation.y = ea._spinY;
-      rp.armGroupL.rotation.z =  0.82;
-      rp.armGroupR.rotation.z = -0.82;
-      rp.armGroupL.rotation.x =  0.70;
-      rp.armGroupR.rotation.x =  0.70;
+      rp.armGroupL.rotation.z =  0.88;
+      rp.armGroupR.rotation.z = -0.88;
+      rp.armGroupL.rotation.x =  0.65;
+      rp.armGroupR.rotation.x =  0.65;
+      ea._pyOffset             =  0.15;
       break;
     }
     case 'ea-sparkle':
     case 'ea-rainbow':
     case 'ea-flash': {
-      rp.armGroupL.rotation.x = 1.10 + 0.7;
-      rp.armGroupR.rotation.x = 1.10 + 0.7;
-      rp.armGroupL.rotation.z =  0.32 + Math.sin(t * 6) * 0.25;
-      rp.armGroupR.rotation.z = -0.32 - Math.sin(t * 6) * 0.25;
+      rp.armGroupL.rotation.x =  1.90;
+      rp.armGroupR.rotation.x =  1.90;
+      rp.armGroupL.rotation.z =  0.32 + Math.sin(t * 7) * 0.35;
+      rp.armGroupR.rotation.z = -0.32 - Math.sin(t * 7) * 0.35;
+      ea._pyOffset             =  Math.abs(Math.sin(t * 3.5)) * 0.14;
       break;
     }
     case 'ea-robot': {
-      const step = Math.round(Math.sin(t * 2) * 2) / 2;
-      rp.armGroupR.rotation.x = 1.10 + step * 0.5;
-      rp.armGroupL.rotation.x = 1.10 - step * 0.5;
-      rp.group.rotation.z     = Math.round(Math.sin(t * 1.5) * 2) / 2 * 0.06;
+      // Mechanical stepped movement — quantised, jerky, deliberate
+      const freq = 2.8;
+      const sR   = Math.sign(Math.sin(t * freq)) * 0.5;
+      const sL   = Math.sign(Math.sin(t * freq + Math.PI)) * 0.5;
+      rp.armGroupR.rotation.x = 1.10 + sR * 0.85;
+      rp.armGroupL.rotation.x = 1.10 + sL * 0.85;
+      rp.armGroupR.rotation.z = -0.32 + sR * 0.22;
+      rp.armGroupL.rotation.z =  0.32 - sL * 0.22;
+      rp.legL.rotation.x      =  sL * 0.22;
+      rp.legR.rotation.x      = -sR * 0.22;
+      rp.group.rotation.z     =  Math.sign(Math.sin(t * freq * 0.75)) * 0.07;
       break;
     }
     case 'ea-zombie': {
-      rp.armGroupL.rotation.x = 1.80;
-      rp.armGroupR.rotation.x = 1.80;
-      rp.armGroupL.rotation.z =  0.32;
-      rp.armGroupR.rotation.z = -0.32;
-      rp.group.rotation.x     = -0.15 + Math.sin(t * 1.2) * 0.05;
+      // Slow lurch with outstretched arms and faltering gait
+      const lch = t * 0.9;
+      rp.armGroupL.rotation.x =  2.10 + Math.sin(lch) * 0.12;
+      rp.armGroupR.rotation.x =  2.00 + Math.sin(lch + 0.5) * 0.18;
+      rp.armGroupL.rotation.z =  0.10;
+      rp.armGroupR.rotation.z = -0.10;
+      rp.group.rotation.x     = -0.22 + Math.sin(lch * 0.85) * 0.10;
+      rp.group.rotation.z     =  Math.sin(lch * 0.7) * 0.10;
+      rp.legL.rotation.x      =  Math.sin(lch) * 0.20;
+      rp.legR.rotation.x      = -Math.sin(lch) * 0.20;
       break;
     }
     case 'ea-swagger': {
-      rp.group.rotation.z     = Math.sin(t * 2) * 0.15;
-      rp.armGroupR.rotation.z = -0.32 + Math.sin(t * 2) * 0.25;
-      rp.armGroupL.rotation.z =  0.32 + Math.sin(t * 2) * 0.25;
-      ea._pyOffset = Math.abs(Math.sin(t * 2)) * 0.1;
+      // Hip swagger with loose swinging arms and light bounce
+      const sw = Math.sin(t * 2.4);
+      rp.group.rotation.z     =  sw * 0.20;
+      rp.armGroupR.rotation.z = -0.32 + sw * 0.35;
+      rp.armGroupL.rotation.z =  0.32 + sw * 0.35;
+      rp.armGroupR.rotation.x =  1.10 - Math.abs(sw) * 0.18;
+      rp.armGroupL.rotation.x =  1.10 - Math.abs(sw) * 0.18;
+      rp.legL.rotation.x      =  sw * 0.14;
+      rp.legR.rotation.x      = -sw * 0.14;
+      ea._pyOffset             =  Math.abs(sw) * 0.14;
       break;
     }
     case 'ea-rofl': {
-      rp.group.rotation.x     = 0.30 + Math.sin(t * 4) * 0.10;
-      rp.armGroupL.rotation.x = 1.10 + Math.sin(t * 4) * 0.3;
-      rp.armGroupR.rotation.x = 1.10 + Math.sin(t * 4) * 0.3;
-      ea._pyOffset = -0.1;
+      // Rolling on the floor — deep forward bend, arms flailing, bouncing body
+      const rf = t * 4.5;
+      rp.group.rotation.x     =  0.38 + Math.sin(rf) * 0.15;
+      rp.group.rotation.z     =  Math.sin(rf * 0.7) * 0.14;
+      rp.armGroupL.rotation.x =  1.10 + Math.sin(rf) * 0.45;
+      rp.armGroupR.rotation.x =  1.10 + Math.sin(rf + 1.2) * 0.45;
+      ea._pyOffset             = -0.08;
       break;
     }
     case 'ea-headbang': {
-      rp.group.rotation.x     = Math.sin(t * 8) * 0.25;
-      rp.armGroupL.rotation.x = 1.10 + Math.sin(t * 8) * 0.3;
-      rp.armGroupR.rotation.x = 1.10 + Math.sin(t * 8) * 0.3;
+      // Aggressive headbang with torso and arms
+      const hb = t * 9;
+      rp.group.rotation.x     =  Math.sin(hb) * 0.35;
+      rp.armGroupL.rotation.x =  1.10 + Math.sin(hb + 0.5) * 0.42;
+      rp.armGroupR.rotation.x =  1.10 + Math.sin(hb) * 0.42;
+      rp.armGroupL.rotation.z =  0.62;
+      rp.armGroupR.rotation.z = -0.62;
+      ea._pyOffset             =  Math.abs(Math.sin(hb)) * 0.10;
       break;
     }
     case 'ea-moonwalk': {
-      rp.group.rotation.x     = -0.1;
-      rp.legL.rotation.x      =  Math.sin(t * 3) * 0.3;
-      rp.legR.rotation.x      = -Math.sin(t * 3) * 0.3;
-      rp.armGroupL.rotation.z =  0.17;
-      rp.armGroupR.rotation.z = -0.17;
+      // Smooth moonwalk — backward slide, arms low and casual
+      rp.group.rotation.x     = -0.12;
+      rp.legL.rotation.x      =  Math.sin(t * 3.2) * 0.38;
+      rp.legR.rotation.x      = -Math.sin(t * 3.2) * 0.38;
+      rp.armGroupL.rotation.z =  0.18;
+      rp.armGroupR.rotation.z = -0.18;
+      rp.armGroupL.rotation.x =  0.95;
+      rp.armGroupR.rotation.x =  0.95;
+      ea._pyOffset             =  Math.abs(Math.sin(t * 3.2)) * 0.06;
       break;
     }
     case 'ea-floss': {
-      const f = Math.sin(t * 4);
-      rp.armGroupR.rotation.z = -0.32 + f * 0.8;
-      rp.armGroupL.rotation.z =  0.32 + f * 0.8;
-      rp.armGroupR.rotation.x =  1.30;
-      rp.armGroupL.rotation.x =  1.30;
-      rp.group.rotation.z     =  f * 0.07;
+      // Floss dance — hips twist, arms swing hard side to side, legs bounce
+      const f = Math.sin(t * 4.5);
+      rp.armGroupR.rotation.z = -0.32 + f * 0.95;
+      rp.armGroupL.rotation.z =  0.32 + f * 0.95;
+      rp.armGroupR.rotation.x =  1.35;
+      rp.armGroupL.rotation.x =  1.35;
+      rp.group.rotation.z     =  f * 0.10;
+      rp.legL.rotation.x      =  Math.abs(f) * 0.15;
+      ea._pyOffset             =  Math.abs(f) * 0.12;
       break;
     }
     case 'ea-worm': {
-      rp.group.rotation.x = Math.sin(t * 3) * 0.3;
-      ea._pyOffset = (Math.sin(t * 3) + 1) * 0.15;
+      // Ground-level worm — body undulates, low position
+      const wv = Math.sin(t * 3.2);
+      rp.group.rotation.x =  wv * 0.38;
+      rp.group.rotation.z =  Math.sin(t * 1.6) * 0.06;
+      ea._pyOffset         = (wv + 1) * 0.14;
       break;
     }
     case 'ea-dab': {
-      rp.armGroupR.rotation.x = 2.00;
-      rp.armGroupR.rotation.z = -0.82;
-      rp.armGroupL.rotation.x = 1.40;
-      rp.armGroupL.rotation.z =  0.52;
-      rp.group.rotation.z     = -0.12;
+      // Proper dab — arm shoots up diagonally, head tilts into elbow
+      const hold = Math.min(1, t * 3.5);
+      rp.armGroupR.rotation.x =  1.10 + hold * 1.30;
+      rp.armGroupR.rotation.z = -0.32 - hold * 0.58;
+      rp.armGroupL.rotation.x =  1.48;
+      rp.armGroupL.rotation.z =  0.55;
+      rp.group.rotation.z     = -hold * 0.20;
+      rp.group.rotation.x     =  hold * 0.12;
       break;
     }
     case 'ea-run': {
-      rp.legL.rotation.x      =  Math.sin(t * 7) * 0.5;
-      rp.legR.rotation.x      = -Math.sin(t * 7) * 0.5;
-      rp.armGroupL.rotation.x = 1.10 + Math.sin(t * 7 + Math.PI) * 0.5;
-      rp.armGroupR.rotation.x = 1.10 + Math.sin(t * 7) * 0.5;
-      ea._pyOffset = Math.abs(Math.sin(t * 7)) * 0.15;
+      // Sprint in place — fast leg drive, arm pump, forward lean
+      const rt = t * 8;
+      rp.legL.rotation.x      =  Math.sin(rt) * 0.60;
+      rp.legR.rotation.x      = -Math.sin(rt) * 0.60;
+      rp.armGroupL.rotation.x =  1.10 + Math.sin(rt + Math.PI) * 0.62;
+      rp.armGroupR.rotation.x =  1.10 + Math.sin(rt) * 0.62;
+      rp.group.rotation.x     = -0.12;
+      ea._pyOffset             =  Math.abs(Math.sin(rt)) * 0.18;
       break;
     }
     case 'ea-breakdance': {
-      ea._spinY += dt * 6;
+      ea._spinY += dt * 7.5;
       rp.group.rotation.y = ea._spinY;
-      const bd = Math.sin(t * 5);
-      rp.armGroupL.rotation.x = 1.10 + bd * 0.7;
-      rp.armGroupR.rotation.x = 1.10 - bd * 0.7;
-      rp.armGroupL.rotation.z =  0.72;
-      rp.armGroupR.rotation.z = -0.72;
-      ea._pyOffset = Math.abs(bd) * 0.2;
+      const bd = Math.sin(t * 6);
+      rp.armGroupL.rotation.x =  1.10 + bd * 1.05;
+      rp.armGroupR.rotation.x =  1.10 - bd * 1.05;
+      rp.armGroupL.rotation.z =  0.95;
+      rp.armGroupR.rotation.z = -0.95;
+      rp.legL.rotation.x      =  Math.sin(t * 6 + 1.5) * 0.45;
+      rp.legR.rotation.x      = -Math.sin(t * 6 + 1.5) * 0.45;
+      ea._pyOffset             =  Math.abs(bd) * 0.32;
       break;
     }
     case 'ea-splits': {
-      rp.legL.rotation.x      = -0.4;
-      rp.legR.rotation.x      = -0.4;
-      rp.armGroupL.rotation.z =  0.82;
-      rp.armGroupR.rotation.z = -0.82;
-      ea._pyOffset = -0.2;
+      rp.legL.rotation.x      = -0.45;
+      rp.legR.rotation.x      = -0.45;
+      rp.armGroupL.rotation.z =  0.92;
+      rp.armGroupR.rotation.z = -0.92;
+      rp.armGroupL.rotation.x =  0.80;
+      rp.armGroupR.rotation.x =  0.80;
+      ea._pyOffset             = -0.22;
       break;
     }
     case 'ea-airguitar': {
-      const ag = Math.sin(t * 5);
-      rp.armGroupR.rotation.x = 1.10 + ag * 0.5;
-      rp.armGroupL.rotation.x = 1.40;
-      rp.armGroupL.rotation.z = 0.12;
-      rp.group.rotation.z     = Math.sin(t * 2.5) * 0.1;
-      ea._pyOffset = Math.abs(Math.sin(t * 2.5)) * 0.12;
+      // Air guitar — strumming arm, chord arm, body groove
+      const ag = Math.sin(t * 5.5);
+      rp.armGroupR.rotation.x =  1.10 + ag * 0.65;
+      rp.armGroupR.rotation.z = -0.48;
+      rp.armGroupL.rotation.x =  1.45;
+      rp.armGroupL.rotation.z =  0.14;
+      rp.group.rotation.z     =  Math.sin(t * 2.8) * 0.12;
+      ea._pyOffset             =  Math.abs(Math.sin(t * 2.8)) * 0.14;
       break;
     }
     case 'ea-party': {
-      const p = Math.sin(t * 4);
-      rp.armGroupL.rotation.x = 1.70 + p * 0.3;
-      rp.armGroupR.rotation.x = 1.70 - p * 0.3;
-      rp.armGroupL.rotation.z =  0.32 + p * 0.4;
-      rp.armGroupR.rotation.z = -0.32 - p * 0.4;
-      rp.group.rotation.z     = p * 0.07;
-      ea._pyOffset = Math.abs(p) * 0.2;
+      // Big celebration — arms thrown up high alternating, whole body bounce
+      const p = Math.sin(t * 4.2);
+      rp.armGroupL.rotation.x =  1.75 + p * 0.42;
+      rp.armGroupR.rotation.x =  1.75 - p * 0.42;
+      rp.armGroupL.rotation.z =  0.32 + p * 0.50;
+      rp.armGroupR.rotation.z = -0.32 - p * 0.50;
+      rp.group.rotation.z     =  p * 0.10;
+      rp.legL.rotation.x      =  Math.abs(p) * 0.18;
+      ea._pyOffset             =  Math.abs(p) * 0.28;
       break;
     }
     case 'ea-peek': {
-      rp.group.rotation.z     = Math.sin(t * 1.5) * 0.25;
-      rp.armGroupL.rotation.x = 1.10 + Math.sin(t * 1.5) * 0.2;
-      rp.armGroupR.rotation.x = 1.10 - Math.sin(t * 1.5) * 0.2;
+      // Cautious peek — lean left then right, arms guard position
+      const pk = Math.sin(t * 1.6);
+      rp.group.rotation.z     =  pk * 0.30;
+      rp.armGroupL.rotation.x =  1.10 + pk * 0.25;
+      rp.armGroupR.rotation.x =  1.10 - pk * 0.25;
+      rp.armGroupL.rotation.z =  0.55;
+      rp.armGroupR.rotation.z = -0.55;
       break;
     }
     case 'ea-cry': {
-      rp.group.rotation.x     = 0.15 + Math.sin(t * 3) * 0.05;
-      rp.armGroupL.rotation.x = 1.60;
-      rp.armGroupR.rotation.x = 1.60;
-      rp.armGroupL.rotation.z = 0.02;
-      rp.armGroupR.rotation.z = -0.02;
+      // Sobbing — face buried in hands, body shaking
+      const cv = t * 3.5;
+      rp.group.rotation.x     =  0.20 + Math.sin(cv) * 0.07;
+      rp.group.rotation.z     =  Math.sin(cv * 0.8) * 0.06;
+      rp.armGroupL.rotation.x =  1.78;
+      rp.armGroupR.rotation.x =  1.78;
+      rp.armGroupL.rotation.z =  0.04;
+      rp.armGroupR.rotation.z = -0.04;
+      ea._pyOffset             = -0.04;
       break;
     }
     case 'ea-headtilt': {
-      rp.group.rotation.z     = Math.sin(t * 2) * 0.2;
-      rp.armGroupL.rotation.z =  0.32 + Math.sin(t * 2) * 0.15;
-      rp.armGroupR.rotation.z = -0.32 - Math.sin(t * 2) * 0.15;
+      // Confused head tilt with shrug arms
+      rp.group.rotation.z     =  Math.sin(t * 2.2) * 0.26;
+      rp.armGroupL.rotation.z =  0.32 + Math.sin(t * 2.2) * 0.22;
+      rp.armGroupR.rotation.z = -0.32 - Math.sin(t * 2.2) * 0.22;
+      rp.armGroupL.rotation.x =  0.85;
+      rp.armGroupR.rotation.x =  0.85;
       break;
     }
     default: {
@@ -3539,7 +3641,7 @@ function update(dt){
 
       const dx=targetX-bp.x, dz=targetZ-bp.z;
       const dist=Math.sqrt(dx*dx+dz*dz);
-      bot.group.rotation.y = Math.atan2(dx,dz);
+      bot.group.rotation.y = Math.atan2(dx,dz) + Math.PI;
 
       if(dist > 0.15 && distToPlayer > BOT_MELEE * 0.8){
         const mv = (distToPlayer > 12 ? spd : spd * 0.75) * dt;
@@ -3639,7 +3741,7 @@ function update(dt){
       if(pd > 0.6){
         const s=spd*0.52*dt;
         bp.x+=(pdx/pd)*s; bp.z+=(pdz/pd)*s;
-        bot.group.rotation.y=Math.atan2(pdx,pdz);
+        bot.group.rotation.y=Math.atan2(pdx,pdz) + Math.PI;
         bot.walkClock+=dt*spd*0.52;
       } else { bot.patrolTimer=0; }
     }
