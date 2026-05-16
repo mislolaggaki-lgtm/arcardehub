@@ -7,6 +7,7 @@ const bcrypt     = require('bcryptjs');
 const jwt        = require('jsonwebtoken');
 const path       = require('path');
 const nodemailer = require('nodemailer');
+const webpush    = require('web-push');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const { Server } = require('socket.io');
 
@@ -123,13 +124,25 @@ async function start() {
   const dbName = new URL(MONGODB_URI).pathname.replace('/', '') || 'arcadehub';
   const db     = client.db(dbName);
 
-  const usersCol        = db.collection('users');         // { username, password, isAdmin, banned, created_at }
-  const bannedCol       = db.collection('banned');        // { username } — quick ban-list lookup
-  const notificationsCol = db.collection('notifications'); // { userId, type, title, body, data, read, createdAt }
+  const usersCol             = db.collection('users');             // { username, password, isAdmin, banned, created_at }
+  const bannedCol            = db.collection('banned');            // { username } — quick ban-list lookup
+  const notificationsCol     = db.collection('notifications');     // { userId, type, title, body, data, read, createdAt }
+  const pushSubscriptionsCol = db.collection('pushSubscriptions'); // { userId, subscription, updatedAt }
+  const configCol            = db.collection('config');            // { key, ...values }
 
   // Enforce unique usernames
   await usersCol.createIndex({ username: 1 }, { unique: true });
   await bannedCol.createIndex({ username: 1 }, { unique: true });
+
+  // ── VAPID keys (generated once, stored in DB) ───────────────
+  let _vapidDoc = await configCol.findOne({ key: 'vapid' });
+  if (!_vapidDoc) {
+    const keys = webpush.generateVAPIDKeys();
+    _vapidDoc  = { key: 'vapid', ...keys };
+    await configCol.insertOne(_vapidDoc);
+  }
+  webpush.setVapidDetails('mailto:admin@arcadehub.game', _vapidDoc.publicKey, _vapidDoc.privateKey);
+  const VAPID_PUBLIC_KEY = _vapidDoc.publicKey;
 
   // ── Seed admin account ──────────────────────────────────────
   if (process.env.ADMIN_PASSWORD) {
@@ -210,6 +223,16 @@ async function start() {
         if (s) s.emit('notif:new', { ...notif, _id: r.insertedId });
         break;
       }
+    }
+    // Web push to all subscribed devices
+    const subs = await pushSubscriptionsCol.find({ userId: user._id }).toArray();
+    const payload = JSON.stringify({ title, body });
+    for (const sub of subs) {
+      webpush.sendNotification(sub.subscription, payload).catch(async err => {
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          await pushSubscriptionsCol.deleteOne({ _id: sub._id });
+        }
+      });
     }
   }
 
@@ -1163,14 +1186,13 @@ async function start() {
         return res.status(400).json({ error: 'Feedback too short.' });
       if (message.length > 2000)
         return res.status(400).json({ error: 'Feedback too long (max 2000 chars).' });
-      if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS)
-        return res.status(503).json({ error: 'Email not configured on server.' });
-      await _mailTransport.sendMail({
-        from:    process.env.GMAIL_USER,
-        to:      'ioannismislis1206@gmail.com',
-        subject: 'Arcade Hub - Someone has feedback!',
-        text:    `${payload.username} has given feedback on your game: ${message.trim()}`,
-      });
+      await pushNotif(
+        'Stotch',
+        'feedback',
+        `Feedback from ${payload.username}`,
+        message.trim(),
+        { fromUsername: payload.username }
+      );
       res.json({ success: true });
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
@@ -1365,6 +1387,30 @@ async function start() {
       const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { _id:1 } });
       if (!user) return res.status(404).json({ error: 'User not found.' });
       await notificationsCol.deleteOne({ _id: new ObjectId(req.params.id), userId: user._id });
+      res.json({ success: true });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── GET /api/push/vapid-public-key ─────────────────────────
+  app.get('/api/push/vapid-public-key', (_req, res) => {
+    res.json({ publicKey: VAPID_PUBLIC_KEY });
+  });
+
+  // ── POST /api/push/subscribe ────────────────────────────────
+  app.post('/api/push/subscribe', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { subscription } = req.body;
+      if (!subscription?.endpoint) return res.status(400).json({ error: 'Invalid subscription.' });
+      const { ObjectId } = require('mongodb');
+      await pushSubscriptionsCol.updateOne(
+        { 'subscription.endpoint': subscription.endpoint },
+        { $set: { userId: new ObjectId(payload.userId), subscription, updatedAt: new Date() } },
+        { upsert: true }
+      );
       res.json({ success: true });
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });

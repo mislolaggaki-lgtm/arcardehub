@@ -2203,8 +2203,37 @@
       if (localStorage.getItem('isAdmin') === 'true' && username === 'Stotch') {
         const ap = document.getElementById('admin-section');
         if (ap) { ap.style.display = 'block'; apLoadPlayers(); }
+        _setupAdminPush();
       }
       chatConnect();
+    }
+
+    async function _setupAdminPush() {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') return;
+        const keyRes = await fetch(`${API}/push/vapid-public-key`);
+        const { publicKey } = await keyRes.json();
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: _urlBase64ToUint8Array(publicKey),
+        });
+        const token = localStorage.getItem('ah_token');
+        await fetch(`${API}/push/subscribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ subscription: sub }),
+        });
+      } catch (e) { console.warn('Push setup failed:', e); }
+    }
+
+    function _urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const raw     = atob(base64);
+      return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
     }
 
     function setLoggedOut() {
@@ -4925,6 +4954,10 @@
       _chatSocket.on('friendError', msg => {
         _toastMsg(`✗ ${msg}`);
       });
+    }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
 
     async function apLoadPlayers() {
