@@ -881,6 +881,11 @@
       box-shadow: 0 10px 28px rgba(0,0,0,0.45), 0 0 22px rgba(255,215,0,0.05);
     }
     .shop-card:hover::before { opacity: 1; }
+    .shop-card.is-previewing {
+      border-color: rgba(255,215,0,0.55) !important;
+      box-shadow: 0 0 18px rgba(255,215,0,0.12);
+    }
+    .shop-card.is-previewing::before { opacity: 1; }
     .shop-card.is-equipped {
       border-color: rgba(255,215,0,0.48);
       box-shadow: 0 0 22px rgba(255,215,0,0.07), inset 0 0 18px rgba(255,215,0,0.025);
@@ -3912,6 +3917,7 @@
     /* ── Shop 3D Robot Preview ──────────────────────────────── */
     let _sr = null;   // { renderer, scene, camera, rob, yaw, raf }
     let _srPreviewIds = [];  // currently previewed accessory node lists
+    let _clickedPreviewId = null; // item pinned by click (persists across hover-leave)
 
     function _initShopCanvas() {
       if (!window.THREE || !window.buildRobot) return;
@@ -3926,9 +3932,9 @@
       renderer.shadowMap.enabled = false;
 
       const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 100);
-      camera.position.set(0, 0.2, 4.2);
-      camera.lookAt(0, 0.3, 0);
+      const camera = new THREE.PerspectiveCamera(44, W / H, 0.1, 100);
+      camera.position.set(0, 0.0, 5.0);
+      camera.lookAt(0, 0.15, 0);
 
       // Lighting — mirrors game lighting
       scene.add(new THREE.AmbientLight(0x506070, 0.55));
@@ -4008,12 +4014,24 @@
     function _srAddAcc(accessoryId, isPreview) {
       if (!_sr) return [];
       const rob = _sr.rob;
-      const gBefore  = rob.group.children.length;
-      const aLBefore = rob.armGroupL ? rob.armGroupL.children.length : 0;
+      // Snapshot child counts on every possible parent before adding
+      const gBefore    = rob.group.children.length;
+      const aLBefore   = rob.armGroupL ? rob.armGroupL.children.length : 0;
+      const aRBefore   = rob.armGroupR ? rob.armGroupR.children.length : 0;
+      const legLBefore = rob.legL ? rob.legL.children.length : 0;
+      const legRBefore = rob.legR ? rob.legR.children.length : 0;
+
       addRobotAccessory(rob, accessoryId);
-      const gNew  = rob.group.children.slice(gBefore);
-      const aLNew = rob.armGroupL ? rob.armGroupL.children.slice(aLBefore) : [];
-      const nodes = [...gNew, ...aLNew];
+
+      // Collect every newly added node across all possible parents
+      const nodes = [
+        ...rob.group.children.slice(gBefore),
+        ...(rob.armGroupL ? rob.armGroupL.children.slice(aLBefore) : []),
+        ...(rob.armGroupR ? rob.armGroupR.children.slice(aRBefore) : []),
+        ...(rob.legL ? rob.legL.children.slice(legLBefore) : []),
+        ...(rob.legR ? rob.legR.children.slice(legRBefore) : []),
+      ];
+
       if (isPreview) {
         nodes.forEach(child => child.traverse(o => {
           if (o.isMesh) {
@@ -4049,6 +4067,7 @@
     }
 
     function _shopPreviewItem(id) {
+      if (_clickedPreviewId && _clickedPreviewId !== id) return; // click-pin overrides hover
       if (!_sr) return;
       const rob = _sr.rob;
       _srClearNodes(rob._prevNodes);
@@ -4061,12 +4080,38 @@
       rob._prevNodes.push(...nodes);
     }
 
+    function _shopClickPreview(id) {
+      if (event.target.closest('button')) return; // button clicks (buy/equip) don't trigger preview
+      const it = SHOP_ITEMS.find(x => x.id === id);
+      if (!it || it.cat === 'attachments' || it.cat === 'emotes') return;
+      document.querySelectorAll('.shop-card.is-previewing').forEach(c => c.classList.remove('is-previewing'));
+      if (_clickedPreviewId === id) {
+        _clickedPreviewId = null;
+        _doClearPreview();
+      } else {
+        _clickedPreviewId = id;
+        event.currentTarget.classList.add('is-previewing');
+        _shopPreviewItem(id);
+      }
+    }
+
     function _shopClearPreview() {
+      if (_clickedPreviewId) return; // hover-leave doesn't override a click-pinned preview
+      _doClearPreview();
+    }
+
+    function _doClearPreview() {
       if (!_sr) return;
       _srClearNodes(_sr.rob._prevNodes);
       _sr.rob._prevNodes = [];
       const badge = document.getElementById('sap-preview-badge');
       if (badge) badge.style.display = 'none';
+    }
+
+    function _resetPreviewPin() {
+      _clickedPreviewId = null;
+      document.querySelectorAll('.shop-card.is-previewing').forEach(c => c.classList.remove('is-previewing'));
+      _doClearPreview();
     }
 
     function openShop() {
@@ -4084,7 +4129,7 @@
         _refreshShopRobot();
       }, 80);
     }
-    function closeShop() { closeGiftPanel(); _stopShopAnim(); document.getElementById('shop-overlay').classList.remove('open'); }
+    function closeShop() { closeGiftPanel(); _resetPreviewPin(); _stopShopAnim(); document.getElementById('shop-overlay').classList.remove('open'); }
     document.getElementById('shop-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeShop(); });
 
     /* ── Avatar preview ─────────────────────────────────── */
@@ -4226,6 +4271,7 @@
       _shopTab = cat;
       _shopPage = 0;
       _shopSearch = '';
+      _resetPreviewPin();
       const si = document.getElementById('shop-search');
       if (si) si.value = '';
       document.querySelectorAll('.shop-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
@@ -4296,8 +4342,9 @@
           }
         }
         const previewAttr = (it.cat !== 'attachments' && it.cat !== 'emotes')
-          ? `onmouseenter="_shopPreviewItem('${it.id}')" onmouseleave="_shopClearPreview()"` : '';
-        return `<div class="shop-card${equipped?' is-equipped':''}" ${previewAttr}>
+          ? `onmouseenter="_shopPreviewItem('${it.id}')" onmouseleave="_shopClearPreview()" onclick="_shopClickPreview('${it.id}')"` : '';
+        const previewPinned = _clickedPreviewId === it.id ? ' is-previewing' : '';
+        return `<div class="shop-card${equipped?' is-equipped':''}${previewPinned}" ${previewAttr}>
           ${gunBadge}
           <div class="shop-card-icon">${getItemSvg(it)}</div>
           ${_rarityBadge(it.rar)}
