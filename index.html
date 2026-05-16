@@ -1122,6 +1122,139 @@
       transition: background .15s, border-color .15s, color .15s;
     }
     .btn-profile:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.25); color: #c0c0ee; }
+    .btn-changelog {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(34,221,100,0.07); border: 1px solid rgba(34,221,100,0.25);
+      color: #22dd64; border-radius: 6px; padding: 7px 13px;
+      font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+    .btn-changelog:hover { background: rgba(34,221,100,0.14); border-color: rgba(34,221,100,0.5); color: #44ff88; }
+    .btn-feedback {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(150,100,255,0.07); border: 1px solid rgba(150,100,255,0.25);
+      color: #aa88ff; border-radius: 6px; padding: 7px 13px;
+      font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+    .btn-feedback:hover { background: rgba(150,100,255,0.14); border-color: rgba(150,100,255,0.5); color: #cc99ff; }
+
+    /* ── Update Log modal ──────────────────────────────────────── */
+    .changelog-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+      z-index: 3000; display: flex; align-items: center; justify-content: center;
+      animation: fadeIn .2s ease;
+    }
+    .changelog-modal {
+      background: #0d0d1e; border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; width: 540px; max-width: 96vw;
+      max-height: 80vh; display: flex; flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+      animation: slideUp .22s cubic-bezier(.4,0,.2,1);
+    }
+    .changelog-head {
+      padding: 22px 24px 16px; border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex; align-items: flex-start; gap: 14px;
+    }
+    .changelog-badge {
+      background: linear-gradient(135deg,#22dd64,#00aaff);
+      color: #000; font-size: 9px; font-weight: 900; letter-spacing: 1.5px;
+      padding: 3px 8px; border-radius: 20px; white-space: nowrap; margin-top: 3px;
+    }
+    .changelog-head-text { flex: 1; }
+    .changelog-title { font-size: 18px; font-weight: 800; color: #e4e4ff; letter-spacing: 1px; }
+    .changelog-date  { font-size: 11px; color: #444; margin-top: 3px; }
+    .changelog-close {
+      background: rgba(255,255,255,0.05); border: none; color: #555;
+      font-size: 15px; cursor: pointer; padding: 7px 10px; border-radius: 7px;
+      font-family: inherit; transition: color .15s, background .15s; flex-shrink: 0;
+    }
+    .changelog-close:hover { color: #fff; background: rgba(255,255,255,0.1); }
+    .changelog-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+    .changelog-body::-webkit-scrollbar { width: 4px; }
+    .changelog-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+    .cl-latest-list { list-style: none; margin: 0 0 20px; padding: 0; }
+    .cl-latest-list li {
+      display: flex; gap: 10px; padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 13px; color: #c0c0d8; line-height: 1.4;
+    }
+    .cl-latest-list li::before { content: '▸'; color: #22dd64; flex-shrink: 0; margin-top: 1px; }
+    .cl-prev { margin-top: 4px; }
+    .cl-prev-title {
+      font-size: 9px; font-weight: 800; letter-spacing: 2px; color: #2e2e48;
+      text-transform: uppercase; margin-bottom: 10px; padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .cl-prev-entry { margin-bottom: 14px; }
+    .cl-prev-ver { font-size: 11px; font-weight: 700; color: #444; margin-bottom: 4px; }
+    .cl-prev-entry ul { list-style: none; margin: 0; padding: 0; }
+    .cl-prev-entry ul li { font-size: 11px; color: #333; padding: 2px 0; }
+    .cl-prev-entry ul li::before { content: '· '; color: #444; }
+    .changelog-footer {
+      padding: 14px 24px; border-top: 1px solid rgba(255,255,255,0.05);
+      display: flex; justify-content: flex-end;
+    }
+    .changelog-dismiss {
+      background: rgba(34,221,100,0.1); border: 1px solid rgba(34,221,100,0.3);
+      color: #22dd64; border-radius: 8px; padding: 9px 20px;
+      font-size: 10px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; font-family: inherit; transition: background .15s, border-color .15s;
+    }
+    .changelog-dismiss:hover { background: rgba(34,221,100,0.2); border-color: rgba(34,221,100,0.5); }
+
+    /* ── Feedback modal ──────────────────────────────────────── */
+    .feedback-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+      z-index: 3000; display: flex; align-items: center; justify-content: center;
+      animation: fadeIn .2s ease;
+    }
+    .feedback-modal {
+      background: #0d0d1e; border: 1px solid rgba(150,100,255,0.15);
+      border-radius: 14px; width: 480px; max-width: 95vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+      animation: slideUp .22s cubic-bezier(.4,0,.2,1);
+      overflow: hidden;
+    }
+    .feedback-head {
+      padding: 18px 22px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .feedback-head-icon { font-size: 20px; }
+    .feedback-head-title { flex: 1; font-size: 13px; font-weight: 800; letter-spacing: 2px; color: #c0c0ee; }
+    .feedback-head-close {
+      background: rgba(255,255,255,0.05); border: none; color: #555; font-size: 14px;
+      cursor: pointer; padding: 6px 10px; border-radius: 6px; font-family: inherit;
+      transition: color .15s, background .15s;
+    }
+    .feedback-head-close:hover { color: #fff; background: rgba(255,255,255,0.1); }
+    .feedback-body { padding: 18px 22px; }
+    .feedback-hint { font-size: 11px; color: #3a3a58; margin-bottom: 12px; line-height: 1.5; }
+    .feedback-textarea {
+      width: 100%; box-sizing: border-box; min-height: 130px; resize: vertical;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px; padding: 12px; color: #c0c0ee; font-family: 'Inter', sans-serif;
+      font-size: 13px; line-height: 1.5; outline: none; transition: border-color .15s;
+    }
+    .feedback-textarea:focus { border-color: rgba(150,100,255,0.4); }
+    .feedback-textarea::placeholder { color: #2e2e48; }
+    .feedback-footer {
+      padding: 0 22px 18px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .feedback-charcount { font-size: 10px; color: #2e2e48; }
+    .feedback-send {
+      background: rgba(150,100,255,0.12); border: 1px solid rgba(150,100,255,0.3);
+      color: #aa88ff; border-radius: 8px; padding: 9px 22px;
+      font-size: 10px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; font-family: inherit; transition: background .15s, border-color .15s, color .15s;
+    }
+    .feedback-send:hover { background: rgba(150,100,255,0.22); border-color: rgba(150,100,255,0.5); color: #cc99ff; }
+    .feedback-send:disabled { opacity: 0.35; cursor: not-allowed; }
+    .feedback-msg { font-size: 11px; min-height: 14px; margin-top: 4px; padding: 0 22px 8px; }
+    .feedback-msg.ok  { color: #22dd66; }
+    .feedback-msg.err { color: #e74c3c; }
 
     /* ── Notif badge (shared) ─────────────────────────────────── */
     .notif-badge {
@@ -1744,6 +1877,8 @@
       <!-- Logged-in state (hidden until auth) -->
       <div id="nav-user">
         <span class="nav-username">Hello,&nbsp;<strong id="nav-username-text"></strong></span>
+        <button class="btn-changelog" onclick="openChangelog()">★ WHAT'S NEW</button>
+        <button class="btn-feedback"  onclick="openFeedback()">✉ FEEDBACK</button>
         <button class="btn-profile" onclick="openProfile()" title="Profile Settings">⚙ PROFILE</button>
         <div class="bucks-display" id="bucks-display" onclick="openShop()" title="Open Avatar Shop">
           <svg width="16" height="16" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>
@@ -3676,6 +3811,7 @@
       if (!token || !username) {
         const hasVisited = localStorage.getItem('ah_visited');
         openModal(hasVisited ? 'login' : 'register');
+        setTimeout(_maybeShowChangelog, 800);
         return;
       }
 
@@ -3686,6 +3822,7 @@
       setLoggedIn(username);
       loadBadges();
       loadShopProfile();
+      setTimeout(_maybeShowChangelog, 600);
     })();
 
     // ── Fake online count drift ───────────────────────────────
@@ -4644,6 +4781,123 @@
     }
 
     // ══════════════════════════════════════════════════════════
+    //  UPDATE LOG
+    // ══════════════════════════════════════════════════════════
+    const UPDATES = [
+      {
+        version: '1.4', date: 'May 2026', title: 'LEVELS, FEEDBACK & MORE',
+        changes: [
+          'Each level now has a randomised wall layout — no two rooms are the same',
+          'Co-op players share the exact same randomised map as the host',
+          'New Feedback panel — send thoughts directly to the developer',
+          'Update Log — see exactly what changed after each patch',
+        ]
+      },
+      {
+        version: '1.3', date: 'May 2026', title: 'ATTACHMENTS & SOCIAL',
+        changes: [
+          '54 gun-specific attachments — each built for one gun (Pistol, SMG, Minigun, Sniper)',
+          'Attachments now expire after 2 lives and must be repurchased',
+          'Redesigned Friends panel with status groups and profile cards',
+          'Notification centre, friend requests, and status indicators',
+          'Profile settings — avatar upload, bio, and username change',
+          'Emote wheel customisation — equip up to 5 emotes',
+        ]
+      },
+      {
+        version: '1.2', date: 'April 2026', title: 'EMOTES & ANIMATIONS',
+        changes: [
+          '61 emotes — visible body animations on your robot character',
+          'Robot arms, legs and torso animate per emote',
+          'Mobile emote button for touch controls',
+        ]
+      },
+      {
+        version: '1.1', date: 'April 2026', title: 'GAME MODES & ARENA',
+        changes: [
+          'Mezzanine second floor with staircase access',
+          '100-level progression with increasing bot difficulty',
+          'Co-op multiplayer — play with a friend',
+          'Trading system for cosmetics between players',
+        ]
+      },
+    ];
+
+    function openChangelog() {
+      const latest = UPDATES[0];
+      document.getElementById('cl-latest-ver').textContent   = 'v' + latest.version;
+      document.getElementById('cl-latest-title').textContent = latest.title;
+      document.getElementById('cl-latest-date').textContent  = latest.date;
+      document.getElementById('cl-latest-list').innerHTML =
+        latest.changes.map(c => `<li>${_esc(c)}</li>`).join('');
+      const prev = UPDATES.slice(1);
+      document.getElementById('cl-prev').innerHTML = prev.length ? `
+        <div class="cl-prev-title">Previous Updates</div>
+        ${prev.map(u => `
+          <div class="cl-prev-entry">
+            <div class="cl-prev-ver">v${u.version} · ${u.date} — ${u.title}</div>
+            <ul>${u.changes.map(c=>`<li>${_esc(c)}</li>`).join('')}</ul>
+          </div>`).join('')}
+      ` : '';
+      document.getElementById('changelog-overlay').style.display = 'flex';
+      localStorage.setItem('ah_last_ver', latest.version);
+    }
+    function closeChangelog() {
+      document.getElementById('changelog-overlay').style.display = 'none';
+    }
+    function _maybeShowChangelog() {
+      if (localStorage.getItem('ah_last_ver') !== UPDATES[0].version) openChangelog();
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  FEEDBACK
+    // ══════════════════════════════════════════════════════════
+    function openFeedback() {
+      const token = localStorage.getItem('ah_token');
+      if (!token) { alert('Please log in to send feedback.'); return; }
+      document.getElementById('feedback-textarea').value = '';
+      document.getElementById('feedback-charcount').textContent = '0/2000';
+      document.getElementById('feedback-msg').textContent = '';
+      document.getElementById('feedback-msg').className = 'feedback-msg';
+      document.getElementById('feedback-send-btn').disabled = false;
+      document.getElementById('feedback-overlay').style.display = 'flex';
+    }
+    function closeFeedback() {
+      document.getElementById('feedback-overlay').style.display = 'none';
+    }
+    async function submitFeedback() {
+      const token = localStorage.getItem('ah_token');
+      const msg = document.getElementById('feedback-textarea').value.trim();
+      const statusEl = document.getElementById('feedback-msg');
+      const btn = document.getElementById('feedback-send-btn');
+      if (!msg || msg.length < 3) {
+        statusEl.textContent = 'Please write at least a few words.';
+        statusEl.className = 'feedback-msg err'; return;
+      }
+      btn.disabled = true;
+      statusEl.textContent = 'Sending…';
+      statusEl.className = 'feedback-msg';
+      try {
+        const r = await fetch(`${API}/feedback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ message: msg }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'Send failed.');
+        statusEl.textContent = 'Thank you! Your feedback has been sent. ✓';
+        statusEl.className = 'feedback-msg ok';
+        document.getElementById('feedback-textarea').value = '';
+        document.getElementById('feedback-charcount').textContent = '0/2000';
+        setTimeout(closeFeedback, 2200);
+      } catch (e) {
+        statusEl.textContent = e.message;
+        statusEl.className = 'feedback-msg err';
+        btn.disabled = false;
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════
     //  Wire up socket listeners for notifs + friends
     // ══════════════════════════════════════════════════════════
     function _wireNotifFriendSockets() {
@@ -4723,6 +4977,49 @@
       <button class="fl-add-btn" onclick="sendFriendRequest()">+ ADD</button>
     </div>
     <div id="friends-list"></div>
+  </div>
+
+  <!-- ── Update Changelog Modal ─────────────────────────── -->
+  <div class="changelog-overlay" id="changelog-overlay" style="display:none" onclick="if(event.target===this)closeChangelog()">
+    <div class="changelog-modal">
+      <div class="changelog-head">
+        <div class="changelog-badge" id="cl-latest-ver">v1.0</div>
+        <div class="changelog-head-text">
+          <div class="changelog-title" id="cl-latest-title">WHAT'S NEW</div>
+          <div class="changelog-date"  id="cl-latest-date"></div>
+        </div>
+        <button class="changelog-close" onclick="closeChangelog()">✕</button>
+      </div>
+      <div class="changelog-body">
+        <ul class="cl-latest-list" id="cl-latest-list"></ul>
+        <div class="cl-prev" id="cl-prev"></div>
+      </div>
+      <div class="changelog-footer">
+        <button class="changelog-dismiss" onclick="closeChangelog()">GOT IT ✓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Feedback Modal ────────────────────────────────────── -->
+  <div class="feedback-overlay" id="feedback-overlay" style="display:none" onclick="if(event.target===this)closeFeedback()">
+    <div class="feedback-modal">
+      <div class="feedback-head">
+        <span class="feedback-head-icon">✉</span>
+        <span class="feedback-head-title">SEND FEEDBACK</span>
+        <button class="feedback-head-close" onclick="closeFeedback()">✕</button>
+      </div>
+      <div class="feedback-body">
+        <div class="feedback-hint">Your feedback goes directly to the developer. Let us know what you love, what's broken, or what you'd like to see next.</div>
+        <textarea id="feedback-textarea" class="feedback-textarea" maxlength="2000"
+          placeholder="Write your feedback here…"
+          oninput="document.getElementById('feedback-charcount').textContent=this.value.length+'/2000'"></textarea>
+      </div>
+      <div class="feedback-footer">
+        <span class="feedback-charcount" id="feedback-charcount">0/2000</span>
+        <button class="feedback-send" id="feedback-send-btn" onclick="submitFeedback()">SEND →</button>
+      </div>
+      <div class="feedback-msg" id="feedback-msg"></div>
+    </div>
   </div>
 
   <!-- ── Profile Settings Modal ─────────────────────────── -->

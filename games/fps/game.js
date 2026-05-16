@@ -349,46 +349,80 @@ addBox(AW*2+WT*2,.03,.04, 0,.015,  AD+WT/2,  neonEdgeMat,false,false);
 addBox(.04,.03,AD*2, -(AW+WT/2),.015,0, neonEdgeMat,false,false);
 addBox(.04,.03,AD*2,   AW+WT/2, .015,0, neonEdgeMat,false,false);
 
-// Ground-floor cover walls (scaled for larger arena)
-const COVER_DEFS = [
-  // Original cover ring
-  [10,1.2,  -12, -8],[1.2,10,  14,-14],[10,1.2,   6, 10],[1.2, 9, -18, 14],
-  [ 8,1.2,   0,-22],[1.2, 8,  22,  2],[ 8,1.2,  -6, 20],[1.2, 8, -26, -6],
-  [ 7,1.2,  18,-28],[1.2, 7, -28, 18],[ 6,1.2,  -8,  0],[1.2, 6,   8, -8],
-  [12,1.2,   0, -4],[1.2,12, -4,   0],
-  // Outer ring (near mezzanine stairs approach)
-  [ 8,1.2,  26,-20],[1.2, 8,  20, 26],[ 8,1.2, -26, 20],[1.2, 8, -20,-26],
-  [ 5,1.2,  -2,-28],[ 5,1.2,   2, 28],[1.2, 5, -28, -2],[1.2, 5,  28,  2],
-  // Mid-field diagonal flankers
-  [ 6,1.2,  16, -6],[1.2, 6, -6, 16],[ 6,1.2, -16,  6],[1.2, 6,  6,-16],
-  // Low crouching covers (half height)
-  [ 5, .8,  10, -18],[ 5, .8, -10, 18],[1.2, 5,  24,-10],[1.2, 5,-24, 10],
-  // L-shaped corners (two boxes at right angles)
-  [6,1.2,  16, 22],[1.2, 5,  19, 25],
-  [6,1.2, -16,-22],[1.2, 5, -19,-25],
-];
+// Ground-floor cover walls — randomised each level via _buildDynamicCovers(seed)
 const coverBoxes = [];
-COVER_DEFS.forEach(([w,d,cx,cz,customH])=>{
-  const ch = customH !== undefined ? customH : WH*.72;
-  addBox(w,ch,d, cx,ch/2,cz, ARENA_M.cover);
-  addBox(w+.04,.12,d+.04, cx,ch+.06,cz, ARENA_M.ctrim,false,false);
-  coverBoxes.push({cx,cz,hw:w/2,hd:d/2});
-});
+let _dynamicCoverMeshes = [];
 
-// Central raised platform — creates a height-advantage landmark
+// Static collision entries for permanent scene objects (central platform + pillars)
+const _STATIC_COVER_BOXES = [
+  {cx:0,   cz:0,   hw:4.5, hd:4.5},
+  {cx:10,  cz:-18, hw:.65, hd:.65},
+  {cx:-10, cz:18,  hw:.65, hd:.65},
+  {cx:20,  cz:-6,  hw:.65, hd:.65},
+  {cx:-20, cz:6,   hw:.65, hd:.65},
+  {cx:18,  cz:12,  hw:.65, hd:.65},
+  {cx:-18, cz:-12, hw:.65, hd:.65},
+];
+
+function _seededRng(seed) {
+  let s = (seed ^ 0xa3c59f1b) >>> 0;
+  return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0x100000000; };
+}
+
+function _buildDynamicCovers(seed) {
+  _dynamicCoverMeshes.forEach(m => { scene.remove(m); m.geometry?.dispose(); });
+  _dynamicCoverMeshes = [];
+  coverBoxes.length = 0;
+  _STATIC_COVER_BOXES.forEach(b => coverBoxes.push({...b}));
+
+  const rng = _seededRng(seed);
+
+  function _addCover(w, h, d, cx, cz) {
+    const m1 = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), ARENA_M.cover);
+    m1.position.set(cx, h/2, cz); m1.castShadow = true; m1.receiveShadow = true;
+    scene.add(m1);
+    const m2 = new THREE.Mesh(new THREE.BoxGeometry(w+.04,.12,d+.04), ARENA_M.ctrim);
+    m2.position.set(cx, h+.06, cz); scene.add(m2);
+    _dynamicCoverMeshes.push(m1, m2);
+    coverBoxes.push({cx, cz, hw:w/2, hd:d/2});
+  }
+
+  const total = 24 + Math.floor(rng() * 9);
+  let placed = 0, tries = 0;
+  while (placed < total && tries < total * 8) {
+    tries++;
+    const horiz = rng() > 0.5;
+    const len = 4 + Math.floor(rng() * 8);
+    const w = horiz ? len : 1.2, d = horiz ? 1.2 : len;
+    const h = rng() > 0.22 ? WH * 0.72 : 0.8;
+    const margin = Math.max(w, d) / 2 + 1.5;
+    const cx = (rng() - 0.5) * 2 * (AW - margin - 3);
+    const cz = (rng() - 0.5) * 2 * (AD - margin - 3);
+    if (Math.abs(cx) < 6 && Math.abs(cz) < 6) continue;
+    _addCover(w, h, d, cx, cz);
+    placed++;
+  }
+  // 4 L-shaped clusters for variety
+  for (let i = 0; i < 4; i++) {
+    const bx = (rng() - 0.5) * 2 * (AW - 12);
+    const bz = (rng() - 0.5) * 2 * (AD - 12);
+    if (Math.abs(bx) < 6 && Math.abs(bz) < 6) continue;
+    _addCover(6, WH * 0.72, 1.2, bx, bz);
+    _addCover(1.2, WH * 0.72, 5, bx + 3.5, bz + 3.1);
+  }
+}
+
+// Central raised platform — permanent landmark
 addBox(9, .45, 9,  0, .225, 0, ARENA_M.pillar, false, true);
 addBox(9.1,.06,9.1, 0, .47, 0, ARENA_M.ctrim, false, false);
-// Cover walls on top of the platform
 [[9,.9, 0,-4.2],[9,.9, 0, 4.2],[.9,9,-4.2,0],[.9,9, 4.2,0]].forEach(
   ([w,d,x,z])=>addBox(w,WH*.36,d,x,.225+WH*.18,z,ARENA_M.cover)
 );
-coverBoxes.push({cx:0,cz:0,hw:4.5,hd:4.5});
 
-// Standalone cylindrical pillars as mid-field cover
+// Standalone cylindrical pillars — permanent
 [[10,-18],[-10,18],[20,-6],[-20,6],[18,12],[-18,-12]].forEach(([px,pz])=>{
   const m=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,WH*.75,10),ARENA_M.pillar);
   m.position.set(px,WH*.375,pz); m.castShadow=true; scene.add(m);
-  coverBoxes.push({cx:px,cz:pz,hw:.65,hd:.65});
 });
 
 // ── MEZZANINE (second floor) ─────────────────────────────────
@@ -3922,6 +3956,7 @@ function startLevel(n) {
   levelActive  = false;
   if (coopMode && !coopIsHost) clearGhostBots();
   clearBots();
+  _buildDynamicCovers(n);
   applyTheme(n);
   const cfg = getLevelConfig(n);
   if (!coopMode || coopIsHost) spawnBots(cfg);  // guests see host's ghost bots instead

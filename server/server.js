@@ -1,11 +1,12 @@
 'use strict';
 
-const http     = require('http');
-const express  = require('express');
-const cors     = require('cors');
-const bcrypt   = require('bcryptjs');
-const jwt      = require('jsonwebtoken');
-const path     = require('path');
+const http       = require('http');
+const express    = require('express');
+const cors       = require('cors');
+const bcrypt     = require('bcryptjs');
+const jwt        = require('jsonwebtoken');
+const path       = require('path');
+const nodemailer = require('nodemailer');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const { Server } = require('socket.io');
 
@@ -15,6 +16,15 @@ const JWT_SECRET  = process.env.JWT_SECRET  || 'arcadehub-dev-secret-change-in-p
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/arcadehub';
 const SALT_ROUNDS    = 10;
 const TERMS_VERSION  = 1;
+
+// ── Email transporter (set GMAIL_USER + GMAIL_PASS env vars) ──
+const _mailTransport = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER || '',
+    pass: process.env.GMAIL_PASS || '',
+  },
+});
 
 // ── Express + HTTP server ─────────────────────────────────────
 const app        = express();
@@ -1141,6 +1151,31 @@ async function start() {
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
       res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── POST /api/feedback ─────────────────────────────────────
+  app.post('/api/feedback', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { message } = req.body;
+      if (!message || typeof message !== 'string' || message.trim().length < 3)
+        return res.status(400).json({ error: 'Feedback too short.' });
+      if (message.length > 2000)
+        return res.status(400).json({ error: 'Feedback too long (max 2000 chars).' });
+      if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS)
+        return res.status(503).json({ error: 'Email not configured on server.' });
+      await _mailTransport.sendMail({
+        from:    process.env.GMAIL_USER,
+        to:      'ioannismislis1206@gmail.com',
+        subject: 'Arcade Hub - Someone has feedback!',
+        text:    `${payload.username} has given feedback on your game: ${message.trim()}`,
+      });
+      res.json({ success: true });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      console.error('/api/feedback error:', err);
+      res.status(500).json({ error: 'Failed to send feedback.' });
     }
   });
 
