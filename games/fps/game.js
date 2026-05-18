@@ -405,6 +405,185 @@ function makeFloorTex(biomeId = 0) {
       ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();
       ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();
     }
+  } else if (biomeId === 7) {
+    // Toxic Swamp: murky green with mud pools
+    ctx.fillStyle='#081208'; ctx.fillRect(0,0,512,512);
+    for(let k=0;k<22;k++){
+      const x=Math.random()*512,y=Math.random()*512,r=14+Math.random()*26;
+      const g=ctx.createRadialGradient(x,y,0,x,y,r);
+      g.addColorStop(0,'rgba(28,48,8,0.65)'); g.addColorStop(1,'rgba(8,18,4,0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    }
+    ctx.strokeStyle='rgba(80,180,30,0.10)'; ctx.lineWidth=0.6;
+    for(let i=0;i<=512;i+=48){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();}
+  } else if (biomeId === 8) {
+    // Haunted Crypt: dark stone with purple veins
+    ctx.fillStyle='#100e18'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='rgba(130,90,200,0.22)'; ctx.lineWidth=1;
+    for(let k=0;k<14;k++){let cx=Math.random()*512,cy=Math.random()*512;ctx.beginPath();ctx.moveTo(cx,cy);for(let j=0;j<5;j++){cx+=(Math.random()-0.5)*80;cy+=(Math.random()-0.5)*80;ctx.lineTo(cx,cy);}ctx.stroke();}
+    ctx.strokeStyle='rgba(55,45,75,0.45)'; ctx.lineWidth=1.5;
+    for(let i=0;i<=512;i+=64){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();}
+  } else if (biomeId === 9) {
+    // Underwater Ruins: deep teal with wavy caustics
+    ctx.fillStyle='#061c28'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='rgba(0,190,170,0.14)'; ctx.lineWidth=1;
+    for(let y=0;y<512;y+=20){ctx.beginPath();ctx.moveTo(0,y);for(let x=0;x<=512;x+=16)ctx.lineTo(x,y+Math.sin(x*0.05)*6);ctx.stroke();}
+    ctx.fillStyle='rgba(0,140,130,0.09)';
+    for(let k=0;k<40;k++){ctx.beginPath();ctx.arc(Math.random()*512,Math.random()*512,2+Math.random()*5,0,Math.PI*2);ctx.fill();}
+  } else if (biomeId === 10) {
+    // Volcanic Ash: grey/black with faint red cracks and ash specks
+    ctx.fillStyle='#181414'; ctx.fillRect(0,0,512,512);
+    ctx.fillStyle='rgba(100,90,90,0.10)';
+    for(let k=0;k<200;k++){ctx.beginPath();ctx.arc(Math.random()*512,Math.random()*512,0.5+Math.random()*1.5,0,Math.PI*2);ctx.fill();}
+    ctx.strokeStyle='rgba(255,70,20,0.28)'; ctx.lineWidth=1; ctx.shadowColor='#ff3300'; ctx.shadowBlur=3;
+    for(let k=0;k<10;k++){let cx=Math.random()*512,cy=Math.random()*512;ctx.beginPath();ctx.moveTo(cx,cy);for(let j=0;j<4;j++){cx+=(Math.random()-0.5)*60;cy+=(Math.random()-0.5)*60;ctx.lineTo(cx,cy);}ctx.stroke();}
+    ctx.shadowBlur=0;
+  } else if (biomeId === 11) {
+    // Blood Moon: dark crimson with fracture lines
+    ctx.fillStyle='#180408'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='rgba(195,18,38,0.28)'; ctx.lineWidth=1;
+    for(let k=0;k<16;k++){let cx=Math.random()*512,cy=Math.random()*512;ctx.beginPath();ctx.moveTo(cx,cy);for(let j=0;j<6;j++){cx+=(Math.random()-0.5)*55;cy+=(Math.random()-0.5)*55;ctx.lineTo(cx,cy);}ctx.stroke();}
+    ctx.strokeStyle='rgba(90,8,18,0.40)'; ctx.lineWidth=2;
+    for(let i=0;i<=512;i+=96){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();}
+  } else if (biomeId === 12) {
+    // Crystal Cave: dark with glimmering geometric facets
+    ctx.fillStyle='#0c0418'; ctx.fillRect(0,0,512,512);
+    for(let k=0;k<55;k++){
+      const x=Math.random()*512,y=Math.random()*512,s=4+Math.random()*14,a=Math.random()*Math.PI;
+      ctx.save();ctx.translate(x,y);ctx.rotate(a);
+      const ri=Math.floor(Math.random()*3);
+      ctx.strokeStyle=ri===0?'rgba(180,100,255,0.30)':ri===1?'rgba(140,80,220,0.22)':'rgba(220,160,255,0.18)';
+      ctx.lineWidth=0.8;
+      ctx.beginPath();ctx.moveTo(0,-s);ctx.lineTo(s*0.6,0);ctx.lineTo(0,s);ctx.lineTo(-s*0.6,0);ctx.closePath();ctx.stroke();
+      ctx.restore();
+    }
+  } else if (biomeId === 13) {
+    // Biomech Core: organic tissue-like veins
+    ctx.fillStyle='#140608'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='rgba(195,38,58,0.16)'; ctx.lineWidth=1;
+    for(let k=0;k<22;k++){let x=Math.random()*512,y=Math.random()*512;ctx.beginPath();ctx.moveTo(x,y);for(let j=0;j<10;j++){x+=(Math.random()-0.5)*38;y+=(Math.random()-0.5)*24;ctx.lineTo(x,y);}ctx.stroke();}
+    ctx.strokeStyle='rgba(170,28,48,0.11)'; ctx.lineWidth=0.8;
+    for(let k=0;k<30;k++){const x=Math.random()*512,y=Math.random()*512,r=6+Math.random()*18;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();}
+  } else if (biomeId === 14) {
+    // Storm Vault: dark with electric vein pattern
+    ctx.fillStyle='#0a0e16'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='rgba(90,165,255,0.20)'; ctx.lineWidth=1;
+    for(let k=0;k<14;k++){let cx=Math.random()*512,cy=Math.random()*512;ctx.beginPath();ctx.moveTo(cx,cy);for(let j=0;j<7;j++){cx+=(Math.random()-0.5)*50;cy+=(Math.random()-0.5)*50;ctx.lineTo(cx,cy);}ctx.stroke();}
+    ctx.strokeStyle='rgba(55,100,170,0.24)'; ctx.lineWidth=2;
+    for(let i=0;i<=512;i+=80){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();}
+  } else if (biomeId === 15) {
+    // Deep Trench: near-black with bioluminescent glow patches
+    ctx.fillStyle='#010508'; ctx.fillRect(0,0,512,512);
+    for(let k=0;k<65;k++){
+      const x=Math.random()*512,y=Math.random()*512,r=2+Math.random()*10;
+      const c2=ctx.createRadialGradient(x,y,0,x,y,r);
+      const a=k%3===0?'rgba(0,255,195,0.13)':k%3===1?'rgba(0,210,175,0.09)':'rgba(0,175,215,0.11)';
+      c2.addColorStop(0,a);c2.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=c2;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+    }
+  } else if (biomeId === 16) {
+    // Poison Jungle: dark with toxic vein drips and moss
+    ctx.fillStyle='#060e04'; ctx.fillRect(0,0,512,512);
+    ctx.fillStyle='rgba(36,112,18,0.14)';
+    for(let k=0;k<32;k++){const x=Math.random()*512,y=Math.random()*512,r=8+Math.random()*20;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
+    ctx.strokeStyle='rgba(110,245,0,0.11)'; ctx.lineWidth=1;
+    for(let k=0;k<10;k++){let cx=Math.random()*512,cy=0;ctx.beginPath();ctx.moveTo(cx,cy);for(let j=0;j<8;j++){cx+=(Math.random()-0.5)*20;cy+=Math.random()*60;ctx.lineTo(cx,cy);}ctx.stroke();}
+  } else if (biomeId === 17) {
+    // Acid Wastes: burnt yellow with glowing acid pools
+    ctx.fillStyle='#101200'; ctx.fillRect(0,0,512,512);
+    for(let k=0;k<28;k++){
+      const x=Math.random()*512,y=Math.random()*512,r=10+Math.random()*24;
+      const g=ctx.createRadialGradient(x,y,0,x,y,r);
+      g.addColorStop(0,'rgba(195,215,0,0.22)');g.addColorStop(1,'rgba(70,90,0,0)');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+    }
+    ctx.strokeStyle='rgba(155,175,0,0.16)'; ctx.lineWidth=0.8;
+    for(let i=0;i<=512;i+=48){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();}
+  } else if (biomeId === 18) {
+    // Midnight Rain: dark wet tiles with puddle reflections
+    ctx.fillStyle='#040810'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='rgba(75,115,175,0.11)'; ctx.lineWidth=0.8;
+    for(let i=0;i<=512;i+=40){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();}
+    for(let k=0;k<18;k++){
+      const x=Math.random()*512,y=Math.random()*512,r=12+Math.random()*22;
+      const g=ctx.createRadialGradient(x,y,0,x,y,r);
+      g.addColorStop(0,'rgba(75,115,195,0.14)');g.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+    }
+  } else if (biomeId === 19) {
+    // Ancient Temple: worn stone tiles with gold inlay
+    ctx.fillStyle='#1a1608'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='rgba(58,48,18,0.60)'; ctx.lineWidth=2;
+    for(let i=0;i<=512;i+=80){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();}
+    ctx.strokeStyle='rgba(195,155,48,0.28)'; ctx.lineWidth=1;
+    for(let x=0;x<512;x+=80)for(let y=0;y<512;y+=80)ctx.strokeRect(x+4,y+4,72,72);
+    ctx.strokeStyle='rgba(95,85,55,0.18)'; ctx.lineWidth=0.7;
+    for(let k=0;k<12;k++){let cx=Math.random()*512,cy=Math.random()*512;ctx.beginPath();ctx.moveTo(cx,cy);for(let j=0;j<4;j++){cx+=(Math.random()-0.5)*60;cy+=(Math.random()-0.5)*40;ctx.lineTo(cx,cy);}ctx.stroke();}
+  } else if (biomeId === 20) {
+    // Infernal Pit: scorched black with deep orange cracks
+    ctx.fillStyle='#130300'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='#ff4400'; ctx.lineWidth=1.8; ctx.shadowColor='#ff2200'; ctx.shadowBlur=6;
+    for(let k=0;k<18;k++){let cx=Math.random()*512,cy=Math.random()*512;ctx.beginPath();ctx.moveTo(cx,cy);for(let j=0;j<5;j++){cx+=(Math.random()-0.5)*65;cy+=(Math.random()-0.5)*65;ctx.lineTo(cx,cy);}ctx.stroke();}
+    ctx.shadowBlur=0;
+    ctx.strokeStyle='rgba(78,18,0,0.50)'; ctx.lineWidth=3;
+    for(let i=0;i<=512;i+=128){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();}
+  } else if (biomeId === 21) {
+    // Frozen Void: near-black with icy fractures and hex frost
+    ctx.fillStyle='#010810'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='rgba(95,175,238,0.20)'; ctx.lineWidth=1;
+    for(let k=0;k<22;k++){let cx=Math.random()*512,cy=Math.random()*512;ctx.beginPath();ctx.moveTo(cx,cy);for(let j=0;j<5;j++){cx+=(Math.random()-0.5)*70;cy+=(Math.random()-0.5)*70;ctx.lineTo(cx,cy);}ctx.stroke();}
+    ctx.strokeStyle='rgba(175,215,255,0.07)'; ctx.lineWidth=0.6;
+    for(let x=0;x<512;x+=44)for(let y=0;y<512;y+=50){ctx.beginPath();for(let j=0;j<6;j++)ctx.lineTo(x+22+22*Math.cos(j*Math.PI/3),y+25+22*Math.sin(j*Math.PI/3));ctx.closePath();ctx.stroke();}
+  } else if (biomeId === 22) {
+    // Neon Arena: dark with hot-pink grid and scanlines
+    ctx.fillStyle='#090009'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='rgba(255,0,195,0.28)'; ctx.lineWidth=0.8;
+    for(let i=0;i<=512;i+=32){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();}
+    ctx.strokeStyle='rgba(0,250,235,0.48)'; ctx.lineWidth=1.5;
+    for(let i=0;i<=512;i+=128){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();}
+    ctx.strokeStyle='rgba(255,0,175,0.05)'; ctx.lineWidth=2;
+    for(let i=0;i<512;i+=4){ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();}
+  } else if (biomeId === 23) {
+    // Dark Nebula: black with coloured nebula smears and star dots
+    ctx.fillStyle='#030008'; ctx.fillRect(0,0,512,512);
+    const nebC=['rgba(155,38,255,0.08)','rgba(75,0,175,0.06)','rgba(195,78,255,0.05)'];
+    for(let k=0;k<22;k++){
+      const x=Math.random()*512,y=Math.random()*512,rx=30+Math.random()*80,ry=20+Math.random()*60;
+      const mx=Math.max(rx,ry);
+      const g=ctx.createRadialGradient(x,y,0,x,y,mx);
+      g.addColorStop(0,nebC[k%3]);g.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=g;ctx.save();ctx.translate(x,y);ctx.scale(rx/mx,ry/mx);ctx.translate(-x,-y);
+      ctx.beginPath();ctx.arc(x,y,mx,0,Math.PI*2);ctx.fill();ctx.restore();
+    }
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    for(let k=0;k<85;k++){ctx.beginPath();ctx.arc(Math.random()*512,Math.random()*512,0.5+Math.random(),0,Math.PI*2);ctx.fill();}
+  } else if (biomeId === 24) {
+    // Radiation Zone: green concrete with hazard triangles
+    ctx.fillStyle='#080e00'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='rgba(95,175,0,0.18)'; ctx.lineWidth=1;
+    for(let i=0;i<=512;i+=40){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();}
+    ctx.strokeStyle='rgba(145,215,0,0.18)'; ctx.lineWidth=1.5;
+    for(let k=0;k<14;k++){const x=Math.random()*480+16,y=Math.random()*480+16,s=10+Math.random()*16;ctx.beginPath();ctx.moveTo(x,y-s);ctx.lineTo(x+s*0.87,y+s*0.5);ctx.lineTo(x-s*0.87,y+s*0.5);ctx.closePath();ctx.stroke();}
+  } else if (biomeId === 25) {
+    // Burning Cathedral: dark stone blocks with ember glow patches
+    ctx.fillStyle='#0e0804'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='rgba(58,38,18,0.60)'; ctx.lineWidth=2;
+    for(let i=0;i<=512;i+=80){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();}
+    for(let k=0;k<18;k++){
+      const x=Math.random()*512,y=Math.random()*512,r=5+Math.random()*14;
+      const g=ctx.createRadialGradient(x,y,0,x,y,r);
+      g.addColorStop(0,'rgba(255,115,0,0.16)');g.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+    }
+  } else if (biomeId === 26) {
+    // Nano Grid: teal micro circuit board
+    ctx.fillStyle='#020c0c'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='rgba(0,215,195,0.22)'; ctx.lineWidth=0.7;
+    for(let i=0;i<=512;i+=16){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();}
+    ctx.strokeStyle='rgba(0,250,225,0.48)'; ctx.lineWidth=1.5;
+    for(let i=0;i<=512;i+=64){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();}
+    ctx.fillStyle='rgba(0,250,215,0.38)';
+    for(let k=0;k<40;k++){const x=Math.round(Math.random()*8)*64,y=Math.round(Math.random()*8)*64;ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.fill();}
   }
 
   const tex = new THREE.CanvasTexture(c);
@@ -1867,6 +2046,69 @@ function playFootstep(biomeType) {
       const src=ac.createBufferSource(); src.buffer=buf;
       const hp=ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=2000;
       src.connect(hp); hp.connect(g); g.gain.value=vol*0.35; src.start();
+      break;
+    }
+    case 'swamp': {
+      // Wet slap/squelch
+      const buf=ac.createBuffer(1,ac.sampleRate*0.18,ac.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.15))*0.7;
+      const src=ac.createBufferSource(); src.buffer=buf;
+      const lp=ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=450;
+      src.connect(lp); lp.connect(g); g.gain.value=vol*0.55; src.start();
+      break;
+    }
+    case 'stone': {
+      // Hard hollow echo
+      const buf=ac.createBuffer(1,ac.sampleRate*0.12,ac.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.08))*0.9;
+      const src=ac.createBufferSource(); src.buffer=buf;
+      const bp=ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1200; bp.Q.value=3;
+      src.connect(bp); bp.connect(g); g.gain.value=vol*0.40; src.start();
+      break;
+    }
+    case 'splash': {
+      // Water splash — two-layer: low thud + high-freq spray
+      const buf=ac.createBuffer(1,ac.sampleRate*0.16,ac.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.18))*0.65;
+      const src=ac.createBufferSource(); src.buffer=buf;
+      const lp=ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=600;
+      const hp=ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=2500;
+      src.connect(lp); lp.connect(g);
+      const src2=ac.createBufferSource(); src2.buffer=buf;
+      src2.connect(hp); hp.connect(g); g.gain.value=vol*0.42; src.start(); src2.start();
+      break;
+    }
+    case 'crumble': {
+      // Crunchy debris — mid-noise burst
+      const buf=ac.createBuffer(1,ac.sampleRate*0.14,ac.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.12))*0.75;
+      const src=ac.createBufferSource(); src.buffer=buf;
+      const bp=ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=900; bp.Q.value=1.5;
+      src.connect(bp); bp.connect(g); g.gain.value=vol*0.50; src.start();
+      break;
+    }
+    case 'jungle': {
+      // Soft leaf rustle + wet under-layer
+      const buf=ac.createBuffer(1,ac.sampleRate*0.14,ac.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.22))*0.45;
+      const src=ac.createBufferSource(); src.buffer=buf;
+      const bp=ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=700; bp.Q.value=0.8;
+      src.connect(bp); bp.connect(g); g.gain.value=vol*0.35; src.start();
+      break;
+    }
+    case 'rain': {
+      // Light wet tap with short decay
+      const buf=ac.createBuffer(1,ac.sampleRate*0.09,ac.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.14))*0.55;
+      const src=ac.createBufferSource(); src.buffer=buf;
+      const hp=ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1800;
+      src.connect(hp); hp.connect(g); g.gain.value=vol*0.30; src.start();
       break;
     }
     default: {
@@ -3516,6 +3758,206 @@ const BIOMES = [
     accentColors: [0xffffff, 0xccccff, 0xffffff, 0xccffff],
     particleType: 'stars', footstep: 'default', biomeId: 6,
   },
+  {
+    name: 'TOXIC SWAMP',
+    bg: 0x040c02, fogDensity: 0.018,
+    wall: 0x0c1a08, floor: 0x0a1606, ceil: 0x060e04,
+    trim: 0x44ff22, trimE: 0x66ff44,
+    pillar: 0x0a1406, ambient: 0x0a1608, ambientI: 0.38,
+    sun: 0x88ff44, sunI: 0.35,
+    accentColors: [0x44ff22, 0x22aa11, 0x88ff44, 0x00dd22],
+    particleType: 'bubbles', footstep: 'swamp', biomeId: 7,
+  },
+  {
+    name: 'HAUNTED CRYPT',
+    bg: 0x060410, fogDensity: 0.014,
+    wall: 0x181420, floor: 0x10101a, ceil: 0x080610,
+    trim: 0x9966ff, trimE: 0xaa77ff,
+    pillar: 0x14121e, ambient: 0x0c0a18, ambientI: 0.25,
+    sun: 0x8866cc, sunI: 0.35,
+    accentColors: [0x8855ff, 0xaa77ff, 0x6644dd, 0xcc88ff],
+    particleType: 'ash', footstep: 'stone', biomeId: 8,
+  },
+  {
+    name: 'UNDERWATER RUINS',
+    bg: 0x001822, fogDensity: 0.020,
+    wall: 0x082030, floor: 0x061828, ceil: 0x041018,
+    trim: 0x00ddcc, trimE: 0x00ffee,
+    pillar: 0x061c28, ambient: 0x0a2230, ambientI: 0.52,
+    sun: 0x44ddcc, sunI: 0.35,
+    accentColors: [0x00ccbb, 0x44ffee, 0x0099aa, 0x22eedd],
+    particleType: 'bubbles', footstep: 'splash', biomeId: 9,
+  },
+  {
+    name: 'VOLCANIC ASH',
+    bg: 0x141010, fogDensity: 0.016,
+    wall: 0x282020, floor: 0x201818, ceil: 0x101010,
+    trim: 0xff4422, trimE: 0xff6644,
+    pillar: 0x201a1a, ambient: 0x241a14, ambientI: 0.30,
+    sun: 0xff8833, sunI: 0.6,
+    accentColors: [0xff4422, 0xdd2200, 0xff6600, 0xaa2200],
+    particleType: 'ash', footstep: 'crumble', biomeId: 10,
+  },
+  {
+    name: 'BLOOD MOON',
+    bg: 0x1a0208, fogDensity: 0.011,
+    wall: 0x2e0812, floor: 0x20060e, ceil: 0x14040a,
+    trim: 0xff2244, trimE: 0xff4466,
+    pillar: 0x260610, ambient: 0x2a0810, ambientI: 0.38,
+    sun: 0xff4433, sunI: 0.8,
+    accentColors: [0xff1133, 0xff4466, 0xdd0022, 0xff6688],
+    particleType: 'sparks', footstep: 'default', biomeId: 11,
+  },
+  {
+    name: 'CRYSTAL CAVE',
+    bg: 0x06020a, fogDensity: 0.012,
+    wall: 0x1a0a30, floor: 0x10061e, ceil: 0x08041a,
+    trim: 0xcc88ff, trimE: 0xeebfff,
+    pillar: 0x180828, ambient: 0x140620, ambientI: 0.45,
+    sun: 0xddaaff, sunI: 0.6,
+    accentColors: [0xcc88ff, 0xaa44ff, 0xeeccff, 0x8833cc],
+    particleType: 'crystals', footstep: 'stone', biomeId: 12,
+  },
+  {
+    name: 'BIOMECH CORE',
+    bg: 0x0a0408, fogDensity: 0.013,
+    wall: 0x200a10, floor: 0x180808, ceil: 0x100406,
+    trim: 0xff3366, trimE: 0xff5588,
+    pillar: 0x1a0810, ambient: 0x1e0a0c, ambientI: 0.38,
+    sun: 0xff2244, sunI: 0.55,
+    accentColors: [0xff2255, 0xcc0033, 0xff5577, 0xdd1144],
+    particleType: 'drips', footstep: 'swamp', biomeId: 13,
+  },
+  {
+    name: 'STORM VAULT',
+    bg: 0x060a12, fogDensity: 0.012,
+    wall: 0x141c2a, floor: 0x0e161e, ceil: 0x08101a,
+    trim: 0x88ccff, trimE: 0xaaddff,
+    pillar: 0x121a26, ambient: 0x10182a, ambientI: 0.32,
+    sun: 0xaaddff, sunI: 0.65,
+    accentColors: [0x66aaff, 0xaaddff, 0x4488dd, 0xcceeFF],
+    particleType: 'lightning', footstep: 'stone', biomeId: 14,
+  },
+  {
+    name: 'DEEP TRENCH',
+    bg: 0x000508, fogDensity: 0.022,
+    wall: 0x040e14, floor: 0x020a10, ceil: 0x000608,
+    trim: 0x00ffcc, trimE: 0x44ffdd,
+    pillar: 0x040c12, ambient: 0x04101a, ambientI: 0.28,
+    sun: 0x00ddaa, sunI: 0.28,
+    accentColors: [0x00ffbb, 0x00ddaa, 0x44ffcc, 0x00bb99],
+    particleType: 'orbs', footstep: 'splash', biomeId: 15,
+  },
+  {
+    name: 'POISON JUNGLE',
+    bg: 0x040a02, fogDensity: 0.015,
+    wall: 0x0e1e08, floor: 0x081408, ceil: 0x04080a,
+    trim: 0x88ff00, trimE: 0xaaff22,
+    pillar: 0x0a1806, ambient: 0x0c1a08, ambientI: 0.42,
+    sun: 0x88ff22, sunI: 0.38,
+    accentColors: [0x66ff00, 0xaaff44, 0x44dd00, 0x88ee22],
+    particleType: 'spores', footstep: 'jungle', biomeId: 16,
+  },
+  {
+    name: 'ACID WASTES',
+    bg: 0x0a0c00, fogDensity: 0.013,
+    wall: 0x1a1c04, floor: 0x141600, ceil: 0x0a0c00,
+    trim: 0xddff00, trimE: 0xeeff22,
+    pillar: 0x181a04, ambient: 0x181c04, ambientI: 0.44,
+    sun: 0xccff00, sunI: 0.70,
+    accentColors: [0xddff00, 0xaaee00, 0xeeff22, 0x88cc00],
+    particleType: 'spores', footstep: 'swamp', biomeId: 17,
+  },
+  {
+    name: 'MIDNIGHT RAIN',
+    bg: 0x030510, fogDensity: 0.016,
+    wall: 0x08101c, floor: 0x060c16, ceil: 0x020408,
+    trim: 0x4488cc, trimE: 0x66aadd,
+    pillar: 0x070e18, ambient: 0x081220, ambientI: 0.30,
+    sun: 0x6699cc, sunI: 0.40,
+    accentColors: [0x4488cc, 0x6699dd, 0x2266aa, 0x88aabb],
+    particleType: 'rain', footstep: 'rain', biomeId: 18,
+  },
+  {
+    name: 'ANCIENT TEMPLE',
+    bg: 0x100e06, fogDensity: 0.010,
+    wall: 0x28220c, floor: 0x1e1808, ceil: 0x141008,
+    trim: 0xddaa44, trimE: 0xeecc66,
+    pillar: 0x24200a, ambient: 0x241e0c, ambientI: 0.50,
+    sun: 0xffdd88, sunI: 0.75,
+    accentColors: [0xddaa44, 0xffcc55, 0xcc8822, 0xeecc66],
+    particleType: 'ash', footstep: 'stone', biomeId: 19,
+  },
+  {
+    name: 'INFERNAL PIT',
+    bg: 0x1a0400, fogDensity: 0.014,
+    wall: 0x2e0800, floor: 0x200600, ceil: 0x150400,
+    trim: 0xff6600, trimE: 0xff8800,
+    pillar: 0x280600, ambient: 0x2e0800, ambientI: 0.42,
+    sun: 0xff5500, sunI: 0.95,
+    accentColors: [0xff4400, 0xff8800, 0xdd2200, 0xffaa00],
+    particleType: 'smoke', footstep: 'lava', biomeId: 20,
+  },
+  {
+    name: 'FROZEN VOID',
+    bg: 0x00040c, fogDensity: 0.009,
+    wall: 0x04101c, floor: 0x020c18, ceil: 0x000408,
+    trim: 0x88ccff, trimE: 0xaaddff,
+    pillar: 0x040e18, ambient: 0x061018, ambientI: 0.22,
+    sun: 0xaaccee, sunI: 0.45,
+    accentColors: [0x66aaff, 0xaaccff, 0x44aacc, 0x88ddff],
+    particleType: 'crystals', footstep: 'ice', biomeId: 21,
+  },
+  {
+    name: 'NEON ARENA',
+    bg: 0x08000e, fogDensity: 0.011,
+    wall: 0x1a001a, floor: 0x100010, ceil: 0x080008,
+    trim: 0xff00cc, trimE: 0xff44dd,
+    pillar: 0x160016, ambient: 0x1e001a, ambientI: 0.44,
+    sun: 0xff22cc, sunI: 0.75,
+    accentColors: [0xff00ff, 0xff00cc, 0xcc00ff, 0xff44ee],
+    particleType: 'sparks', footstep: 'default', biomeId: 22,
+  },
+  {
+    name: 'DARK NEBULA',
+    bg: 0x04000c, fogDensity: 0.007,
+    wall: 0x100620, floor: 0x080418, ceil: 0x040210,
+    trim: 0xcc44ff, trimE: 0xdd66ff,
+    pillar: 0x0e0418, ambient: 0x0c0418, ambientI: 0.30,
+    sun: 0xaa44ff, sunI: 0.45,
+    accentColors: [0xaa22ff, 0xcc66ff, 0x8800ee, 0xdd88ff],
+    particleType: 'nebula', footstep: 'default', biomeId: 23,
+  },
+  {
+    name: 'RADIATION ZONE',
+    bg: 0x040c00, fogDensity: 0.012,
+    wall: 0x0e1a00, floor: 0x0a1400, ceil: 0x060e00,
+    trim: 0x88ff44, trimE: 0xaaff66,
+    pillar: 0x0c1800, ambient: 0x0c1a00, ambientI: 0.48,
+    sun: 0xaaff44, sunI: 0.60,
+    accentColors: [0x66ff22, 0xaaff44, 0x44ee00, 0x88ff66],
+    particleType: 'radiation', footstep: 'default', biomeId: 24,
+  },
+  {
+    name: 'BURNING CATHEDRAL',
+    bg: 0x0c0600, fogDensity: 0.012,
+    wall: 0x201008, floor: 0x181008, ceil: 0x0e0804,
+    trim: 0xff8822, trimE: 0xffaa44,
+    pillar: 0x1c0e06, ambient: 0x201208, ambientI: 0.40,
+    sun: 0xff9933, sunI: 0.85,
+    accentColors: [0xff6600, 0xffaa00, 0xff4400, 0xffcc44],
+    particleType: 'smoke', footstep: 'stone', biomeId: 25,
+  },
+  {
+    name: 'NANO GRID',
+    bg: 0x000808, fogDensity: 0.008,
+    wall: 0x0a1818, floor: 0x081414, ceil: 0x040e0e,
+    trim: 0x00ffee, trimE: 0x44ffff,
+    pillar: 0x081414, ambient: 0x0a1a1a, ambientI: 0.38,
+    sun: 0x44ffee, sunI: 0.55,
+    accentColors: [0x00ffee, 0x44ffff, 0x00ddcc, 0x22eedd],
+    particleType: 'data', footstep: 'default', biomeId: 26,
+  },
 ];
 
 let currentBiome = null;
@@ -3559,6 +4001,80 @@ function _initBiomeParticles(biome) {
         new THREE.SphereGeometry(0.03 + Math.random() * 0.03, 4, 4),
         new THREE.MeshBasicMaterial({ color: 0xffffff })
       );
+    } else if (biome.particleType === 'bubbles') {
+      const col = (biome.biomeId === 9 || biome.biomeId === 15) ? 0x00ffdd : 0x88ff44;
+      mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.03 + Math.random() * 0.05, 5, 5),
+        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.5 + Math.random() * 0.3 })
+      );
+    } else if (biome.particleType === 'ash') {
+      const col = biome.biomeId === 10 ? 0x888080 : biome.biomeId === 19 ? 0xd4b870 : 0xbbbbcc;
+      mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.05 + Math.random() * 0.04, 0.01, 0.05 + Math.random() * 0.04),
+        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.6 })
+      );
+    } else if (biome.particleType === 'sparks') {
+      const col = biome.biomeId === 22 ? (Math.random() > 0.5 ? 0xff00ff : 0x00ffee) : (Math.random() > 0.5 ? 0xff2244 : 0xffaa00);
+      mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.02 + Math.random() * 0.025, 4, 4),
+        new THREE.MeshBasicMaterial({ color: col })
+      );
+    } else if (biome.particleType === 'crystals') {
+      const col = biome.biomeId === 21 ? 0x88ccff : 0xcc88ff;
+      mesh = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.04 + Math.random() * 0.06),
+        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.7 })
+      );
+    } else if (biome.particleType === 'drips') {
+      mesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.015, 0.008, 0.06 + Math.random() * 0.06, 4),
+        new THREE.MeshBasicMaterial({ color: 0xff3355, transparent: true, opacity: 0.65 })
+      );
+    } else if (biome.particleType === 'lightning') {
+      mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.025 + Math.random() * 0.03, 4, 4),
+        new THREE.MeshBasicMaterial({ color: 0x88ccff, transparent: true, opacity: Math.random() * 0.5 })
+      );
+    } else if (biome.particleType === 'orbs') {
+      mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.05 + Math.random() * 0.08, 6, 6),
+        new THREE.MeshBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.22 + Math.random() * 0.25 })
+      );
+    } else if (biome.particleType === 'spores') {
+      const col = biome.biomeId === 17 ? 0xddff00 : 0x88ff44;
+      mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.03 + Math.random() * 0.04, 4, 4),
+        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55 })
+      );
+    } else if (biome.particleType === 'rain') {
+      mesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.008, 0.008, 0.14 + Math.random() * 0.08, 3),
+        new THREE.MeshBasicMaterial({ color: 0x6699cc, transparent: true, opacity: 0.5 })
+      );
+    } else if (biome.particleType === 'smoke') {
+      const col = biome.biomeId === 25 ? 0x443322 : 0x331a00;
+      mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.09 + Math.random() * 0.10, 5, 5),
+        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.22 + Math.random() * 0.18 })
+      );
+    } else if (biome.particleType === 'nebula') {
+      const col = Math.random() > 0.5 ? 0xaa44ff : 0xcc66ff;
+      mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.04 + Math.random() * 0.06, 4, 4),
+        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.28 + Math.random() * 0.22 })
+      );
+    } else if (biome.particleType === 'radiation') {
+      const col = Math.random() > 0.5 ? 0x88ff44 : 0xaaff00;
+      mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.03 + Math.random() * 0.04, 4, 4),
+        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.45 })
+      );
+    } else if (biome.particleType === 'data') {
+      const col = Math.random() > 0.5 ? 0x00ffee : 0x44ffff;
+      mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.02, 0.06 + Math.random() * 0.06, 0.02),
+        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.60 })
+      );
     }
     if (!mesh) continue;
 
@@ -3570,10 +4086,16 @@ function _initBiomeParticles(biome) {
     );
     scene.add(mesh);
 
-    const vx = (Math.random() - 0.5) * (biome.particleType === 'sand' ? 4 : 1);
-    const vy = biome.particleType === 'embers' ? 0.4 + Math.random() * 0.8 :
-               biome.particleType === 'stars' ? 0 : -(0.4 + Math.random() * 0.8);
-    const vz = (Math.random() - 0.5) * (biome.particleType === 'sand' ? 4 : 1);
+    const pt = biome.particleType;
+    const vx = (Math.random() - 0.5) * (pt === 'sand' ? 4 : pt === 'sparks' ? 3 : pt === 'rain' ? 0.2 : 1);
+    const vy = pt === 'embers' || pt === 'bubbles' || pt === 'smoke' ? 0.4 + Math.random() * 0.8
+             : pt === 'stars' || pt === 'orbs' || pt === 'nebula' || pt === 'radiation' ? (Math.random() - 0.5) * 0.2
+             : pt === 'rain' ? -(2.5 + Math.random() * 1.5)
+             : pt === 'drips' ? -(1.2 + Math.random() * 0.8)
+             : pt === 'sparks' ? (Math.random() - 0.5) * 3
+             : pt === 'lightning' ? (Math.random() - 0.5) * 0.3
+             : -(0.4 + Math.random() * 0.8);
+    const vz = (Math.random() - 0.5) * (pt === 'sand' ? 4 : pt === 'sparks' ? 3 : pt === 'rain' ? 0.2 : 1);
 
     biomeParticles.push({ mesh, vx, vy, vz,
       rx: (Math.random()-0.5)*2, ry: (Math.random()-0.5)*2, rz: (Math.random()-0.5)*2,
@@ -3600,9 +4122,20 @@ function _showBiomeBanner(name) {
   setTimeout(() => { d.style.opacity = '0'; setTimeout(() => { if (d.parentNode) document.body.removeChild(d); if (_biomeBanner === d) _biomeBanner = null; }, 700); }, 2500);
 }
 
+// Random biome sequence — index 0 always FACILITY, subsequent blocks random (no repeats)
+const _biomeSeq = [0];
+function _biomeForBlock(block) {
+  if (block === 0) return BIOMES[0];
+  while (_biomeSeq.length <= block) {
+    const prev = _biomeSeq[_biomeSeq.length - 1];
+    const pool = BIOMES.slice(1).map((_, i) => i + 1).filter(i => i !== prev);
+    _biomeSeq.push(pool[Math.floor(Math.random() * pool.length)]);
+  }
+  return BIOMES[_biomeSeq[block]];
+}
+
 function applyBiome(level) {
-  const idx = Math.floor((level - 1) / 5) % BIOMES.length;
-  const biome = BIOMES[idx];
+  const biome = _biomeForBlock(Math.floor((level - 1) / 5));
   currentBiome = biome;
 
   // Scene fog + background
