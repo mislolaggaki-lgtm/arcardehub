@@ -658,6 +658,90 @@
     }
     .btn-shop:hover { background: rgba(200,162,21,0.12); border-color: rgba(200,162,21,0.6); color: #ffd700; }
 
+    /* ── FPS Settings button ─────────────────────────────── */
+    .btn-settings {
+      padding: 7px 18px;
+      background: transparent;
+      border: 1px solid rgba(150,200,255,0.25);
+      border-radius: 5px; color: #7090c0;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+    }
+    .btn-settings:hover { background: rgba(150,200,255,0.10); border-color: rgba(150,200,255,0.5); color: #aad0ff; }
+
+    /* ── Settings Modal ──────────────────────────────────── */
+    .settings-overlay {
+      display: none; position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,3,14,0.90); backdrop-filter: blur(14px);
+      align-items: center; justify-content: center;
+    }
+    .settings-overlay.open { display: flex; }
+    .settings-modal {
+      width: min(540px, 94vw); max-height: 88vh; overflow-y: auto;
+      background: linear-gradient(150deg, #0b0b1f 0%, #080816 100%);
+      border: 1px solid rgba(150,200,255,0.18);
+      border-radius: 16px; padding: 28px 30px 28px;
+      box-shadow: 0 0 80px rgba(0,0,0,0.95);
+      scrollbar-width: none; position: relative;
+    }
+    .settings-modal::-webkit-scrollbar { display: none; }
+    .settings-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px; letter-spacing: 5px; color: #aad0ff; margin-bottom: 22px;
+      border-bottom: 1px solid rgba(150,200,255,0.12); padding-bottom: 12px;
+    }
+    .settings-section {
+      font-size: 8px; font-weight: 800; letter-spacing: 4px;
+      color: #2a3a5a; text-transform: uppercase;
+      margin: 20px 0 12px; padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .settings-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .settings-row-label {
+      flex: 1; font-size: 13px; color: #8090c0; letter-spacing: 0.5px;
+    }
+    .settings-row-value {
+      font-size: 12px; font-weight: 700; color: #aad0ff; min-width: 42px; text-align: right;
+    }
+    .settings-slider {
+      flex: 0 0 160px; -webkit-appearance: none; appearance: none;
+      height: 4px; background: rgba(100,150,255,0.2); border-radius: 2px;
+      outline: none; cursor: pointer;
+    }
+    .settings-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+      background: #5588ff; cursor: pointer;
+      box-shadow: 0 0 8px rgba(85,136,255,0.5);
+    }
+    .settings-select {
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 6px; color: #aad0ff; font-family: inherit; font-size: 12px;
+      padding: 6px 10px; outline: none; cursor: pointer;
+    }
+    .settings-select:focus { border-color: rgba(150,200,255,0.4); }
+    .settings-close {
+      position: absolute; top: 14px; right: 16px;
+      background: none; border: none; color: #44445a; font-size: 18px;
+      cursor: pointer; transition: color .15s;
+    }
+    .settings-close:hover { color: #fff; }
+    .settings-save-row {
+      margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;
+    }
+    .settings-save-btn {
+      padding: 10px 24px; background: rgba(85,136,255,0.12);
+      border: 1px solid rgba(85,136,255,0.35); border-radius: 8px;
+      color: #5588ff; font-family: inherit; font-size: 11px; font-weight: 800;
+      letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
+      transition: background .15s;
+    }
+    .settings-save-btn:hover { background: rgba(85,136,255,0.25); }
+
     /* ── Shop Modal ──────────────────────────────────────── */
     .shop-overlay {
       display: none; position: fixed; inset: 0; z-index: 500;
@@ -1111,6 +1195,7 @@
       #nav-user .btn-shop,
       #nav-user .btn-logout,
       #nav-user .btn-delete-account,
+      #nav-user .btn-settings,
       #nav-user .btn-notif,
       #nav-user .btn-friends,
       #nav-user .online-badge { display: none !important; }
@@ -2151,6 +2236,7 @@
         </div>
         <button class="btn-shop" onclick="openShop()">SHOP</button>
         <button class="btn-shop" onclick="openTrade()" title="Trade accessories with other players" style="background:rgba(0,200,120,0.08);border-color:rgba(0,200,120,0.3);color:#00c878">TRADE</button>
+        <button class="btn-settings" onclick="openSettings()">&#9881; FPS SETTINGS</button>
         <button class="btn-notif" id="btn-notif" onclick="openNotifPanel()" title="Notifications">🔔 <span class="notif-badge" id="notif-badge" style="display:none">0</span></button>
         <button class="btn-friends" onclick="openFriends()" title="Friends">👥 FRIENDS <span class="notif-badge" id="friends-online-count" style="display:none">0</span></button>
         <button class="btn-logout" id="btn-logout">LOGOUT</button>
@@ -2184,6 +2270,7 @@
         <button class="md-item" onclick="closeMobileDrawer();openFriends()"><span class="md-item-icon">👥</span>Friends <span id="md-friends-count" style="margin-left:auto;background:rgba(59,158,232,0.2);color:#3b9ee8;border-radius:10px;padding:1px 7px;font-size:11px;display:none"></span></button>
         <button class="md-item" onclick="closeMobileDrawer();openNotifPanel()"><span class="md-item-icon">🔔</span>Notifications <span id="md-notif-count" style="margin-left:auto;background:rgba(231,76,60,0.2);color:#e74c3c;border-radius:10px;padding:1px 7px;font-size:11px;display:none"></span></button>
         <div class="md-sep"></div>
+        <button class="md-item" onclick="closeMobileDrawer();openSettings()"><span class="md-item-icon">🎮</span>FPS Settings</button>
         <button class="md-item" onclick="closeMobileDrawer();openProfile()"><span class="md-item-icon">⚙️</span>Profile Settings</button>
         <button class="md-item" onclick="closeMobileDrawer();openChangelog()"><span class="md-item-icon">★</span>What's New</button>
         <button class="md-item" onclick="closeMobileDrawer();openFeedback()"><span class="md-item-icon">✉️</span>Send Feedback</button>
@@ -2475,6 +2562,66 @@
     </div>
   </div>
 
+  <!-- ── FPS Settings Modal ───────────────────────────────── -->
+  <div class="settings-overlay" id="settings-overlay" onclick="if(event.target===this)closeSettings()">
+    <div class="settings-modal">
+      <button class="settings-close" onclick="closeSettings()">&#10005;</button>
+      <div class="settings-title">&#9881; FPS SETTINGS</div>
+
+      <div class="settings-section">Controls</div>
+      <div class="settings-row">
+        <span class="settings-row-label">Mouse Sensitivity</span>
+        <input class="settings-slider" type="range" min="0.2" max="3.0" step="0.1" id="set-sensitivity" oninput="document.getElementById('set-sensitivity-val').textContent=parseFloat(this.value).toFixed(1)">
+        <span class="settings-row-value" id="set-sensitivity-val">1.0</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-row-label">Field of View</span>
+        <input class="settings-slider" type="range" min="60" max="110" step="1" id="set-fov" oninput="document.getElementById('set-fov-val').textContent=this.value+'&#176;'">
+        <span class="settings-row-value" id="set-fov-val">72&#176;</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-row-label">Invert Y-Axis</span>
+        <select class="settings-select" id="set-invert-y">
+          <option value="false">Off</option>
+          <option value="true">On</option>
+        </select>
+      </div>
+
+      <div class="settings-section">Graphics</div>
+      <div class="settings-row">
+        <span class="settings-row-label">Quality</span>
+        <select class="settings-select" id="set-quality">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <span class="settings-row-label">Show FPS Counter</span>
+        <select class="settings-select" id="set-show-fps">
+          <option value="false">Off</option>
+          <option value="true">On</option>
+        </select>
+      </div>
+
+      <div class="settings-section">Audio</div>
+      <div class="settings-row">
+        <span class="settings-row-label">Master Volume</span>
+        <input class="settings-slider" type="range" min="0" max="1" step="0.05" id="set-master-vol" oninput="document.getElementById('set-master-vol-val').textContent=Math.round(this.value*100)+'%'">
+        <span class="settings-row-value" id="set-master-vol-val">80%</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-row-label">SFX Volume</span>
+        <input class="settings-slider" type="range" min="0" max="1" step="0.05" id="set-sfx-vol" oninput="document.getElementById('set-sfx-vol-val').textContent=Math.round(this.value*100)+'%'">
+        <span class="settings-row-value" id="set-sfx-vol-val">70%</span>
+      </div>
+
+      <div class="settings-save-row">
+        <button class="settings-save-btn" onclick="saveSettings()">SAVE &amp; APPLY</button>
+        <button class="settings-save-btn" style="background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.1);color:#555" onclick="closeSettings()">CANCEL</button>
+      </div>
+    </div>
+  </div>
 
   <footer>
     ArcadeHub &copy; 2026 &nbsp;—&nbsp; <span>Built with Claude Code</span>
@@ -4114,6 +4261,50 @@
       _doClearPreview();
     }
 
+    // ── FPS Settings ──────────────────────────────────────────────
+    const FPS_SETTINGS_KEY = 'fps_settings';
+    function _loadFpsSettings() {
+      try { return JSON.parse(localStorage.getItem(FPS_SETTINGS_KEY) || '{}'); } catch { return {}; }
+    }
+    function openSettings() {
+      const s = _loadFpsSettings();
+      document.getElementById('set-sensitivity').value = s.sensitivity ?? 1.0;
+      document.getElementById('set-sensitivity-val').textContent = (s.sensitivity ?? 1.0).toFixed(1);
+      document.getElementById('set-fov').value = s.fov ?? 72;
+      document.getElementById('set-fov-val').textContent = (s.fov ?? 72) + '°';
+      document.getElementById('set-invert-y').value = String(s.invertY ?? false);
+      document.getElementById('set-quality').value = s.quality ?? 'medium';
+      document.getElementById('set-show-fps').value = String(s.showFps ?? false);
+      document.getElementById('set-master-vol').value = s.masterVolume ?? 0.8;
+      document.getElementById('set-master-vol-val').textContent = Math.round((s.masterVolume ?? 0.8) * 100) + '%';
+      document.getElementById('set-sfx-vol').value = s.sfxVolume ?? 0.7;
+      document.getElementById('set-sfx-vol-val').textContent = Math.round((s.sfxVolume ?? 0.7) * 100) + '%';
+      document.getElementById('settings-overlay').classList.add('open');
+    }
+    function closeSettings() {
+      document.getElementById('settings-overlay').classList.remove('open');
+    }
+    function saveSettings() {
+      const s = {
+        sensitivity: parseFloat(document.getElementById('set-sensitivity').value),
+        fov: parseInt(document.getElementById('set-fov').value),
+        invertY: document.getElementById('set-invert-y').value === 'true',
+        quality: document.getElementById('set-quality').value,
+        showFps: document.getElementById('set-show-fps').value === 'true',
+        masterVolume: parseFloat(document.getElementById('set-master-vol').value),
+        sfxVolume: parseFloat(document.getElementById('set-sfx-vol').value),
+      };
+      localStorage.setItem(FPS_SETTINGS_KEY, JSON.stringify(s));
+      closeSettings();
+      // Show saved feedback on the first save button
+      const btns = document.querySelectorAll('.settings-save-btn');
+      if (btns[0]) {
+        const orig = btns[0].textContent;
+        btns[0].textContent = '✓ SAVED!';
+        setTimeout(() => { btns[0].textContent = orig; }, 1500);
+      }
+    }
+
     function openShop() {
       _bucks = parseInt(localStorage.getItem('ah_bucks') || '0');
       _ownedItems    = new Set(JSON.parse(localStorage.getItem('ah_owned')    || '[]'));
@@ -5490,6 +5681,21 @@
     }
 
     const UPDATES = [
+      {
+        version: '1.6', date: 'May 2026', title: 'BIOMES, SOUND & PARTICLES',
+        changes: [
+          '7 biomes — Normal, Ice, Lava, Forest, Desert, Cyber, Void — cycling every 5 levels',
+          'Each biome has a unique floor texture, sky colour, ambient particles, and lighting',
+          'Animated ambient particles: snowflakes, embers, falling leaves, sand, starfield',
+          'Unique procedural sound per weapon — every gun sounds distinct',
+          'Footstep sounds change per biome surface (crunch on ice, sizzle on lava, rustle on grass…)',
+          'Spatial 3D audio — hear enemy positions by direction using HRTF panning',
+          'Shell casings eject and bounce on the floor when you fire',
+          'Bullet impacts spawn dust clouds and leave dark marks on surfaces',
+          'Robots die with a static electricity burst — arc bolts, sparks, and an electric shockwave',
+          'FPS Settings accessible from the main menu: sensitivity, FOV, quality, volume, FPS counter',
+        ]
+      },
       {
         version: '1.5', date: 'May 2026', title: '3D SHOP AVATAR & MOBILE NAV',
         changes: [

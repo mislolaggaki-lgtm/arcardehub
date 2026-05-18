@@ -130,10 +130,10 @@ let  touchFireHeld    = false;
 
 // ─── Gun definitions ─────────────────────────────────────────
 const GUN_DEFS = {
-  pistol : { name:'PISTOL',  ammo:12,  reserve:84,  fireRate:0.48, damage:34,  spread:0.003, auto:false, kick:0.058 },
-  smg    : { name:'SMG',     ammo:30,  reserve:150, fireRate:0.082,damage:18,  spread:0.020, auto:true,  kick:0.022 },
-  minigun: { name:'MINIGUN', ammo:100, reserve:300, fireRate:0.046,damage:20,  spread:0.038, auto:true, spinUp:true, kick:0.010 },
-  sniper : { name:'SNIPER',  ammo:1,   reserve:20,  fireRate:1.4,  damage:999, spread:0,     auto:false, oneShot:true, kick:0.130 },
+  pistol : { id:'pistol',  name:'PISTOL',  ammo:12,  reserve:84,  fireRate:0.48, damage:34,  spread:0.003, auto:false, kick:0.058 },
+  smg    : { id:'smg',     name:'SMG',     ammo:30,  reserve:150, fireRate:0.082,damage:18,  spread:0.020, auto:true,  kick:0.022 },
+  minigun: { id:'minigun', name:'MINIGUN', ammo:100, reserve:300, fireRate:0.046,damage:20,  spread:0.038, auto:true, spinUp:true, kick:0.010 },
+  sniper : { id:'sniper',  name:'SNIPER',  ammo:1,   reserve:20,  fireRate:1.4,  damage:999, spread:0,     auto:false, oneShot:true, kick:0.130 },
 };
 let selectedGunId = 'pistol';
 
@@ -155,6 +155,14 @@ let mgSpin      = 0;    // accumulated angle (for visual)
 let barrelCluster = null;  // the rotating barrel group
 const MG_MAX_SPIN = 28, MG_UP = 26, MG_DOWN = 12;
 
+// ─── Settings system (loaded first so NORMAL_FOV and quality are available) ──
+const FPS_SETTINGS_KEY = 'fps_settings';
+function _loadSettings() {
+  try { return JSON.parse(localStorage.getItem(FPS_SETTINGS_KEY) || '{}'); } catch { return {}; }
+}
+const _settings = _loadSettings();
+const _quality  = _settings.quality || 'medium';
+
 // ─── Renderer ────────────────────────────────────────────────
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:false, powerPreference:'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
@@ -172,7 +180,7 @@ scene.background = new THREE.Color(0x080810);
 scene.fog = new THREE.FogExp2(0x080810, 0.008);
 
 // ─── Camera ──────────────────────────────────────────────────
-const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 200);
+const camera = new THREE.PerspectiveCamera(_settings.fov || 72, window.innerWidth / window.innerHeight, 0.05, 200);
 camera.rotation.order = 'YXZ';
 const EYE_H = 1.65;
 camera.position.set(0, EYE_H, 2);
@@ -198,14 +206,38 @@ fxaaPass.material.uniforms['resolution'].value.set(
 );
 composer.addPass(fxaaPass);
 
+// Apply quality settings to renderer + bloom (using the already-loaded _settings)
+if (_quality === 'low') {
+  renderer.shadowMap.enabled = false;
+  bloomPass.strength = 0.3;
+} else if (_quality === 'high') {
+  bloomPass.strength = 1.4;
+  renderer.shadowMap.enabled = true;
+}
+
+// ─── Audio system ────────────────────────────────────────────
+let _ac = null;
+function getAC() {
+  if (!_ac) { _ac = new (window.AudioContext || window.webkitAudioContext)(); }
+  if (_ac.state === 'suspended') _ac.resume();
+  return _ac;
+}
+function _getVol(type) {
+  const s = _loadSettings();
+  const master = s.masterVolume ?? 0.8;
+  const sfx    = s.sfxVolume    ?? 0.7;
+  return master * sfx;
+}
+
 // ─── Scope / FOV state ───────────────────────────────────────
-const NORMAL_FOV = 72;
+const NORMAL_FOV = _settings.fov || 72;
 const SCOPE_FOV  = 15;
 let targetFov    = NORMAL_FOV;
 let scopeActive  = false;
 
 // ─── Lights ──────────────────────────────────────────────────
-scene.add(new THREE.AmbientLight(0x1a2040, 0.28));
+const ambientLight = new THREE.AmbientLight(0x1a2040, 0.28);
+scene.add(ambientLight);
 
 const sun = new THREE.DirectionalLight(0xfff0dd, 0.80);
 sun.position.set(8, 20, 10);
@@ -257,39 +289,131 @@ function getGroundY(pos) {
   return 0;
 }
 
-function makeFloorTex() {
+function makeFloorTex(biomeId = 0) {
   const c = document.createElement('canvas'); c.width = c.height = 512;
   const ctx = c.getContext('2d');
-  // Base: dark concrete grey
-  ctx.fillStyle='#060608'; ctx.fillRect(0,0,512,512);
-  // Fine grid
-  ctx.strokeStyle='#0d0d14'; ctx.lineWidth=0.8;
-  for(let i=0;i<=512;i+=32){
-    ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();
+
+  if (biomeId === 0) {
+    // Facility: dark concrete grid
+    ctx.fillStyle='#060608'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='#0d0d14'; ctx.lineWidth=0.8;
+    for(let i=0;i<=512;i+=32){
+      ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();
+    }
+    ctx.strokeStyle='#0e1220'; ctx.lineWidth=1.8;
+    for(let i=0;i<=512;i+=128){
+      ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();
+    }
+    for(let x=128;x<512;x+=128) for(let y=128;y<512;y+=128){
+      ctx.fillStyle='#0e0f1e'; ctx.fillRect(x-6,y-6,12,12);
+      ctx.strokeStyle='#2233aa'; ctx.lineWidth=1;
+      ctx.strokeRect(x-6,y-6,12,12);
+    }
+    ctx.strokeStyle='#111224'; ctx.lineWidth=0.5;
+    for(let i=0;i<24;i++){
+      const x=Math.random()*512, y=Math.random()*512;
+      ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+18,y+6);ctx.stroke();
+    }
+  } else if (biomeId === 1) {
+    // Ice Tundra: light blue with frost cracks
+    ctx.fillStyle='#b8d8e8'; ctx.fillRect(0,0,512,512);
+    // Subtle tile pattern
+    ctx.strokeStyle='#cce4f0'; ctx.lineWidth=1;
+    for(let i=0;i<=512;i+=64){
+      ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();
+    }
+    // Frost cracks: jagged white lines
+    ctx.strokeStyle='rgba(220,240,255,0.85)'; ctx.lineWidth=1.2;
+    for(let k=0;k<18;k++){
+      let cx=Math.random()*512, cy=Math.random()*512;
+      ctx.beginPath(); ctx.moveTo(cx,cy);
+      for(let j=0;j<5;j++){
+        cx+=(Math.random()-0.5)*60; cy+=(Math.random()-0.5)*60;
+        ctx.lineTo(cx,cy);
+      }
+      ctx.stroke();
+    }
+  } else if (biomeId === 2) {
+    // Lava Forge: dark grey with orange lava cracks
+    ctx.fillStyle='#1a1008'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='#ff6600'; ctx.lineWidth=1.5;
+    ctx.shadowColor='#ff4400'; ctx.shadowBlur=4;
+    for(let k=0;k<14;k++){
+      let cx=Math.random()*512, cy=Math.random()*512;
+      ctx.beginPath(); ctx.moveTo(cx,cy);
+      for(let j=0;j<6;j++){
+        cx+=(Math.random()-0.5)*70; cy+=(Math.random()-0.5)*70;
+        ctx.lineTo(cx,cy);
+      }
+      ctx.stroke();
+    }
+    ctx.shadowBlur=0;
+  } else if (biomeId === 3) {
+    // Neon Forest: dark with scattered leaf pattern
+    ctx.fillStyle='#080e08'; ctx.fillRect(0,0,512,512);
+    ctx.fillStyle='rgba(0,180,60,0.18)';
+    for(let k=0;k<60;k++){
+      const x=Math.random()*512, y=Math.random()*512;
+      const r=3+Math.random()*6, a=Math.random()*Math.PI*2;
+      ctx.save(); ctx.translate(x,y); ctx.rotate(a);
+      ctx.beginPath(); ctx.ellipse(0,0,r,r*2.5,0,0,Math.PI*2);
+      ctx.fill(); ctx.restore();
+    }
+    ctx.strokeStyle='rgba(0,200,80,0.1)'; ctx.lineWidth=0.6;
+    for(let i=0;i<=512;i+=64){
+      ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();
+    }
+  } else if (biomeId === 4) {
+    // Desert: sandy tan with ripple lines
+    ctx.fillStyle='#c8a870'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='rgba(180,140,80,0.5)'; ctx.lineWidth=1;
+    for(let i=0;i<512;i+=18){
+      ctx.beginPath();
+      ctx.moveTo(0, i+(Math.random()-0.5)*4);
+      for(let x=0;x<=512;x+=32){
+        ctx.lineTo(x, i+(Math.random()-0.5)*6);
+      }
+      ctx.stroke();
+    }
+  } else if (biomeId === 5) {
+    // Cyber City: dark purple with neon grid
+    ctx.fillStyle='#0a0010'; ctx.fillRect(0,0,512,512);
+    ctx.strokeStyle='rgba(180,0,255,0.25)'; ctx.lineWidth=0.8;
+    for(let i=0;i<=512;i+=32){
+      ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();
+    }
+    ctx.strokeStyle='rgba(0,255,200,0.5)'; ctx.lineWidth=1.5;
+    for(let i=0;i<=512;i+=128){
+      ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();
+    }
+  } else if (biomeId === 6) {
+    // Space Station: black with tiny star dots
+    ctx.fillStyle='#000005'; ctx.fillRect(0,0,512,512);
+    ctx.fillStyle='rgba(255,255,255,0.7)';
+    for(let k=0;k<120;k++){
+      const x=Math.random()*512, y=Math.random()*512, r=0.5+Math.random()*1.5;
+      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    }
+    ctx.strokeStyle='rgba(100,120,140,0.15)'; ctx.lineWidth=0.5;
+    for(let i=0;i<=512;i+=64){
+      ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();
+    }
   }
-  // Major grid (slightly brighter)
-  ctx.strokeStyle='#0e1220'; ctx.lineWidth=1.8;
-  for(let i=0;i<=512;i+=128){
-    ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,512);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(512,i);ctx.stroke();
-  }
-  // Accent squares at grid intersections
-  for(let x=128;x<512;x+=128) for(let y=128;y<512;y+=128){
-    ctx.fillStyle='#0e0f1e'; ctx.fillRect(x-6,y-6,12,12);
-    ctx.strokeStyle='#2233aa'; ctx.lineWidth=1;
-    ctx.strokeRect(x-6,y-6,12,12);
-  }
-  // Diagonal scratch marks (adds grit)
-  ctx.strokeStyle='#111224'; ctx.lineWidth=0.5;
-  for(let i=0;i<24;i++){
-    const x=Math.random()*512, y=Math.random()*512;
-    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+18,y+6);ctx.stroke();
-  }
+
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(36,36);
   return tex;
 }
+
+// Cache floor textures by biomeId (built on demand)
+const _floorTexCache = {};
 
 const ARENA_M = {
   floor  : new THREE.MeshStandardMaterial({ map:makeFloorTex(), roughness:0.88, metalness:0.08 }),
@@ -586,9 +710,21 @@ let myTeam    = null;    // 'red' | 'blue' for TDM
 let tdmScores = { red: 0, blue: 0 };
 let ffaBoard  = [];
 
-// ── Blood particles ───────────────────────────────────────────
-const bloodParticles = [];
-const BLOOD_MAT = new THREE.MeshBasicMaterial({ color: 0xcc0000 });
+// ── Static electricity particles (replaces blood) ─────────────
+const bloodParticles = [];  // reused array name for hit-spark particles
+const BLOOD_MAT = new THREE.MeshBasicMaterial({ color: 0x44aaff }); // blue/electric
+
+// Static death particles
+const staticParticles = [];
+const STATIC_COLORS = [0x44aaff, 0x88ddff, 0xffffff, 0x0066ff];
+
+// Shell casings
+const shellCasings = [];
+const SHELL_MAT = new THREE.MeshStandardMaterial({ color:0xc8a215, metalness:0.95, roughness:0.05 });
+
+// Bullet impact particles
+const impactParticles = [];
+const DUST_MAT = new THREE.MeshBasicMaterial({ color:0xaaaaaa, transparent:true, opacity:0.7 });
 
 camera.position.copy(SPAWN);
 let yaw=0, pitch=0;
@@ -1423,6 +1559,12 @@ function shoot(){
 
   gun.ammo--; updateAmmoHUD();
 
+  // Weapon sound
+  playWeaponSound(def.id);
+
+  // Shell casing (not for minigun)
+  if (def.id !== 'minigun') spawnShellCasing();
+
   // Muzzle effects
   const fl=weaponRoot.userData.flash;
   if(fl){ fl.visible=true; muzzleTimer=.075; muzzleLight.intensity=3; }
@@ -1447,6 +1589,12 @@ function shoot(){
         const ghostIdx = findGhostBot(hits[0].object);
         if(ghostIdx !== null && socket) socket.emit('coopBotHit', { botIndex: ghostIdx });
       }
+    }
+  } else {
+    // Hit environment — cast against scene for wall impact
+    const envHits = raycaster.intersectObjects(scene.children, false);
+    if (envHits.length > 0 && envHits[0].face) {
+      spawnImpactDust(envHits[0].point, envHits[0].face.normal);
     }
   }
 
@@ -1479,8 +1627,7 @@ function killBot(bot){
   bot.eyeMatL.color.setHex(0x220000);
   bot.eyeMatR.color.setHex(0x220000);
   const hitPos = bot.group.position.clone().setY(1.2);
-  spawnSparks(hitPos);
-  spawnBlood(hitPos, 18);
+  spawnStaticDeath(hitPos);
   spawnAmmoPickup(bot.group.position);
   player.kills++;
   updateKillHUD();
@@ -1506,16 +1653,12 @@ function trackDeath() {
 }
 
 function spawnSparks(pos){
-  const mat=new THREE.MeshBasicMaterial({color:0xff4400});
-  for(let i=0;i<8;i++){
-    const p=new THREE.Mesh(new THREE.BoxGeometry(.10,.10,.10),mat);
-    p.position.copy(pos).addScaledVector(
-      new THREE.Vector3(Math.random()-.5, Math.random()*.8+.2, Math.random()-.5).normalize(), .5);
-    scene.add(p); setTimeout(()=>scene.remove(p),350);
-  }
+  // kept for compatibility — redirects to static death effect
+  spawnStaticDeath(pos);
 }
 
 function spawnBlood(pos, count = 14) {
+  // Small electric hit sparks (blue)
   for (let i = 0; i < count; i++) {
     const size = 0.04 + Math.random() * 0.07;
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), BLOOD_MAT);
@@ -1527,6 +1670,258 @@ function spawnBlood(pos, count = 14) {
     );
     scene.add(mesh);
     bloodParticles.push({ mesh, vel, age: 0 });
+  }
+}
+
+function spawnStaticDeath(pos) {
+  // Arc bolts — jagged line segments
+  for (let bolt = 0; bolt < 8; bolt++) {
+    const points = [];
+    let cx = pos.x, cy = pos.y + 0.5 + Math.random() * 1.0, cz = pos.z;
+    for (let j = 0; j < 6; j++) {
+      cx += (Math.random() - 0.5) * 0.9;
+      cy += (Math.random() - 0.5) * 0.6;
+      cz += (Math.random() - 0.5) * 0.9;
+      points.push(new THREE.Vector3(cx, cy, cz));
+    }
+    const geo = new THREE.BufferGeometry().setFromPoints(points);
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({
+      color: STATIC_COLORS[bolt % STATIC_COLORS.length],
+      transparent: true, opacity: 1.0
+    }));
+    scene.add(line);
+    const delay = Math.random() * 300;
+    setTimeout(() => { if (line.material) line.material.opacity = 0.3; }, delay + 80);
+    setTimeout(() => { scene.remove(line); geo.dispose(); line.material.dispose(); }, delay + 300);
+  }
+
+  // Electric spark particles
+  for (let i = 0; i < 35; i++) {
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.025 + Math.random() * 0.025, 4, 4),
+      new THREE.MeshBasicMaterial({ color: STATIC_COLORS[Math.floor(Math.random() * STATIC_COLORS.length)], transparent: true })
+    );
+    mesh.position.copy(pos).setY(pos.y + 0.5 + Math.random() * 1.0);
+    const spd = 3 + Math.random() * 5;
+    const angle = Math.random() * Math.PI * 2;
+    const vy = 2 + Math.random() * 4;
+    const vel = new THREE.Vector3(Math.cos(angle) * spd, vy, Math.sin(angle) * spd);
+    scene.add(mesh);
+    staticParticles.push({ mesh, vel, age: 0, maxAge: 0.5 + Math.random() * 0.4 });
+  }
+
+  // Blue flash ring
+  const ringGeo = new THREE.RingGeometry(0.1, 0.4, 16);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0x44aaff, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.position.copy(pos); ring.rotation.x = -Math.PI / 2;
+  scene.add(ring);
+  let ringAge = 0;
+  const ringInterval = setInterval(() => {
+    ringAge += 0.05;
+    ring.scale.setScalar(1 + ringAge * 8);
+    ring.material.opacity = Math.max(0, 0.9 - ringAge * 3);
+    if (ringAge > 0.4) { clearInterval(ringInterval); scene.remove(ring); ringGeo.dispose(); ringMat.dispose(); }
+  }, 50);
+}
+
+function spawnShellCasing() {
+  const geo = new THREE.CylinderGeometry(0.007, 0.007, 0.022, 7);
+  const mesh = new THREE.Mesh(geo, SHELL_MAT);
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+  const pos = camera.position.clone().addScaledVector(right, 0.25);
+  pos.y = camera.position.y - 0.12;
+  mesh.position.copy(pos);
+  const vel = new THREE.Vector3(
+    right.x * (2 + Math.random()) + (Math.random() - 0.5),
+    1.5 + Math.random() * 1.5,
+    right.z * (2 + Math.random()) + (Math.random() - 0.5)
+  );
+  const rotVel = new THREE.Vector3(
+    (Math.random() - 0.5) * 18,
+    (Math.random() - 0.5) * 18,
+    (Math.random() - 0.5) * 18
+  );
+  scene.add(mesh);
+  shellCasings.push({ mesh, vel, rotVel, age: 0, bounced: false });
+}
+
+function spawnImpactDust(pos, normal) {
+  for (let i = 0; i < 12; i++) {
+    const size = 0.04 + Math.random() * 0.06;
+    const mat = DUST_MAT.clone();
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(size, 4, 4), mat);
+    mesh.position.copy(pos);
+    const vel = new THREE.Vector3(
+      (normal ? normal.x : 0) + (Math.random() - 0.5) * 2,
+      0.5 + Math.random() * 2,
+      (normal ? normal.z : 0) + (Math.random() - 0.5) * 2
+    );
+    impactParticles.push({ mesh, vel, age: 0, maxAge: 0.6 + Math.random() * 0.4 });
+    scene.add(mesh);
+  }
+  // Small dark decal on hit surface
+  if (normal) {
+    const mark = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.08, 0.01),
+      new THREE.MeshBasicMaterial({ color: 0x111111 })
+    );
+    mark.position.copy(pos).addScaledVector(normal, 0.01);
+    mark.lookAt(pos.clone().add(normal));
+    scene.add(mark);
+    setTimeout(() => scene.remove(mark), 8000);
+  }
+}
+
+// ─── Sound system ────────────────────────────────────────────
+function playWeaponSound(gunId) {
+  const ac = getAC(); const vol = _getVol('sfx');
+  const g = ac.createGain(); g.gain.value = vol; g.connect(ac.destination);
+  switch(gunId) {
+    case 'pistol': {
+      const buf = ac.createBuffer(1, ac.sampleRate*0.12, ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i=0;i<data.length;i++) data[i]=(Math.random()*2-1)*Math.exp(-i/(data.length*0.08));
+      const src=ac.createBufferSource(); src.buffer=buf;
+      const bp=ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1200; bp.Q.value=0.8;
+      src.connect(bp); bp.connect(g); src.start();
+      break;
+    }
+    case 'smg': {
+      const buf=ac.createBuffer(1,ac.sampleRate*0.07,ac.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.12));
+      const src=ac.createBufferSource(); src.buffer=buf;
+      const bp=ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=900; bp.Q.value=1.2;
+      src.connect(bp); bp.connect(g); src.start();
+      break;
+    }
+    case 'minigun': {
+      if (Math.random() > 0.33) return;
+      const osc=ac.createOscillator(); osc.type='sawtooth'; osc.frequency.value=180;
+      const envG=ac.createGain(); envG.gain.setValueAtTime(vol*0.4,ac.currentTime); envG.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.05);
+      osc.connect(envG); envG.connect(ac.destination); osc.start(); osc.stop(ac.currentTime+0.05);
+      break;
+    }
+    case 'sniper': {
+      const buf=ac.createBuffer(1,ac.sampleRate*0.5,ac.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.18));
+      const src=ac.createBufferSource(); src.buffer=buf;
+      const lp=ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=400;
+      src.connect(lp); lp.connect(g); src.start();
+      const osc=ac.createOscillator(); osc.type='sine'; osc.frequency.setValueAtTime(120,ac.currentTime); osc.frequency.exponentialRampToValueAtTime(30,ac.currentTime+0.3);
+      const envG2=ac.createGain(); envG2.gain.setValueAtTime(vol*0.9,ac.currentTime); envG2.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.3);
+      osc.connect(envG2); envG2.connect(ac.destination); osc.start(); osc.stop(ac.currentTime+0.3);
+      break;
+    }
+  }
+}
+
+function playReloadSound() {
+  const ac=getAC(); const vol=_getVol('sfx');
+  const osc=ac.createOscillator(); osc.type='square'; osc.frequency.value=320;
+  const g=ac.createGain(); g.gain.setValueAtTime(vol*0.3,ac.currentTime); g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.18);
+  osc.connect(g); g.connect(ac.destination); osc.start(); osc.stop(ac.currentTime+0.18);
+  setTimeout(()=>{
+    const ac2=getAC();
+    const o2=ac2.createOscillator(); o2.type='square'; o2.frequency.value=440;
+    const g2=ac2.createGain(); g2.gain.setValueAtTime(vol*0.35,ac2.currentTime); g2.gain.exponentialRampToValueAtTime(0.001,ac2.currentTime+0.12);
+    o2.connect(g2); g2.connect(ac2.destination); o2.start(); o2.stop(ac2.currentTime+0.12);
+  }, 300);
+}
+
+let _footstepTimer = 0;
+function playFootstep(biomeType) {
+  const ac=getAC(); const vol=_getVol('sfx');
+  const g=ac.createGain(); g.connect(ac.destination);
+  switch(biomeType) {
+    case 'ice': {
+      const osc=ac.createOscillator(); osc.type='sine'; osc.frequency.value=1800+Math.random()*400;
+      const gE=ac.createGain(); gE.gain.setValueAtTime(vol*0.18,ac.currentTime); gE.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.08);
+      osc.connect(gE); gE.connect(ac.destination); osc.start(); osc.stop(ac.currentTime+0.08);
+      break;
+    }
+    case 'lava': {
+      const buf=ac.createBuffer(1,ac.sampleRate*0.15,ac.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.2))*0.8;
+      const src=ac.createBufferSource(); src.buffer=buf;
+      const lp=ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=300;
+      src.connect(lp); lp.connect(g); g.gain.value=vol*0.5; src.start();
+      break;
+    }
+    case 'forest': {
+      const buf=ac.createBuffer(1,ac.sampleRate*0.12,ac.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.25))*0.5;
+      const src=ac.createBufferSource(); src.buffer=buf;
+      const bp=ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=600; bp.Q.value=0.5;
+      src.connect(bp); bp.connect(g); g.gain.value=vol*0.3; src.start();
+      break;
+    }
+    case 'desert': {
+      const buf=ac.createBuffer(1,ac.sampleRate*0.1,ac.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.3))*0.4;
+      const src=ac.createBufferSource(); src.buffer=buf;
+      const hp=ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=2000;
+      src.connect(hp); hp.connect(g); g.gain.value=vol*0.35; src.start();
+      break;
+    }
+    default: {
+      const buf=ac.createBuffer(1,ac.sampleRate*0.08,ac.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.1))*0.6;
+      const src=ac.createBufferSource(); src.buffer=buf;
+      const bp=ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=800; bp.Q.value=2;
+      src.connect(bp); bp.connect(g); g.gain.value=vol*0.25; src.start();
+    }
+  }
+}
+
+function updateAudioListener() {
+  if (!_ac) return;
+  const listener = _ac.listener;
+  if (listener.positionX) {
+    listener.positionX.value = camera.position.x;
+    listener.positionY.value = camera.position.y;
+    listener.positionZ.value = camera.position.z;
+    const fwd = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
+    const up  = new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion);
+    listener.forwardX.value = fwd.x; listener.forwardY.value = fwd.y; listener.forwardZ.value = fwd.z;
+    listener.upX.value = up.x; listener.upY.value = up.y; listener.upZ.value = up.z;
+  }
+}
+
+function playSpatialBotSound(worldPos, type) {
+  if (!_ac) return;
+  const vol = _getVol('sfx');
+  const panner = _ac.createPanner();
+  panner.panningModel = 'HRTF';
+  panner.distanceModel = 'inverse';
+  panner.refDistance = 2;
+  panner.maxDistance = 60;
+  panner.rolloffFactor = 1.2;
+  if (panner.positionX) {
+    panner.positionX.value = worldPos.x;
+    panner.positionY.value = worldPos.y;
+    panner.positionZ.value = worldPos.z;
+  } else {
+    panner.setPosition(worldPos.x, worldPos.y, worldPos.z);
+  }
+  const g = _ac.createGain(); g.gain.value = vol;
+  panner.connect(g); g.connect(_ac.destination);
+  if (type === 'botShoot') {
+    const buf=_ac.createBuffer(1,_ac.sampleRate*0.1,_ac.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.1));
+    const src=_ac.createBufferSource(); src.buffer=buf;
+    src.connect(panner); src.start();
+  } else if (type === 'botFootstep') {
+    const osc=_ac.createOscillator(); osc.type='sine'; osc.frequency.value=80+Math.random()*40;
+    const gE=_ac.createGain(); gE.gain.setValueAtTime(vol*0.3,_ac.currentTime); gE.gain.exponentialRampToValueAtTime(0.001,_ac.currentTime+0.12);
+    osc.connect(panner); osc.start(); osc.stop(_ac.currentTime+0.12);
   }
 }
 
@@ -1638,11 +2033,13 @@ function deactivateScope(){
   weaponRoot.visible=true;
 }
 
-const SENS = 0.0055;  // high sensitivity as requested
+const SENS_BASE = 0.0055;  // base sensitivity
 document.addEventListener('mousemove',e=>{
   if(!pointerLocked() || _chatTyping) return;
-  yaw   -= e.movementX * SENS;
-  pitch -= e.movementY * SENS;
+  const sens = SENS_BASE * (_settings.sensitivity || 1.0);
+  const invertY = _settings.invertY ? -1 : 1;
+  yaw   -= e.movementX * sens;
+  pitch -= e.movementY * sens * invertY;
   pitch = Math.max(-1.35, Math.min(1.35, pitch));
 });
 
@@ -1650,6 +2047,7 @@ function reloadGun(){
   if(player.dead) return;
   const need=gun.def.ammo - gun.ammo;
   const take=Math.min(need, gun.reserve);
+  if(take > 0) playReloadSound();
   gun.ammo+=take; gun.reserve-=take; updateAmmoHUD();
 }
 
@@ -2461,6 +2859,9 @@ function _decrementAttachDurability() {
   }
 }
 
+// ── FPS counter state ─────────────────────────────────────────
+let _fpsFrames=0, _fpsClock=0, _fpsDisplay=0;
+
 // ============================================================
 //  UPDATE
 // ============================================================
@@ -2563,7 +2964,21 @@ function update(dt){
   // ── Hurt cooldown ───────────────────────────────────────
   if(player.hurtTimer>0) player.hurtTimer-=dt;
 
-  // ── Blood particles ──────────────────────────────────────
+  // ── Footstep timer ──────────────────────────────────────
+  if(moving && !player.dead && levelActive){
+    _footstepTimer += dt;
+    if(_footstepTimer >= 0.45){
+      _footstepTimer = 0;
+      playFootstep(currentBiome ? currentBiome.footstep : 'default');
+    }
+  } else {
+    _footstepTimer = 0;
+  }
+
+  // ── Audio listener update ────────────────────────────────
+  updateAudioListener();
+
+  // ── Hit-spark particles (blue) ───────────────────────────
   for(let i=bloodParticles.length-1; i>=0; i--){
     const p=bloodParticles[i];
     p.age += dt;
@@ -2574,6 +2989,91 @@ function update(dt){
       bloodParticles.splice(i,1);
     }
   }
+
+  // ── Static death particles ────────────────────────────────
+  for(let i=staticParticles.length-1;i>=0;i--){
+    const p=staticParticles[i]; p.age+=dt;
+    if(p.age>p.maxAge){ scene.remove(p.mesh); p.mesh.geometry.dispose(); p.mesh.material.dispose(); staticParticles.splice(i,1); continue; }
+    p.vel.y-=12*dt;
+    p.mesh.position.addScaledVector(p.vel,dt);
+    const t=p.age/p.maxAge;
+    p.mesh.material.opacity=1-t;
+  }
+
+  // ── Shell casings ─────────────────────────────────────────
+  for(let i=shellCasings.length-1;i>=0;i--){
+    const c=shellCasings[i];
+    c.age+=dt;
+    if(c.age>3.5){ scene.remove(c.mesh); c.mesh.geometry.dispose(); shellCasings.splice(i,1); continue; }
+    c.vel.y-=9.8*dt;
+    c.mesh.position.addScaledVector(c.vel,dt);
+    c.mesh.rotation.x+=c.rotVel.x*dt;
+    c.mesh.rotation.z+=c.rotVel.z*dt;
+    if(c.mesh.position.y<0.05&&!c.bounced){
+      c.vel.y=Math.abs(c.vel.y)*0.3;
+      c.vel.x*=0.5; c.vel.z*=0.5;
+      c.rotVel.multiplyScalar(0.4);
+      c.bounced=true;
+      c.mesh.position.y=0.05;
+    }
+  }
+
+  // ── Bullet impact dust ────────────────────────────────────
+  for(let i=impactParticles.length-1;i>=0;i--){
+    const p=impactParticles[i]; p.age+=dt;
+    if(p.age>p.maxAge){ scene.remove(p.mesh); p.mesh.geometry.dispose(); p.mesh.material.dispose(); impactParticles.splice(i,1); continue; }
+    p.vel.y-=4*dt;
+    p.mesh.position.addScaledVector(p.vel,dt);
+    const t=p.age/p.maxAge;
+    p.mesh.material.opacity=0.7*(1-t);
+    p.mesh.scale.setScalar(1+t*0.5);
+  }
+
+  // ── Biome ambient particles ───────────────────────────────
+  if(biomeParticles.length>0 && currentBiome){
+    const pType = currentBiome.particleType;
+    const px2=camera.position.x, py2=camera.position.y, pz2=camera.position.z;
+    const RADIUS=20;
+    for(let i=0;i<biomeParticles.length;i++){
+      const bp2=biomeParticles[i];
+      const m=bp2.mesh;
+      if(pType==='snow'){
+        m.position.y-=(bp2.vy+0)*dt; // snow falls
+        m.position.x+=bp2.vx*dt*0.3;
+        m.position.z+=bp2.vz*dt*0.3;
+        if(m.position.y<0){ m.position.y=py2+4+Math.random()*4; m.position.x=px2+(Math.random()-0.5)*RADIUS*2; m.position.z=pz2+(Math.random()-0.5)*RADIUS*2; }
+      } else if(pType==='embers'){
+        m.position.y+=bp2.vy*dt; // embers rise
+        m.position.x+=bp2.vx*dt*0.5;
+        m.position.z+=bp2.vz*dt*0.5;
+        m.rotation.x+=bp2.rx*dt; m.rotation.z+=bp2.rz*dt;
+        if(m.position.y>WH){ m.position.y=0.2+Math.random()*0.5; m.position.x=px2+(Math.random()-0.5)*RADIUS*2; m.position.z=pz2+(Math.random()-0.5)*RADIUS*2; }
+      } else if(pType==='leaves'){
+        m.position.y-=bp2.vy*dt;
+        m.position.x+=Math.sin(Date.now()*0.001+bp2.phase)*dt*1.2;
+        m.position.z+=Math.cos(Date.now()*0.001+bp2.phase)*dt*1.2;
+        m.rotation.y+=bp2.ry*dt; m.rotation.x+=bp2.rx*dt;
+        if(m.position.y<0){ m.position.y=py2+5+Math.random()*3; m.position.x=px2+(Math.random()-0.5)*RADIUS*2; m.position.z=pz2+(Math.random()-0.5)*RADIUS*2; }
+      } else if(pType==='sand'){
+        m.position.x+=bp2.vx*dt;
+        m.position.z+=bp2.vz*dt;
+        m.position.y+=Math.sin(Date.now()*0.002+bp2.phase)*dt*0.5;
+        const dx2=m.position.x-px2, dz2=m.position.z-pz2;
+        if(dx2*dx2+dz2*dz2>RADIUS*RADIUS){ m.position.x=px2+(Math.random()-0.5)*RADIUS*2; m.position.z=pz2+(Math.random()-0.5)*RADIUS*2; m.position.y=Math.random()*2; }
+      } else if(pType==='stars'){
+        // Stars: nearly static, move gently with player
+        const dist=Math.sqrt((m.position.x-px2)**2+(m.position.z-pz2)**2);
+        if(dist>60){ m.position.x=px2+(Math.random()-0.5)*100; m.position.z=pz2+(Math.random()-0.5)*100; m.position.y=Math.random()*WH; }
+      }
+    }
+  }
+
+  // ── FPS counter ──────────────────────────────────────────
+  _fpsFrames++;
+  _fpsClock+=dt;
+  if(_fpsClock>=0.5){ _fpsDisplay=Math.round(_fpsFrames/_fpsClock); _fpsFrames=0; _fpsClock=0; }
+  const fpsEl=document.getElementById('fps-counter');
+  if(fpsEl) fpsEl.textContent=(_settings.showFps||_loadSettings().showFps)?_fpsDisplay+'fps':'';
 
   // ── Bot AI ──────────────────────────────────────────────
   const px=camera.position.x, pz=camera.position.z;
@@ -2698,6 +3198,7 @@ function update(dt){
           botBullets.push({ mesh:bMesh, pos:bPos.clone(), vel:dir.clone().multiplyScalar(BOT_BULLET_V), dist:0, maxDist:maxD, sourceBot:bot });
 
           if(bot.pistol){ bot.pistol.userData.flash.visible=true; bot.flashTimer=0.08; }
+          playSpatialBotSound(bPos, 'botShoot');
           bot.armGroupR.rotation.x = 0.55;
         } else if(bot.shootTimer > bot.shootCooldown * 0.6){
           bot.armGroupR.rotation.x += (1.10 - bot.armGroupR.rotation.x) * dt * 4;
@@ -2943,30 +3444,201 @@ let currentLevel     = 1;
 let levelActive      = false;
 let levelTransitioning = false;
 
-// Visual themes — one changes every 5 levels, cycling through 10 palettes
-const THEMES = [
-  { bg:0x080810, wall:0x10182a, trim:0x2050a0, trimE:0x2255ee, lights:[0xff2200,0x0044ff,0x00ff88,0xff9900] },
-  { bg:0x0c0404, wall:0x281408, trim:0xa02818, trimE:0xdd2200, lights:[0xff4400,0xffaa00,0xff2200,0xaa4400] },
-  { bg:0x040c04, wall:0x102810, trim:0x22882a, trimE:0x22dd44, lights:[0x00ff44,0x44ff00,0x00cc22,0x88ff00] },
-  { bg:0x0c000c, wall:0x1c0c28, trim:0x7028a0, trimE:0xaa00ff, lights:[0xaa00ff,0xff00aa,0x6600ff,0xff0066] },
-  { bg:0x000608, wall:0x0c1c28, trim:0x1060a0, trimE:0x0088ff, lights:[0x00aaff,0x0066ff,0x00ffff,0x0044cc] },
-  { bg:0x0c0c04, wall:0x282408, trim:0x887820, trimE:0xffcc00, lights:[0xffee00,0xff8800,0xffcc00,0xddaa00] },
-  { bg:0x060410, wall:0x140c24, trim:0x504090, trimE:0x8855ff, lights:[0x8844ff,0x4488ff,0x44aaff,0x8800ff] },
-  { bg:0x0c0204, wall:0x280810, trim:0xc02840, trimE:0xff0044, lights:[0xff0044,0xff4488,0xff0022,0xcc0033] },
-  { bg:0x040c04, wall:0x0c2410, trim:0x28a060, trimE:0x00ff88, lights:[0x00ff88,0x00dd44,0x44ff88,0x00bb66] },
-  { bg:0x080808, wall:0x181818, trim:0x888888, trimE:0xccddff, lights:[0xffffff,0xccccff,0xffffff,0xccffff] },
+// ─── BIOMES ──────────────────────────────────────────────────
+const BIOMES = [
+  {
+    name: 'FACILITY',
+    bg: 0x080810, fogDensity: 0.008,
+    wall: 0x10182a, floor: null, ceil: 0x030306,
+    trim: 0x1a3a70, trimE: 0x1a3a90,
+    pillar: 0x18243a, ambient: 0x1a2040, ambientI: 0.28,
+    sun: 0xfff0dd, sunI: 0.80,
+    accentColors: [0xff2200, 0x0044ff, 0x00ff88, 0xff9900],
+    particleType: null, footstep: 'default', biomeId: 0,
+  },
+  {
+    name: 'ICE TUNDRA',
+    bg: 0xaaccdd, fogDensity: 0.014,
+    wall: 0x7aaccc, floor: 0xc0d8e8, ceil: 0x4488aa,
+    trim: 0x44ccff, trimE: 0x88eeff,
+    pillar: 0x6699aa, ambient: 0x8ab4cc, ambientI: 0.45,
+    sun: 0xe0f0ff, sunI: 0.6,
+    accentColors: [0x44ccff, 0x88eeff, 0x22aadd, 0x66ddff],
+    particleType: 'snow', footstep: 'ice', biomeId: 1,
+  },
+  {
+    name: 'LAVA FORGE',
+    bg: 0x1a0800, fogDensity: 0.010,
+    wall: 0x2a1008, floor: 0x1a0e04, ceil: 0x140600,
+    trim: 0xff4400, trimE: 0xff6600,
+    pillar: 0x3a1808, ambient: 0x3a1800, ambientI: 0.35,
+    sun: 0xff8833, sunI: 0.9,
+    accentColors: [0xff4400, 0xff8800, 0xff2200, 0xffaa00],
+    particleType: 'embers', footstep: 'lava', biomeId: 2,
+  },
+  {
+    name: 'NEON FOREST',
+    bg: 0x020a04, fogDensity: 0.011,
+    wall: 0x0c1e0c, floor: 0x080e08, ceil: 0x040804,
+    trim: 0x00cc44, trimE: 0x00ff66,
+    pillar: 0x0a180a, ambient: 0x0a1e08, ambientI: 0.38,
+    sun: 0x88ffaa, sunI: 0.5,
+    accentColors: [0x00ff44, 0x44ff88, 0x00cc22, 0x88ff00],
+    particleType: 'leaves', footstep: 'forest', biomeId: 3,
+  },
+  {
+    name: 'SAND DESERT',
+    bg: 0xc8a060, fogDensity: 0.009,
+    wall: 0xa07840, floor: 0xc8a870, ceil: 0x8a6428,
+    trim: 0xffdd88, trimE: 0xffe0a0,
+    pillar: 0x9a7040, ambient: 0xb89060, ambientI: 0.55,
+    sun: 0xfff0bb, sunI: 1.0,
+    accentColors: [0xffee00, 0xff8800, 0xffcc00, 0xddaa00],
+    particleType: 'sand', footstep: 'desert', biomeId: 4,
+  },
+  {
+    name: 'CYBER CITY',
+    bg: 0x080010, fogDensity: 0.010,
+    wall: 0x1a0030, floor: 0x0a0018, ceil: 0x080008,
+    trim: 0xcc00ff, trimE: 0xff00ff,
+    pillar: 0x180028, ambient: 0x1a0040, ambientI: 0.40,
+    sun: 0xff00dd, sunI: 0.7,
+    accentColors: [0xaa00ff, 0xff00aa, 0x6600ff, 0xff0066],
+    particleType: null, footstep: 'default', biomeId: 5,
+  },
+  {
+    name: 'SPACE STATION',
+    bg: 0x000005, fogDensity: 0.006,
+    wall: 0x1e2030, floor: 0x000005, ceil: 0x050508,
+    trim: 0x888888, trimE: 0xccddff,
+    pillar: 0x1a1c28, ambient: 0x101018, ambientI: 0.20,
+    sun: 0xddeeff, sunI: 0.5,
+    accentColors: [0xffffff, 0xccccff, 0xffffff, 0xccffff],
+    particleType: 'stars', footstep: 'default', biomeId: 6,
+  },
 ];
 
-function applyTheme(level) {
-  const t = THEMES[Math.floor((level-1)/5) % THEMES.length];
-  scene.background.setHex(t.bg);
-  scene.fog.color.setHex(t.bg);
-  ARENA_M.wall.color.setHex(t.wall);
-  ARENA_M.trim.color.setHex(t.trim);
-  ARENA_M.trim.emissive.setHex(t.trimE);
+let currentBiome = null;
+let biomeParticles = [];
+let _biomeBanner = null;
+
+function _clearBiomeParticles() {
+  biomeParticles.forEach(p => scene.remove(p.mesh));
+  biomeParticles = [];
+}
+
+function _initBiomeParticles(biome) {
+  _clearBiomeParticles();
+  if (!biome.particleType) return;
+
+  const COUNT = 80;
+  for (let i = 0; i < COUNT; i++) {
+    let mesh;
+    if (biome.particleType === 'snow') {
+      mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.04 + Math.random() * 0.04, 4, 4),
+        new THREE.MeshBasicMaterial({ color: 0xeef8ff, transparent: true, opacity: 0.8 })
+      );
+    } else if (biome.particleType === 'embers') {
+      mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.04 + Math.random() * 0.04, 4, 4),
+        new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0xff4400 : 0xff8800 })
+      );
+    } else if (biome.particleType === 'leaves') {
+      mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08 + Math.random()*0.05, 0.005, 0.06 + Math.random()*0.04),
+        new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0x00aa44 : 0x006622 })
+      );
+    } else if (biome.particleType === 'sand') {
+      mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04 + Math.random()*0.03, 0.02, 0.04 + Math.random()*0.03),
+        new THREE.MeshBasicMaterial({ color: 0xd4a060, transparent: true, opacity: 0.7 })
+      );
+    } else if (biome.particleType === 'stars') {
+      mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.03 + Math.random() * 0.03, 4, 4),
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+      );
+    }
+    if (!mesh) continue;
+
+    // Random position around spawn
+    mesh.position.set(
+      (Math.random() - 0.5) * 40,
+      Math.random() * 8,
+      (Math.random() - 0.5) * 40
+    );
+    scene.add(mesh);
+
+    const vx = (Math.random() - 0.5) * (biome.particleType === 'sand' ? 4 : 1);
+    const vy = biome.particleType === 'embers' ? 0.4 + Math.random() * 0.8 :
+               biome.particleType === 'stars' ? 0 : -(0.4 + Math.random() * 0.8);
+    const vz = (Math.random() - 0.5) * (biome.particleType === 'sand' ? 4 : 1);
+
+    biomeParticles.push({ mesh, vx, vy, vz,
+      rx: (Math.random()-0.5)*2, ry: (Math.random()-0.5)*2, rz: (Math.random()-0.5)*2,
+      phase: Math.random() * Math.PI * 2 });
+  }
+}
+
+function _showBiomeBanner(name) {
+  if (_biomeBanner) { document.body.removeChild(_biomeBanner); _biomeBanner = null; }
+  const d = document.createElement('div');
+  d.style.cssText = [
+    'position:fixed','top:22%','left:50%','transform:translateX(-50%)',
+    'z-index:56','pointer-events:none',
+    'font-family:Courier New,monospace','text-align:center',
+    'background:rgba(0,0,0,0.72)',
+    'border:1px solid rgba(150,200,255,0.25)',
+    'border-radius:10px','padding:14px 36px 12px',
+    'transition:opacity 0.6s',
+  ].join(';');
+  d.innerHTML = `<div style="font-size:10px;color:#88aacc;letter-spacing:5px;margin-bottom:6px">ENTERING</div>`
+              + `<div style="font-size:32px;color:#fff;letter-spacing:8px;text-shadow:0 0 16px #aaddff">${name}</div>`;
+  document.body.appendChild(d);
+  _biomeBanner = d;
+  setTimeout(() => { d.style.opacity = '0'; setTimeout(() => { if (d.parentNode) document.body.removeChild(d); if (_biomeBanner === d) _biomeBanner = null; }, 700); }, 2500);
+}
+
+function applyBiome(level) {
+  const idx = Math.floor((level - 1) / 5) % BIOMES.length;
+  const biome = BIOMES[idx];
+  currentBiome = biome;
+
+  // Scene fog + background
+  scene.background.setHex(biome.bg);
+  scene.fog.color.setHex(biome.bg);
+  scene.fog.density = biome.fogDensity;
+
+  // Arena materials
+  ARENA_M.wall.color.setHex(biome.wall);
+  ARENA_M.ceil.color.setHex(biome.ceil);
+  ARENA_M.trim.color.setHex(biome.trim);
+  ARENA_M.trim.emissive.setHex(biome.trimE);
   ARENA_M.trim.emissiveIntensity = 1.0;
-  ARENA_M.pillar.color.setHex(t.wall);
-  accentLights.forEach((l,i) => l.color.setHex(t.lights[i % t.lights.length]));
+  ARENA_M.pillar.color.setHex(biome.pillar);
+  if (biome.floor !== null) ARENA_M.floor.color.setHex(biome.floor);
+  else ARENA_M.floor.color.setHex(0xffffff);
+
+  // Floor texture per biome
+  if (!_floorTexCache[biome.biomeId]) {
+    _floorTexCache[biome.biomeId] = makeFloorTex(biome.biomeId);
+  }
+  ARENA_M.floor.map = _floorTexCache[biome.biomeId];
+  ARENA_M.floor.needsUpdate = true;
+
+  // Lights
+  ambientLight.color.setHex(biome.ambient);
+  ambientLight.intensity = biome.ambientI;
+  sun.color.setHex(biome.sun);
+  sun.intensity = biome.sunI;
+  accentLights.forEach((l, i) => l.color.setHex(biome.accentColors[i % biome.accentColors.length]));
+
+  // Biome particles
+  _initBiomeParticles(biome);
+
+  // Biome banner (skip for initial level 1 facility)
+  if (biome.biomeId !== 0 || level > 1) _showBiomeBanner(biome.name);
 }
 
 // Difficulty formula for level n
@@ -3070,7 +3742,7 @@ function startLevel(n) {
   if (coopMode && !coopIsHost) clearGhostBots();
   clearBots();
   _buildDynamicCovers(n);
-  applyTheme(n);
+  applyBiome(n);
   const cfg = getLevelConfig(n);
   if (!coopMode || coopIsHost) spawnBots(cfg);  // guests see host's ghost bots instead
   levelActive        = true;
