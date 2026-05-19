@@ -291,13 +291,13 @@ const M_YELO = new THREE.MeshBasicMaterial  ({ color:0xffee44 });
 // ============================================================
 //  ARENA
 // ============================================================
-const AW=40, AD=40, WH=9, WT=0.8;
+const AW=78, AD=78, WH=9, WT=0.8;
 const MEZZ_H     = 4.0;   // mezzanine floor surface height
-const MEZZ_INNER = 33;    // inner edge of mezzanine (AW - 7)
+const MEZZ_INNER = 71;    // inner edge of mezzanine (AW - 7)
 // Staircase zones: x0/x1 = footprint width, zB = bottom (ground), zT = top (mezzanine)
 const STAIR_DEFS = [
-  { x0:24, x1:34,  zB:-27, zT:-33 },  // NE stair
-  { x0:-34, x1:-24, zB:27,  zT:33  },  // SW stair
+  { x0:47, x1:66,  zB:-53, zT:-64 },  // NE stair
+  { x0:-66, x1:-47, zB:53,  zT:64  },  // SW stair
 ];
 function getGroundY(pos) {
   for (const s of STAIR_DEFS) {
@@ -695,12 +695,12 @@ let _dynamicCoverMeshes = [];
 // Static collision entries for permanent scene objects (central platform + pillars)
 const _STATIC_COVER_BOXES = [
   {cx:0,   cz:0,   hw:4.5, hd:4.5},
-  {cx:10,  cz:-18, hw:.65, hd:.65},
-  {cx:-10, cz:18,  hw:.65, hd:.65},
-  {cx:20,  cz:-6,  hw:.65, hd:.65},
-  {cx:-20, cz:6,   hw:.65, hd:.65},
-  {cx:18,  cz:12,  hw:.65, hd:.65},
-  {cx:-18, cz:-12, hw:.65, hd:.65},
+  {cx:20,  cz:-35, hw:.65, hd:.65},
+  {cx:-20, cz:35,  hw:.65, hd:.65},
+  {cx:39,  cz:-12, hw:.65, hd:.65},
+  {cx:-39, cz:12,  hw:.65, hd:.65},
+  {cx:35,  cz:23,  hw:.65, hd:.65},
+  {cx:-35, cz:-23, hw:.65, hd:.65},
 ];
 
 function _seededRng(seed) {
@@ -726,7 +726,7 @@ function _buildDynamicCovers(seed) {
     coverBoxes.push({cx, cz, hw:w/2, hd:d/2});
   }
 
-  const total = 24 + Math.floor(rng() * 9);
+  const total = 48 + Math.floor(rng() * 17);
   let placed = 0, tries = 0;
   while (placed < total && tries < total * 8) {
     tries++;
@@ -759,80 +759,80 @@ addBox(9.1,.06,9.1, 0, .47, 0, ARENA_M.ctrim, false, false);
 );
 
 // Standalone cylindrical pillars — permanent
-[[10,-18],[-10,18],[20,-6],[-20,6],[18,12],[-18,-12]].forEach(([px,pz])=>{
+[[20,-35],[-20,35],[39,-12],[-39,12],[35,23],[-35,-23]].forEach(([px,pz])=>{
   const m=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,WH*.75,10),ARENA_M.pillar);
   m.position.set(px,WH*.375,pz); m.castShadow=true; scene.add(m);
 });
 
 // ── MEZZANINE (second floor) ─────────────────────────────────
-// AW=40, AD=40, MEZZ_INNER=33 → platforms are 7 units deep around the perimeter
+// AW=78, AD=78, MEZZ_INNER=71 → platforms are 7 units deep around the perimeter
 const mezzFloorMat = new THREE.MeshStandardMaterial({ map:makeFloorTex(), roughness:0.85, metalness:0.10 });
 const mezzFT = 0.4;           // slab thickness
 const mezzCY = MEZZ_H - mezzFT/2;  // slab centre Y = 3.8
 
-// North slab — leaves stair-A gap (x:24–34). Two boxes: left (-40→24) and right (34→40)
-addBox(64, mezzFT, 7,  -8, mezzCY, -36.5, mezzFloorMat, false, true);  // x:-40→24, z:-40→-33
-addBox( 6, mezzFT, 7,  37, mezzCY, -36.5, mezzFloorMat, false, true);  // x:34→40
-// South slab — leaves stair-B gap (x:-34–-24)
-addBox( 6, mezzFT, 7, -37, mezzCY,  36.5, mezzFloorMat, false, true);  // x:-40→-34
-addBox(64, mezzFT, 7,   8, mezzCY,  36.5, mezzFloorMat, false, true);  // x:-24→40
+// North slab — leaves stair-A gap (x:47–66). Two boxes: left (-78→47) and right (66→78)
+addBox(125, mezzFT, 7, -15.5, mezzCY, -74.5, mezzFloorMat, false, true);  // x:-78→47, z:-78→-71
+addBox( 12, mezzFT, 7,   72,  mezzCY, -74.5, mezzFloorMat, false, true);  // x:66→78
+// South slab — leaves stair-B gap (x:-66–-47)
+addBox( 12, mezzFT, 7,  -72,  mezzCY,  74.5, mezzFloorMat, false, true);  // x:-78→-66
+addBox(125, mezzFT, 7,  15.5, mezzCY,  74.5, mezzFloorMat, false, true);  // x:-47→78
 // West slab (full z between inner edges)
-addBox(7, mezzFT, 66, -36.5, mezzCY, 0, mezzFloorMat, false, true);    // x:-40→-33, z:-33→33
+addBox(7, mezzFT, 142, -74.5, mezzCY, 0, mezzFloorMat, false, true);    // x:-78→-71, z:-71→71
 // East slab
-addBox(7, mezzFT, 66,  36.5, mezzCY, 0, mezzFloorMat, false, true);    // x:33→40, z:-33→33
+addBox(7, mezzFT, 142,  74.5, mezzCY, 0, mezzFloorMat, false, true);    // x:71→78, z:-71→71
 
 // Support pillars under mezzanine
-[[-37,-37],[37,-37],[-37,37],[37,37],[-37,0],[37,0],[0,-37],[0,37]].forEach(([sx,sz])=>{
+[[-72,-72],[72,-72],[-72,72],[72,72],[-72,0],[72,0],[0,-72],[0,72]].forEach(([sx,sz])=>{
   addBox(.8, MEZZ_H, .8, sx, MEZZ_H/2, sz, ARENA_M.pillar);
 });
 
 // Inner railings — N/S have gaps for stairs; W/E are solid
 const railH=1.0, railY=MEZZ_H+0.5, railT=0.22;
-// North — left of stair A gap (x:-40→24, width=64, cx=-8)
-addBox(64, railH, railT,  -8, railY, -33, ARENA_M.pillar, false, false);
-// North — right of stair A gap (x:34→40, width=6, cx=37)
-addBox( 6, railH, railT,  37, railY, -33, ARENA_M.pillar, false, false);
-// South — left of stair B gap (x:-40→-34, width=6, cx=-37)
-addBox( 6, railH, railT, -37, railY,  33, ARENA_M.pillar, false, false);
-// South — right of stair B gap (x:-24→40, width=64, cx=8)
-addBox(64, railH, railT,   8, railY,  33, ARENA_M.pillar, false, false);
+// North — left of stair A gap (x:-78→47, width=125, cx=-15.5)
+addBox(125, railH, railT, -15.5, railY, -71, ARENA_M.pillar, false, false);
+// North — right of stair A gap (x:66→78, width=12, cx=72)
+addBox( 12, railH, railT,   72, railY, -71, ARENA_M.pillar, false, false);
+// South — left of stair B gap (x:-78→-66, width=12, cx=-72)
+addBox( 12, railH, railT,  -72, railY,  71, ARENA_M.pillar, false, false);
+// South — right of stair B gap (x:-47→78, width=125, cx=15.5)
+addBox(125, railH, railT,  15.5, railY,  71, ARENA_M.pillar, false, false);
 // West and East — full inner edge
-addBox(railT, railH, 66, -33, railY, 0, ARENA_M.pillar, false, false);
-addBox(railT, railH, 66,  33, railY, 0, ARENA_M.pillar, false, false);
+addBox(railT, railH, 142, -71, railY, 0, ARENA_M.pillar, false, false);
+addBox(railT, railH, 142,  71, railY, 0, ARENA_M.pillar, false, false);
 
 // Mezzanine neon strips along inner edge
 const mezzNeon = new THREE.MeshBasicMaterial({ color:0x0044cc });
-addBox(80, .025, .025,  0, MEZZ_H+.01, -33, mezzNeon, false, false);
-addBox(80, .025, .025,  0, MEZZ_H+.01,  33, mezzNeon, false, false);
-addBox(.025, .025, 66, -33, MEZZ_H+.01,  0, mezzNeon, false, false);
-addBox(.025, .025, 66,  33, MEZZ_H+.01,  0, mezzNeon, false, false);
+addBox(160, .025, .025,   0, MEZZ_H+.01, -71, mezzNeon, false, false);
+addBox(160, .025, .025,   0, MEZZ_H+.01,  71, mezzNeon, false, false);
+addBox(.025, .025, 142, -71, MEZZ_H+.01,   0, mezzNeon, false, false);
+addBox(.025, .025, 142,  71, MEZZ_H+.01,   0, mezzNeon, false, false);
 
 // Second-floor point lights
-[[0,-37],[0,37],[-37,0],[37,0],[-20,-20],[20,20],[-20,20],[20,-20]].forEach(([lx,lz])=>{
+[[0,-72],[0,72],[-72,0],[72,0],[-39,-39],[39,39],[-39,39],[39,-39]].forEach(([lx,lz])=>{
   const pl2=new THREE.PointLight(0xbbccff, 1.2, 22);
   pl2.position.set(lx, MEZZ_H+2.5, lz); scene.add(pl2);
 });
 
 // ── STAIRCASES ───────────────────────────────────────────────
-// Stair A: NE corner — x:24–34, z: −27 to −33 (10 steps, 0.4h × 0.6d)
+// Stair A: NE corner — x:47–66, z: −53 to −64 (10 steps, 0.4h × 1.1d)
 for(let i=0;i<10;i++){
   const h=(i+1)*0.4;
-  addBox(10, h, 0.6, 29, h/2, -27-(i+0.5)*0.6, mezzFloorMat, false, true);
+  addBox(19, h, 1.1, 56.5, h/2, -53-(i+0.5)*1.1, mezzFloorMat, false, true);
 }
-// Stair B: SW corner — x:−34 to −24, z: 27 to 33
+// Stair B: SW corner — x:−66 to −47, z: 53 to 64
 for(let i=0;i<10;i++){
   const h=(i+1)*0.4;
-  addBox(10, h, 0.6, -29, h/2, 27+(i+0.5)*0.6, mezzFloorMat, false, true);
+  addBox(19, h, 1.1, -56.5, h/2, 53+(i+0.5)*1.1, mezzFloorMat, false, true);
 }
 
 // Second-floor crates / cover on mezzanine
 const cov2 = ARENA_M.cover;
 const ch2 = 1.4;
 [
-  [4,1.2, -37,-18],[4,1.2,  37, 18],
-  [1.2,4,  37,-18],[1.2,4, -37, 18],
-  [4,1.2, -37,  0],[4,1.2,  37,  0],
-  [1.2,3,   0,-37],[1.2,3,   0, 37],
+  [4,1.2, -72,-35],[4,1.2,  72, 35],
+  [1.2,4,  72,-35],[1.2,4, -72, 35],
+  [4,1.2, -72,  0],[4,1.2,  72,  0],
+  [1.2,3,   0,-72],[1.2,3,   0, 72],
 ].forEach(([w,d,cx,cz])=>{
   addBox(w,ch2,d, cx,MEZZ_H+ch2/2,cz, cov2);
   addBox(w+.04,.10,d+.04, cx,MEZZ_H+ch2+.05,cz, ARENA_M.ctrim,false,false);
@@ -875,19 +875,19 @@ function addBarrel(x, z, glowing) {
 }
 
 // Crate stacks at strategic positions
-[[12,-8,2],[-12,8,2],[-8,-16,3],[8,16,3],[20,-20,2],[-20,20,2],
- [-24,0,2],[24,0,2],[0,-24,1],[0,24,1]].forEach(([x,z,n])=> addCrateStack(x,z,n));
+[[23,-16,2],[-23,16,2],[-16,-31,3],[16,31,3],[39,-39,2],[-39,39,2],
+ [-47,0,2],[47,0,2],[0,-47,1],[0,47,1]].forEach(([x,z,n])=> addCrateStack(x,z,n));
 
 // Barrels — mix of normal and glowing hazard barrels
-[[-15,5,false],[15,-5,false],[-5,-22,true],[5,22,true],[22,14,false],
- [-22,-14,false],[30,-12,false],[-30,12,true],[18,-32,false],[-18,32,false]
+[[-29,10,false],[29,-10,false],[-10,-43,true],[10,43,true],[43,27,false],
+ [-43,-27,false],[59,-23,false],[-59,23,true],[35,-62,false],[-35,62,false]
 ].forEach(([x,z,g]) => addBarrel(x,z,g));
 
 // Overhead colored accent spotlights for atmosphere
 [
-  [0xff0022,  8, 12], [0x0022ff, -8,-12],
-  [0x00ff88, 12, -8], [0xff8800,-12,  8],
-  [0xaa00ff, 22, 22], [0x00aaff,-22,-22],
+  [0xff0022,  16, 23], [0x0022ff, -16,-23],
+  [0x00ff88,  23,-16], [0xff8800, -23, 16],
+  [0xaa00ff,  43, 43], [0x00aaff, -43,-43],
 ].forEach(([col,x,z]) => {
   const sl = new THREE.PointLight(col, 0.8, 18);
   sl.position.set(x, WH-1, z); scene.add(sl);
@@ -3869,6 +3869,26 @@ function update(dt){
     const bp  = bot.group.position;
     const spd = bot.speed, det=bot.detectR, dmg=bot.damage;
 
+    // ── Boss mode switching based on HP thresholds ────────────
+    if (bot.isBoss) {
+      const hpPct = bot.hp / bot.maxHp;
+      const targetMode = hpPct > 0.66 ? 'melee' : hpPct > 0.33 ? 'shooter' : 'phantom';
+      if (targetMode !== bot.mode) {
+        bot.mode = targetMode;
+        bot.pistol.visible = (bot.mode === 'shooter');
+        bot.bossModeFlashTimer = 0.5;
+        bot.allMats.forEach(m => {
+          m.emissive.setHex(bot.mode === 'phantom' ? 0x8800ff : bot.mode === 'shooter' ? 0xff8800 : 0xff2200);
+          m.emissiveIntensity = 2.0;
+        });
+      }
+      if (bot.bossModeFlashTimer > 0) {
+        bot.bossModeFlashTimer = Math.max(0, bot.bossModeFlashTimer - dt);
+        if (bot.bossModeFlashTimer <= 0)
+          bot.allMats.forEach(m => { m.emissive.setHex(0x000000); m.emissiveIntensity = 0; });
+      }
+    }
+
     // Snap bot Y to terrain height
     const botGY = getGroundY(bp);
     bp.y = botGY;
@@ -4046,7 +4066,7 @@ function update(dt){
     }
 
     // Wall collision — bots can't walk through cover
-    resolveCollision(bp, BOT_RADIUS);
+    resolveCollision(bp, bot.radius || BOT_RADIUS);
     bp.x=Math.max(-AW+1,Math.min(AW-1,bp.x));
     bp.z=Math.max(-AD+1,Math.min(AD-1,bp.z));
 
@@ -4867,6 +4887,92 @@ function applyBiome(level) {
   if (biome.biomeId !== 0 || level > 1) _showBiomeBanner(biome.name);
 }
 
+function isBossLevel(n) { return n > 0 && n % 100 === 0; }
+
+function _buildBossArena() {
+  _dynamicCoverMeshes.forEach(m => { scene.remove(m); m.geometry?.dispose(); });
+  _dynamicCoverMeshes = [];
+  coverBoxes.length = 0;
+  _STATIC_COVER_BOXES.forEach(b => coverBoxes.push({...b}));
+  // 4 symmetric cover walls — minimal open arena for boss fight
+  const symmetricCovers = [
+    [20, WH*0.72, 1.2,  28,  28],
+    [20, WH*0.72, 1.2, -28, -28],
+    [1.2, WH*0.72, 20,  28, -28],
+    [1.2, WH*0.72, 20, -28,  28],
+  ];
+  symmetricCovers.forEach(([w, h, d, cx, cz]) => {
+    const m1 = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), ARENA_M.cover);
+    m1.position.set(cx, h/2, cz); m1.castShadow = true; m1.receiveShadow = true;
+    scene.add(m1);
+    const m2 = new THREE.Mesh(new THREE.BoxGeometry(w+.04,.12,d+.04), ARENA_M.ctrim);
+    m2.position.set(cx, h+.06, cz); scene.add(m2);
+    _dynamicCoverMeshes.push(m1, m2);
+    coverBoxes.push({cx, cz, hw:w/2, hd:d/2});
+  });
+}
+
+function spawnBoss(cfg) {
+  const r = buildRobot();
+  r.group.position.copy(rndPos());
+  r.group.scale.set(3, 3, 3);
+  scene.add(r.group);
+
+  const _asmHome = {
+    legL: r.legL.position.clone(),
+    legR: r.legR.position.clone(),
+    armL: r.armGroupL.position.clone(),
+    armR: r.armGroupR.position.clone(),
+  };
+  const _asmFrom = {
+    legL: _asmHome.legL.clone().add(new THREE.Vector3((Math.random()-0.5)*3, Math.random()*2+1, (Math.random()-0.5)*3)),
+    legR: _asmHome.legR.clone().add(new THREE.Vector3((Math.random()-0.5)*3, Math.random()*2+1, (Math.random()-0.5)*3)),
+    armL: _asmHome.armL.clone().add(new THREE.Vector3((Math.random()-0.5)*4, Math.random()*3, (Math.random()-0.5)*4)),
+    armR: _asmHome.armR.clone().add(new THREE.Vector3((Math.random()-0.5)*4, Math.random()*3, (Math.random()-0.5)*4)),
+  };
+  r.legL.position.copy(_asmFrom.legL);
+  r.legR.position.copy(_asmFrom.legR);
+  r.armGroupL.position.copy(_asmFrom.armL);
+  r.armGroupR.position.copy(_asmFrom.armR);
+
+  const pistol = buildBotPistol();
+  pistol.position.set(0.09, -1.22, -0.06);
+  pistol.rotation.x = -Math.PI * 0.08;
+  r.armGroupR.add(pistol);
+  pistol.visible = false;
+
+  bots.push({ ...r,
+    hp: cfg.botHP, maxHp: cfg.botHP,
+    alive: true,
+    speed: cfg.speed, damage: cfg.damage, detectR: cfg.detectR,
+    patrolTarget: rndPos(), patrolTimer: Math.random()*3, walkClock: 0,
+    pistol,
+    shootTimer: 0.6 + Math.random() * 1.2,
+    shootCooldown: 1.2 + Math.random() * 0.8,
+    flashTimer: 0,
+    lastPos: new THREE.Vector3(),
+    stuckTimer: 0,
+    flankAngle: 0,
+    flankChangeTimer: 2 + Math.random() * 2,
+    alertLevel: 2,
+    mode: 'melee',
+    isBoss: true,
+    radius: BOT_RADIUS * 3,
+    bossModeFlashTimer: 0,
+    phantomLookTimer: 0,
+    phantomGlowing: false,
+    phantomTpCooldown: 0,
+    idleClock: Math.random() * Math.PI * 2,
+    velX: 0, velZ: 0,
+    shootAimT: 0,
+    deathArcT: 0,
+    assembling: true, assembleT: 0,
+    assembleHome: _asmHome, assembleFrom: _asmFrom,
+    eyeColorTarget: 0xff0000,
+    sparkTimer: 0,
+  });
+}
+
 // Difficulty formula for level n
 function getLevelConfig(n) {
   return {
@@ -4875,6 +4981,18 @@ function getLevelConfig(n) {
     speed    : Math.min(7.65, (2.8 + (n-1)*0.0428) * 1.02),  // +2% faster
     damage   : Math.min(30, 8  + Math.floor(n/10)*2),
     detectR  : Math.min(32, 18 + Math.floor(n/18)*2),
+  };
+}
+
+function getBossConfig(n) {
+  const tier = n / 100;
+  const base = getLevelConfig(n);
+  return {
+    botCount : 1,
+    botHP    : 30 + tier * 15,
+    speed    : base.speed * 0.9,
+    damage   : base.damage,
+    detectR  : 80,
   };
 }
 
@@ -4901,7 +5019,7 @@ function clearBots() {
   botBullets.length = 0;
 }
 
-// 'melee' = levels 1-24, 'shooter' = 25-49, 'phantom' = 50-100
+// 'melee' = levels 1-24, 'shooter' = 25-49, 'phantom' = 50+ (boss levels override this)
 function botModeForLevel(n) {
   if (n <= 24) return 'melee';
   if (n <= 49) return 'shooter';
@@ -5006,10 +5124,20 @@ function startLevel(n) {
   levelActive  = false;
   if (coopMode && !coopIsHost) clearGhostBots();
   clearBots();
-  _buildDynamicCovers(n);
-  applyBiome(n);
-  const cfg = getLevelConfig(n);
-  if (!coopMode || coopIsHost) spawnBots(cfg);  // guests see host's ghost bots instead
+
+  const boss = isBossLevel(n);
+  if (boss) {
+    _buildBossArena();
+    applyBiome(1);  // always FACILITY biome for boss levels (block 0)
+    const cfg = getBossConfig(n);
+    if (!coopMode || coopIsHost) spawnBoss(cfg);
+  } else {
+    _buildDynamicCovers(n);
+    applyBiome(n);
+    const cfg = getLevelConfig(n);
+    if (!coopMode || coopIsHost) spawnBots(cfg);
+  }
+
   spawnPotionsForLevel();
   levelActive        = true;
   levelTransitioning = false;
@@ -5021,49 +5149,93 @@ function startLevel(n) {
   if (n >= 100) { unlockBadge('veteran'); awardBucks(100); }
 }
 
+function _showNextLevelIntro(next, then) {
+  const nextIsBoss = isBossLevel(next);
+  const bucksLine = next % 100 === 0
+    ? `<div style="font-size:14px;margin-top:14px;color:#ffd700;letter-spacing:3px;text-shadow:0 0 10px #ffd700">+100 BUCKS AWARDED</div>`
+    : '';
+
+  if (nextIsBoss) {
+    const tier = next / 100;
+    const bossCfg = getBossConfig(next);
+    const bossIntro = `
+      <div style="font-size:14px;color:#ff4400;letter-spacing:8px;margin-bottom:8px;text-shadow:0 0 14px #ff4400">
+        &#9888; WARNING &#9888;
+      </div>
+      <div style="font-size:62px;color:#ff2200;letter-spacing:6px;text-shadow:0 0 28px #ff2200">
+        BOSS LEVEL
+      </div>
+      <div style="font-size:22px;margin-top:8px;color:#ffaa00;letter-spacing:4px;text-shadow:0 0 12px #ffaa00">
+        TIER ${tier}
+      </div>
+      <div style="font-size:13px;margin-top:18px;color:#aaa;letter-spacing:4px;line-height:2.2">
+        HP: ${bossCfg.botHP} &nbsp;&nbsp; SPEED: ${bossCfg.speed.toFixed(1)}<br>
+        MODE-SWITCHING &nbsp;&middot;&nbsp; 3&times; SIZE
+      </div>
+      ${bucksLine}`;
+    transShow(bossIntro, 3200, then);
+  } else {
+    const cfg = getLevelConfig(next);
+    const intro = `
+      <div style="font-size:14px;color:#88ccff;letter-spacing:6px;margin-bottom:8px">
+        ENTERING
+      </div>
+      <div style="font-size:68px;color:#fff;letter-spacing:8px;text-shadow:0 0 16px #fff">
+        LEVEL ${next}
+      </div>
+      <div style="font-size:13px;margin-top:18px;color:#aaa;letter-spacing:4px;line-height:2.2">
+        ENEMIES: ${cfg.botCount} &nbsp;&nbsp; HP: ${cfg.botHP}<br>
+        SPEED: ${cfg.speed.toFixed(1)} &nbsp;&nbsp; DAMAGE: ${cfg.damage}
+      </div>
+      ${bucksLine}`;
+    transShow(intro, 2600, then);
+  }
+}
+
 function checkLevelComplete() {
-  if(coopMode && !coopIsHost) return;   // guests follow host's level progression
+  if(coopMode && !coopIsHost) return;
   if(!levelActive || levelTransitioning) return;
-  if(bots.some(b => b.alive)) return;   // still enemies alive
+  if(bots.some(b => b.alive)) return;
   levelTransitioning = true;
   levelActive = false;
 
-  // Reward: restore 25 HP between rooms (no ammo refill)
-  player.health = Math.min(player.maxHealth, player.health + 25);
+  const bossJustDefeated = isBossLevel(currentLevel);
+  const hpReward = bossJustDefeated ? 75 : 25;
+  player.health = Math.min(player.maxHealth, player.health + hpReward);
   updateHealthHUD();
 
-  const cleared = `
-    <div style="font-size:52px;color:#22dd44;letter-spacing:6px;text-shadow:0 0 20px #22dd44">
-      ROOM CLEARED
-    </div>
-    <div style="font-size:16px;margin-top:14px;color:#aaa;letter-spacing:4px">
-      +25 HP
-    </div>`;
-
-  transShow(cleared, 2000, () => {
-    if(currentLevel >= 100){
+  const proceed = () => {
+    if (currentLevel >= 1000) {
       showVictory();
     } else {
       const next = currentLevel + 1;
-      const cfg  = getLevelConfig(next);
-      const bucksLine = next >= 100
-        ? `<div style="font-size:14px;margin-top:14px;color:#ffd700;letter-spacing:3px;text-shadow:0 0 10px #ffd700">+100 BUCKS AWARDED</div>`
-        : '';
-      const intro = `
-        <div style="font-size:14px;color:#88ccff;letter-spacing:6px;margin-bottom:8px">
-          ENTERING
-        </div>
-        <div style="font-size:68px;color:#fff;letter-spacing:8px;text-shadow:0 0 16px #fff">
-          LEVEL ${next}
-        </div>
-        <div style="font-size:13px;margin-top:18px;color:#aaa;letter-spacing:4px;line-height:2.2">
-          ENEMIES: ${cfg.botCount} &nbsp;&nbsp; HP: ${cfg.botHP}<br>
-          SPEED: ${cfg.speed.toFixed(1)} &nbsp;&nbsp; DAMAGE: ${cfg.damage}
-        </div>
-        ${bucksLine}`;
-      transShow(intro, 2600, () => startLevel(next));
+      _showNextLevelIntro(next, () => startLevel(next));
     }
-  });
+  };
+
+  if (bossJustDefeated) {
+    const tier = currentLevel / 100;
+    const bossDefeated = `
+      <div style="font-size:52px;color:#ff6600;letter-spacing:6px;text-shadow:0 0 28px #ff8800">
+        BOSS DEFEATED
+      </div>
+      <div style="font-size:18px;margin-top:14px;color:#ffd700;letter-spacing:4px;text-shadow:0 0 10px #ffd700">
+        TIER ${tier} ELIMINATED
+      </div>
+      <div style="font-size:14px;margin-top:10px;color:#aaa;letter-spacing:3px">
+        +75 HP
+      </div>`;
+    transShow(bossDefeated, 2800, proceed);
+  } else {
+    const cleared = `
+      <div style="font-size:52px;color:#22dd44;letter-spacing:6px;text-shadow:0 0 20px #22dd44">
+        ROOM CLEARED
+      </div>
+      <div style="font-size:16px;margin-top:14px;color:#aaa;letter-spacing:4px">
+        +25 HP
+      </div>`;
+    transShow(cleared, 2000, proceed);
+  }
 }
 
 function showVictory() {
@@ -5072,13 +5244,12 @@ function showVictory() {
       YOU WIN
     </div>
     <div style="font-size:18px;margin-top:16px;color:#aaa;letter-spacing:4px">
-      ALL 100 LEVELS CLEARED
+      ALL 1000 LEVELS CLEARED
     </div>
     <div style="font-size:14px;margin-top:10px;color:#888;letter-spacing:3px">
       TOTAL KILLS: ${player.kills}
     </div>`;
   transScreen.style.display='flex';
-  // Keep showing indefinitely — player can ESC to menu
 }
 
 // ── HUD level / enemy-count helpers ──────────────────────────
