@@ -149,6 +149,20 @@ document.querySelectorAll('.gun-card').forEach(card => {
 const gun = { def:null, ammo:0, reserve:0, shootTimer:0, canShoot:true };
 let recoilZ = 0, recoilY = 0;
 
+// ─── Extended animation state ──────────────────────────────────
+let _weaponRaiseT  = 0;        // countdown 0.5→0: weapon slides up on spawn
+let _reloadActive  = false;    // visual-only reload animation
+let _reloadT       = 0;        // 0→1 during reload animation
+let _swayX         = 0;        // smoothed lateral sway
+let _swayY         = 0;        // smoothed vertical sway
+let _headBobY      = 0;        // current head-bob camera offset (un-applied each frame before physics)
+let _prevGrounded  = true;     // landing detection
+let _landDipT      = 0;        // landing camera dip timer
+let _crouchOffset  = 0;        // smoothed crouch camera offset
+let _crouchTarget  = 0;        // desired crouch offset (0 = standing, -0.4 = crouched)
+let _vignetteAlpha = 0;        // damage vignette opacity
+let _hitConfirmT   = 0;        // crosshair hit-confirm flash timer
+
 // Minigun spin state
 let mgSpinSpeed = 0;    // current rad/s
 let mgSpin      = 0;    // accumulated angle (for visual)
@@ -1622,6 +1636,9 @@ function setupWeapon(id) {
   weaponRoot.userData.baseX = weaponRoot.position.x;
   weaponRoot.userData.baseZ = weaponRoot.position.z;
   recoilZ = 0; recoilY = 0;
+  _weaponRaiseT = 0.5;
+  _reloadActive = false; _reloadT = 0;
+  _swayX = 0; _swayY = 0;
 }
 
 // defined in robot-builder.js
@@ -1793,8 +1810,9 @@ function damageBot(bot){
   setTimeout(()=>{
     if(!bot.phantomGlowing) bot.allMats.forEach(mat=>{ mat.emissive.setHex(0x000000); mat.emissiveIntensity=0; });
   },80);
-  // Blood spray on hit
-  spawnBlood(bot.group.position.clone().setY(1.4 + Math.random() * 0.4), 8);
+  // Hit sparks (bright blue + white, no blood)
+  spawnHitSparks(bot.group.position.clone().setY(1.15 + Math.random() * 0.5));
+  _hitConfirmT = 0.14;
   if(bot.hp<=0) killBot(bot);
 }
 
@@ -1834,6 +1852,26 @@ function trackDeath() {
 function spawnSparks(pos){
   // kept for compatibility — redirects to static death effect
   spawnStaticDeath(pos);
+}
+
+function spawnHitSparks(pos) {
+  for (let i = 0; i < 16; i++) {
+    const isWhite = i < 6;
+    const size = 0.012 + Math.random() * 0.022;
+    const mat = new THREE.MeshBasicMaterial({ color: isWhite ? 0xffffff : 0x00aaff, transparent: true, opacity: 1 });
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(size, 4, 4), mat);
+    mesh.position.copy(pos);
+    const sp = 3.5 + Math.random() * 6.5;
+    const th = Math.random() * Math.PI * 2;
+    const ph = (Math.random() - 0.3) * Math.PI;
+    const vel = new THREE.Vector3(
+      Math.sin(ph) * Math.cos(th) * sp,
+      Math.abs(Math.cos(ph)) * sp * 0.7 + 0.5,
+      Math.sin(ph) * Math.sin(th) * sp
+    );
+    scene.add(mesh);
+    bloodParticles.push({ mesh, vel, age: 0, maxAge: 0.28 });
+  }
 }
 
 function spawnBlood(pos, count = 14) {
@@ -2289,8 +2327,11 @@ function reloadGun(){
   if(player.dead) return;
   const need=gun.def.ammo - gun.ammo;
   const take=Math.min(need, gun.reserve);
-  if(take > 0) playReloadSound();
-  gun.ammo+=take; gun.reserve-=take; updateAmmoHUD();
+  if(take > 0){
+    playReloadSound();
+    gun.ammo+=take; gun.reserve-=take; updateAmmoHUD();
+    _reloadActive = true; _reloadT = 0;
+  }
 }
 
 // ============================================================
@@ -2461,7 +2502,15 @@ function pushKillFeed(msg){
 const flashOverlay=document.createElement('div');
 flashOverlay.style.cssText='position:fixed;inset:0;background:rgba(220,0,0,0);pointer-events:none;z-index:40;transition:background .12s ease';
 document.body.appendChild(flashOverlay);
-function flashDmg(){ flashOverlay.style.background='rgba(220,0,0,.42)'; setTimeout(()=>{ flashOverlay.style.background='rgba(220,0,0,0)'; },150); }
+const vignetteEl=document.createElement('div');
+vignetteEl.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:39;opacity:0;background:radial-gradient(ellipse at center,transparent 48%,rgba(200,0,0,0.88) 100%)';
+document.body.appendChild(vignetteEl);
+function flashDmg(){
+  flashOverlay.style.background='rgba(220,0,0,.42)';
+  setTimeout(()=>{ flashOverlay.style.background='rgba(220,0,0,0)'; },150);
+  _vignetteAlpha=Math.min(1,_vignetteAlpha+0.55);
+  vignetteEl.style.opacity=_vignetteAlpha;
+}
 
 const deathScreen=document.createElement('div');
 deathScreen.style.cssText='position:fixed;inset:0;background:rgba(120,0,0,.65);display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;z-index:60;pointer-events:none;font-family:Courier New,monospace';
@@ -3057,6 +3106,10 @@ function respawnPlayer(){
   if(pointerLocked() || mobileGameActive) hudEl.style.display='block';
   updateHealthHUD();
   gun.ammo=gun.def.ammo; gun.reserve=gun.def.reserve; updateAmmoHUD();
+  _weaponRaiseT = 0.5;
+  _reloadActive = false; _reloadT = 0;
+  _headBobY = 0; _landDipT = 0; _vignetteAlpha = 0;
+  vignetteEl.style.opacity = '0';
 }
 
 function _decrementAttachDurability() {
@@ -3116,12 +3169,19 @@ function update(dt){
 
   camera.rotation.y=yaw; camera.rotation.x=pitch;
 
+  // ── Remove last frame's head-bob offset before physics ──
+  camera.position.y -= _headBobY;
+  _prevGrounded = grounded;
+
   // ── Jump / gravity ──────────────────────────────────────
   velY += GRAVITY*dt;
   camera.position.y += velY*dt;
   const _floorY = getGroundY(camera.position) + EYE_H;
   if(camera.position.y <= _floorY){ camera.position.y = _floorY; velY=0; grounded=true; }
   if(camera.position.y >= WH-.6){ camera.position.y=WH-.6; velY=Math.min(0,velY); }
+
+  // ── Landing dip detection ──────────────────────────────
+  if(!_prevGrounded && grounded) _landDipT = 0.16;
 
   // During killcam: track killer bot, keep bots alive, skip player movement
   if (killcamActive) {
@@ -3190,17 +3250,110 @@ function update(dt){
     }
   }
 
-  // ── Weapon bob + recoil ──────────────────────────────────
-  const bobRate=moving?9.0:2.2, bobAmp=moving?.014:.005;
-  bobClock+=dt*bobRate;
+  // ── Weapon animations (bob, recoil, sway, raise, reload, sprint) ──
+  const bobRate = moving ? 9.0 : 2.2;
+  const bobAmp  = moving ? 0.014 : 0.005;
+  bobClock += dt * bobRate;
   const decay = 1 - Math.min(1, dt * 11);
   recoilZ *= decay;
   recoilY *= decay;
+
   if(weaponRoot.userData.baseY !== undefined){
-    weaponRoot.position.y = weaponRoot.userData.baseY + Math.sin(bobClock)*bobAmp + recoilY;
-    weaponRoot.position.x = weaponRoot.userData.baseX + Math.sin(bobClock*.5)*bobAmp*.55;
-    weaponRoot.position.z = weaponRoot.userData.baseZ + recoilZ;
-    weaponRoot.rotation.x = -recoilY * 1.6;
+    const bY = weaponRoot.userData.baseY;
+    const bX = weaponRoot.userData.baseX;
+    const bZ = weaponRoot.userData.baseZ;
+
+    // 1. Weapon raise on spawn/respawn — slides up from -0.35 over 0.5s
+    let raiseOffset = 0;
+    if(_weaponRaiseT > 0){
+      _weaponRaiseT = Math.max(0, _weaponRaiseT - dt);
+      const p = _weaponRaiseT / 0.5;  // 1→0
+      raiseOffset = -0.35 * p * p;    // quadratic ease
+    }
+
+    // 2. Velocity-based weapon sway (move direction relative to view)
+    const swayTargetX = moving ? -moveVec.dot(rightDir) * 18 : 0;
+    const swayTargetY = moving ? -moveVec.dot(viewDir) * 10 : 0;
+    _swayX += (swayTargetX * 0.022 - _swayX) * Math.min(1, dt * 6);
+    _swayY += (swayTargetY * 0.014 - _swayY) * Math.min(1, dt * 6);
+
+    // 3. Sprint tilt — weapon tilts right when running forward
+    const isSprinting = (keys['KeyW'] || (touchMoveInput.y < -0.5)) && moving;
+    const sprintTiltTarget = isSprinting ? 0.14 : 0;
+    const _sprintTilt = (weaponRoot.userData._sprintTilt || 0);
+    weaponRoot.userData._sprintTilt = _sprintTilt + (sprintTiltTarget - _sprintTilt) * Math.min(1, dt * 7);
+
+    // 4. Per-weapon reload animation (visual only)
+    let reloadOffsetY = 0, reloadOffsetZ = 0;
+    let reloadRotX = 0, reloadRotZ = 0;
+    if(_reloadActive){
+      _reloadT = Math.min(1, _reloadT + dt * 1.6);
+      const rt = _reloadT;
+      const wave = Math.sin(rt * Math.PI);  // 0→1→0 arc
+      const gId = gun.def ? gun.def.id : '';
+      if(gId === 'pistol'){
+        reloadRotZ = wave * 0.55;            // tilt sideways
+        reloadOffsetY = -wave * 0.06;
+      } else if(gId === 'smg'){
+        reloadOffsetY = -wave * 0.14;        // drops down and snaps back
+        reloadOffsetZ = wave * 0.05;
+      } else if(gId === 'minigun'){
+        // Minigun handled by spin; slight raise only
+        reloadOffsetY = wave * 0.04;
+      } else if(gId === 'sniper'){
+        reloadRotX = rt < 0.5                // pull bolt back then forward
+          ? rt * 2 * 0.32
+          : (1 - (rt - 0.5) * 2) * 0.32;
+        reloadOffsetZ = reloadRotX * 0.08;
+      }
+      if(_reloadT >= 1) _reloadActive = false;
+    }
+
+    // 5. Compose final position/rotation
+    weaponRoot.position.y  = bY + Math.sin(bobClock) * bobAmp + recoilY + raiseOffset + _swayY + reloadOffsetY;
+    weaponRoot.position.x  = bX + Math.sin(bobClock * 0.5) * bobAmp * 0.55 + _swayX;
+    weaponRoot.position.z  = bZ + recoilZ + reloadOffsetZ;
+    weaponRoot.rotation.x  = -recoilY * 1.6 + reloadRotX;
+    weaponRoot.rotation.z  = weaponRoot.userData._sprintTilt + reloadRotZ;
+  }
+
+  // ── Head bob (camera) ────────────────────────────────────
+  const hbAmp = moving ? 0.022 : 0.004;
+  _headBobY = Math.sin(bobClock) * hbAmp;
+  // Landing dip adds an extra downward snap
+  if(_landDipT > 0){
+    _landDipT = Math.max(0, _landDipT - dt);
+    const dipFrac = _landDipT / 0.16;
+    _headBobY -= Math.sin(dipFrac * Math.PI) * 0.065;
+  }
+  // Smooth crouch
+  _crouchTarget = keys['KeyC'] ? -0.35 : 0;
+  _crouchOffset += (_crouchTarget - _crouchOffset) * Math.min(1, dt * 10);
+  camera.position.y += _headBobY + _crouchOffset;
+
+  // ── Low-health breathing pulse ───────────────────────────
+  if(player.health > 0 && player.health < 25 && !player.dead){
+    const breathe = Math.sin(Date.now() * 0.003) * 0.009;
+    camera.position.y += breathe;
+    camera.fov = (camera.fov || 72) + breathe * 1.2;
+    camera.updateProjectionMatrix();
+  }
+
+  // ── Damage vignette fade ─────────────────────────────────
+  if(_vignetteAlpha > 0){
+    _vignetteAlpha = Math.max(0, _vignetteAlpha - dt * 1.1);
+    vignetteEl.style.opacity = _vignetteAlpha.toFixed(3);
+  }
+
+  // ── Crosshair hit-confirm flash ──────────────────────────
+  if(_hitConfirmT > 0){
+    _hitConfirmT = Math.max(0, _hitConfirmT - dt);
+    const scale = 1 + (_hitConfirmT / 0.14) * 0.22;
+    crosshairEl.style.transform = `scale(${scale.toFixed(3)})`;
+    crosshairEl.style.filter    = `brightness(${(1 + (_hitConfirmT / 0.14) * 3).toFixed(2)}) drop-shadow(0 0 4px #00aaff)`;
+  } else if(crosshairEl.style.transform){
+    crosshairEl.style.transform = '';
+    crosshairEl.style.filter    = '';
   }
 
   // ── Hurt cooldown ───────────────────────────────────────
@@ -3226,9 +3379,14 @@ function update(dt){
     p.age += dt;
     p.vel.y -= 18 * dt;
     p.mesh.position.addScaledVector(p.vel, dt);
-    if(p.age > 0.55){
+    const pMaxAge = p.maxAge || 0.55;
+    if(p.age > pMaxAge){
       scene.remove(p.mesh);
+      p.mesh.geometry.dispose(); p.mesh.material.dispose();
       bloodParticles.splice(i,1);
+    } else {
+      p.mesh.material.opacity = Math.max(0, 1 - p.age / pMaxAge);
+      if(!p.mesh.material.transparent){ p.mesh.material.transparent = true; }
     }
   }
 
@@ -3321,14 +3479,26 @@ function update(dt){
   const px=camera.position.x, pz=camera.position.z;
   const playerGroundY = getGroundY(camera.position);
   bots.forEach(bot=>{
-    // Bot death animation
+    // Bot death animation — collapse backward with electric glow
     if(bot.dying){
       bot.deathClock += dt;
+      bot.deathArcT  += dt;
       const t = Math.min(1, bot.deathClock / 0.5);
-      bot.group.rotation.x = t * (Math.PI * 0.5);
-      bot.group.position.y = Math.max(0, getGroundY(bot.group.position) - t * 0.3);
+      // Ease-in backward fall
+      const tEased = t * t;
+      bot.group.rotation.x = tEased * (Math.PI * 0.52);
+      bot.group.position.y = Math.max(0, getGroundY(bot.group.position) - tEased * 0.28);
+      // Arms spread outward as bot falls
+      bot.armGroupL.rotation.z =  0.32 + tEased * 0.9;
+      bot.armGroupR.rotation.z = -0.32 - tEased * 0.9;
+      // Electric glow pulses blue during collapse
+      if(bot.deathArcT < 0.8){
+        const glowPulse = 0.8 + Math.sin(bot.deathArcT * 28) * 0.5;
+        bot.allMats.forEach(m => { m.emissive.setHex(0x0066ff); m.emissiveIntensity = glowPulse * (1 - bot.deathArcT / 0.8); });
+      }
       if(t >= 1 && !bot.group.userData.fallen){
         bot.group.userData.fallen = true;
+        bot.allMats.forEach(m => { m.emissive.setHex(0x000000); m.emissiveIntensity = 0; });
         setTimeout(() => { if(bot.group.parent) bot.group.visible = false; }, 400);
       }
       return;
@@ -3397,9 +3567,16 @@ function update(dt){
       bot.group.rotation.y = Math.atan2(dx,dz) + Math.PI;
 
       if(dist > 0.15 && distToPlayer > BOT_MELEE * 0.8){
-        const mv = (distToPlayer > 12 ? spd : spd * 0.75) * dt;
-        bp.x += (dx/dist)*mv; bp.z += (dz/dist)*mv;
-        bot.walkClock += dt*spd;
+        const targetSpd = (distToPlayer > 12 ? spd : spd * 0.75);
+        const accel = 9.0;
+        bot.velX += ((dx/dist)*targetSpd - bot.velX) * Math.min(1, dt * accel);
+        bot.velZ += ((dz/dist)*targetSpd - bot.velZ) * Math.min(1, dt * accel);
+        bp.x += bot.velX * dt; bp.z += bot.velZ * dt;
+        bot.walkClock += dt * spd;
+      } else {
+        // Decelerate to stop
+        bot.velX *= Math.max(0, 1 - dt * 12);
+        bot.velZ *= Math.max(0, 1 - dt * 12);
       }
 
       // Melee attack — phantom bots deal 30% extra damage
@@ -3493,11 +3670,17 @@ function update(dt){
       const pdx=bot.patrolTarget.x-bp.x, pdz=bot.patrolTarget.z-bp.z;
       const pd=Math.sqrt(pdx*pdx+pdz*pdz);
       if(pd > 0.6){
-        const s=spd*0.52*dt;
-        bp.x+=(pdx/pd)*s; bp.z+=(pdz/pd)*s;
-        bot.group.rotation.y=Math.atan2(pdx,pdz) + Math.PI;
-        bot.walkClock+=dt*spd*0.52;
-      } else { bot.patrolTimer=0; }
+        const patSpd = spd * 0.52;
+        bot.velX += ((pdx/pd)*patSpd - bot.velX) * Math.min(1, dt * 7);
+        bot.velZ += ((pdz/pd)*patSpd - bot.velZ) * Math.min(1, dt * 7);
+        bp.x += bot.velX * dt; bp.z += bot.velZ * dt;
+        bot.group.rotation.y = Math.atan2(pdx, pdz) + Math.PI;
+        bot.walkClock += dt * patSpd;
+      } else {
+        bot.velX *= Math.max(0, 1 - dt * 10);
+        bot.velZ *= Math.max(0, 1 - dt * 10);
+        bot.patrolTimer = 0;
+      }
     }
 
     // Wall collision — bots can't walk through cover
@@ -3505,10 +3688,26 @@ function update(dt){
     bp.x=Math.max(-AW+1,Math.min(AW-1,bp.x));
     bp.z=Math.max(-AD+1,Math.min(AD-1,bp.z));
 
-    // Leg swing animation
-    const legSwing = Math.sin(bot.walkClock*2.5)*.32;
+    // Idle bob — bots gently bob when standing still
+    const isMoving = Math.sqrt(bot.velX*bot.velX + bot.velZ*bot.velZ) > 0.3;
+    bot.idleClock += dt * (isMoving ? 0 : 1.6);
+    const idleBob = isMoving ? 0 : Math.sin(bot.idleClock) * 0.032;
+    bot.group.position.y = getGroundY(bot.group.position) + idleBob;
+
+    // Leg swing animation (only when moving)
+    const legSwing = isMoving ? Math.sin(bot.walkClock*2.5)*0.32 : 0;
     bot.legL.rotation.x =  legSwing;
     bot.legR.rotation.x = -legSwing;
+
+    // Shooting aim — torso slightly leans toward player when aiming
+    if(bot.mode === 'shooter' && bot.alertLevel >= 2){
+      const aimTarget = distToPlayer < BOT_SHOOT_DST ? -0.10 : 0;
+      bot.shootAimT += (aimTarget - bot.shootAimT) * Math.min(1, dt * 5);
+      bot.group.rotation.x = bot.shootAimT;
+    } else {
+      bot.shootAimT += (0 - bot.shootAimT) * Math.min(1, dt * 5);
+      bot.group.rotation.x = bot.shootAimT;
+    }
 
     // Health bar
     const f = bot.hp / bot.maxHp;
@@ -4247,6 +4446,11 @@ function spawnBots(cfg) {
       phantomLookTimer: 0,
       phantomGlowing: false,
       phantomTpCooldown: 0,
+      // animation state
+      idleClock: Math.random() * Math.PI * 2,
+      velX: 0, velZ: 0,
+      shootAimT: 0,
+      deathArcT: 0,
     });
   }
 }
@@ -4265,8 +4469,15 @@ document.body.appendChild(transScreen);
 
 function transShow(html, dur, then) {
   transScreen.innerHTML = html;
-  transScreen.style.display = 'flex';
-  setTimeout(() => { transScreen.style.display='none'; then && then(); }, dur);
+  transScreen.style.transition = 'opacity 0.28s ease';
+  transScreen.style.opacity    = '0';
+  transScreen.style.display    = 'flex';
+  requestAnimationFrame(() => requestAnimationFrame(() => { transScreen.style.opacity = '1'; }));
+  const fadeOutAt = Math.max(0, dur - 320);
+  setTimeout(() => {
+    transScreen.style.opacity = '0';
+    setTimeout(() => { transScreen.style.display = 'none'; then && then(); }, 320);
+  }, fadeOutAt);
 }
 
 function startLevel(n) {
