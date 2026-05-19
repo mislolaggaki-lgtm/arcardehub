@@ -904,7 +904,9 @@ const player = {
   health:100, maxHealth:100, kills:0, deaths:0,
   dead:false, hurtTimer:0,
   speedBoostT: 0,   // remaining speed boost seconds
+  speedBoostMax: 8, // max duration (set when potion applied, includes bonus)
   flyBoostT:   0,   // remaining fly boost seconds
+  flyBoostMax: 5,   // max duration (set when potion applied, includes bonus)
   flyColor:    null, // 'blue' | 'red'
 };
 
@@ -2425,20 +2427,36 @@ function spawnPotionsForLevel() {
   }
 }
 
+// Returns bonus seconds from an equipped item type based on rarity
+function _getEquippedItemBonus(itemPrefix) {
+  const rarityBonus = { common: 1, rare: 2, epic: 2, legendary: 3 };
+  const equipped = JSON.parse(localStorage.getItem('ah_equipped') || '[]');
+  for (const id of equipped) {
+    if (id.startsWith(itemPrefix + '_')) {
+      const rarity = id.split('_').pop();
+      return rarityBonus[rarity] || 0;
+    }
+  }
+  return 0;
+}
+
 function applyPotion(type) {
   if(type === 'health'){
     player.health = Math.min(player.maxHealth, player.health + 50);
     updateHealthHUD();
     pushKillFeed('❤ +50 HP');
   } else if(type === 'speed'){
-    player.speedBoostT = 8;
-    pushKillFeed('⚡ SPEED BOOST — 8s');
+    const bonus = _getEquippedItemBonus('speedboots');
+    player.speedBoostT = player.speedBoostMax = 8 + bonus;
+    pushKillFeed('⚡ SPEED BOOST — ' + player.speedBoostT + 's' + (bonus ? ' (+' + bonus + 's boots)' : ''));
   } else if(type === 'fly_blue'){
-    player.flyBoostT = 5; player.flyColor = 'blue';
-    pushKillFeed('🔵 FLYING — 5s');
+    const bonus = _getEquippedItemBonus('wings');
+    player.flyBoostT = player.flyBoostMax = 5 + bonus; player.flyColor = 'blue';
+    pushKillFeed('🔵 FLYING — ' + player.flyBoostT + 's' + (bonus ? ' (+' + bonus + 's wings)' : ''));
   } else if(type === 'fly_red'){
-    player.flyBoostT = 10; player.flyColor = 'red';
-    pushKillFeed('🔴 SUPER FLY — 10s');
+    const bonus = _getEquippedItemBonus('wings');
+    player.flyBoostT = player.flyBoostMax = 10 + bonus; player.flyColor = 'red';
+    pushKillFeed('🔴 SUPER FLY — ' + player.flyBoostT + 's' + (bonus ? ' (+' + bonus + 's wings)' : ''));
   }
   _updateEffectBar();
   playPotionSound(type);
@@ -2469,17 +2487,16 @@ function _updateEffectBar() {
   if(!hasSpeed && !hasFly){ _effectBarEl.style.display='none'; return; }
   _effectBarEl.style.display = 'flex';
   if(hasFly){
-    const maxT = player.flyColor === 'red' ? 10 : 5;
-    const cfg  = player.flyColor === 'red' ? _POTION_CFG.fly_red : _POTION_CFG.fly_blue;
+    const cfg = player.flyColor === 'red' ? _POTION_CFG.fly_red : _POTION_CFG.fly_blue;
     _effectIconEl.textContent = cfg.icon;
     _effectFillEl.style.background = cfg.glowCSS;
-    _effectFillEl.style.width = (player.flyBoostT / maxT * 100) + '%';
+    _effectFillEl.style.width = (player.flyBoostT / player.flyBoostMax * 100) + '%';
     _effectTimerEl.textContent = player.flyBoostT.toFixed(1) + 's';
   } else {
     const cfg = _POTION_CFG.speed;
     _effectIconEl.textContent = cfg.icon;
     _effectFillEl.style.background = cfg.glowCSS;
-    _effectFillEl.style.width = (player.speedBoostT / 8 * 100) + '%';
+    _effectFillEl.style.width = (player.speedBoostT / player.speedBoostMax * 100) + '%';
     _effectTimerEl.textContent = player.speedBoostT.toFixed(1) + 's';
   }
 }
@@ -4914,6 +4931,7 @@ function _buildBossArena() {
 
 function spawnBoss(cfg) {
   const r = buildRobot();
+  _tintBotForBiome(r.allMats);
   r.group.position.copy(rndPos());
   r.group.scale.set(3, 3, 3);
   scene.add(r.group);
@@ -5019,17 +5037,61 @@ function clearBots() {
   botBullets.length = 0;
 }
 
-// 'melee' = levels 1-24, 'shooter' = 25-49, 'phantom' = 50+ (boss levels override this)
+// 'melee' = 1-24, 'shooter' = 25-49, 'phantom' = 50-64, random = 65+ (boss overrides)
 function botModeForLevel(n) {
   if (n <= 24) return 'melee';
   if (n <= 49) return 'shooter';
-  return 'phantom';
+  if (n <= 64) return 'phantom';
+  // 65+: deterministic-but-varied random per level
+  const modes = ['melee', 'shooter', 'phantom'];
+  return modes[((n * 2654435761) >>> 0) % 3];
+}
+
+// Per-biome robot tint — keyed by biomeId, value is [hexColor, strength 0-1]
+const _BIOME_BOT_TINTS = {
+   0: null,                    // FACILITY — keep default blue-grey
+   1: [0x88ccee, 0.65],        // ICE TUNDRA — ice blue
+   2: [0xcc4400, 0.65],        // LAVA FORGE — fiery red-orange
+   3: [0x226633, 0.60],        // NEON FOREST — deep green
+   4: [0xcc9944, 0.62],        // SAND DESERT — sandy gold
+   5: [0x8800cc, 0.62],        // CYBER CITY — neon purple
+   6: [0xaabbcc, 0.50],        // SPACE STATION — silver-white
+   7: [0x227722, 0.62],        // TOXIC SWAMP — toxic green
+   8: [0x553388, 0.62],        // HAUNTED CRYPT — dark purple
+   9: [0x006688, 0.62],        // UNDERWATER RUINS — deep teal
+  10: [0x666666, 0.55],        // VOLCANIC ASH — ash grey
+  11: [0x990011, 0.65],        // BLOOD MOON — deep crimson
+  12: [0x8833cc, 0.60],        // CRYSTAL CAVE — amethyst
+  13: [0x991133, 0.62],        // BIOMECH CORE — bio pink-red
+  14: [0x3366cc, 0.60],        // STORM VAULT — electric blue
+  15: [0x004455, 0.62],        // DEEP TRENCH — abyss teal
+  16: [0x446622, 0.60],        // POISON JUNGLE — yellow-green
+  17: [0x778800, 0.60],        // ACID WASTES — acid yellow
+  18: [0x223355, 0.62],        // MIDNIGHT RAIN — dark navy
+  19: [0x996633, 0.60],        // ANCIENT TEMPLE — bronze
+  20: [0xaa2200, 0.65],        // INFERNAL PIT — deep red-orange
+  21: [0x6699bb, 0.60],        // FROZEN VOID — pale ice blue
+  22: [0xcc0099, 0.62],        // NEON ARENA — hot pink
+  23: [0x660099, 0.62],        // DARK NEBULA — deep violet
+  24: [0x449900, 0.60],        // RADIATION ZONE — radioactive green
+  25: [0x993300, 0.62],        // BURNING CATHEDRAL — ember amber
+  26: [0x009988, 0.60],        // NANO GRID — cyan
+};
+
+function _tintBotForBiome(allMats) {
+  const biomeId = currentBiome ? currentBiome.biomeId : 0;
+  const entry = _BIOME_BOT_TINTS[biomeId];
+  if (!entry) return;
+  const tint = new THREE.Color(entry[0]);
+  const str  = entry[1];
+  allMats.forEach(m => m.color.lerp(tint, str));
 }
 
 function spawnBots(cfg) {
   const mode = botModeForLevel(currentLevel);
   for(let i=0; i<cfg.botCount; i++){
     const r = buildRobot();
+    _tintBotForBiome(r.allMats);
     r.group.position.copy(rndPos());
     scene.add(r.group);
 
