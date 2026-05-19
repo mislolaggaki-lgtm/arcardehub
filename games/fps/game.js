@@ -903,6 +903,9 @@ const GRAVITY = -22, JUMP_VEL = 8.5;
 const player = {
   health:100, maxHealth:100, kills:0, deaths:0,
   dead:false, hurtTimer:0,
+  speedBoostT: 0,   // remaining speed boost seconds
+  flyBoostT:   0,   // remaining fly boost seconds
+  flyColor:    null, // 'blue' | 'red'
 };
 
 // ── Rank system ───────────────────────────────────────────────
@@ -1774,7 +1777,8 @@ function nearestStairEntry(bp, toMezz) {
 }
 
 let bots = [];
-const ammoPickups = [];   // { group, posX, posZ, bobClock, lifetime, amount }
+const ammoPickups   = [];   // { group, posX, posZ, bobClock, lifetime, amount }
+const potionPickups = [];   // { group, posX, posZ, bobClock, type, lifetime }
 
 // Walk up parent chain to find the bot whose group contains `obj`
 function findBot(obj){
@@ -2358,6 +2362,128 @@ function spawnAmmoPickup(pos) {
   ammoPickups.push({ group: g, posX: pos.x, posZ: pos.z, bobClock: Math.random() * Math.PI * 2, lifetime: 14, amount });
 }
 
+// ─── Potion pickups ──────────────────────────────────────────
+const _POTION_CFG = {
+  health: { color:0xff3344, emissive:0x880011, icon:'❤', label:'HEALTH',    glowCSS:'#ff4455' },
+  speed:  { color:0x22ee55, emissive:0x006622, icon:'⚡', label:'SPEED',     glowCSS:'#33ff66' },
+  fly_blue:{ color:0x22aaff, emissive:0x002288, icon:'🔵', label:'FLY (5s)', glowCSS:'#44bbff' },
+  fly_red: { color:0xff6600, emissive:0x882200, icon:'🔴', label:'FLY (10s)',glowCSS:'#ff8833' },
+};
+
+function spawnPotionPickup(pos, type) {
+  const cfg = _POTION_CFG[type];
+  const g = new THREE.Group();
+
+  // Bottle body — cylinder
+  const bodyMat = new THREE.MeshLambertMaterial({
+    color: cfg.color, emissive: new THREE.Color(cfg.emissive), transparent: true, opacity: 0.88
+  });
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.13, 0.28, 10), bodyMat));
+
+  // Bottle neck
+  const neckMat = new THREE.MeshLambertMaterial({ color: cfg.color, emissive: new THREE.Color(cfg.emissive) });
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.10, 0.10, 8), neckMat);
+  neck.position.y = 0.19; g.add(neck);
+
+  // Cork top
+  const corkMat = new THREE.MeshLambertMaterial({ color: 0xb8860b });
+  const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.06, 8), corkMat);
+  cork.position.y = 0.27; g.add(cork);
+
+  // Glow point light
+  const pl = new THREE.PointLight(cfg.color, 0.8, 2.5);
+  pl.position.y = 0.1; g.add(pl);
+
+  // Wings for fly potions
+  if(type === 'fly_blue' || type === 'fly_red'){
+    const wingMat = new THREE.MeshBasicMaterial({ color: cfg.color, transparent:true, opacity:0.55, side:THREE.DoubleSide });
+    for(let s=0;s<2;s++){
+      const wing = new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.16), wingMat);
+      wing.position.set(s===0?-0.20:0.20, 0.08, 0);
+      wing.rotation.y = s===0?-0.5:0.5;
+      wing.rotation.z = s===0?0.4:-0.4;
+      g.add(wing);
+    }
+  }
+
+  g.position.set(pos.x, 0.46, pos.z);
+  scene.add(g);
+  potionPickups.push({ group:g, posX:pos.x, posZ:pos.z, bobClock:Math.random()*Math.PI*2, type, lifetime:22 });
+}
+
+function spawnPotionsForLevel() {
+  const count = 2 + Math.floor(Math.random() * 2); // 2–3 per level
+  for(let i=0;i<count;i++){
+    const pos = rndPos();
+    const r = Math.random();
+    let type;
+    if(r < 0.06)       type = 'fly_red';
+    else if(r < 0.21)  type = 'fly_blue';
+    else if(r < 0.51)  type = 'speed';
+    else               type = 'health';
+    spawnPotionPickup(pos, type);
+  }
+}
+
+function applyPotion(type) {
+  if(type === 'health'){
+    player.health = Math.min(player.maxHealth, player.health + 50);
+    updateHealthHUD();
+    pushKillFeed('❤ +50 HP');
+  } else if(type === 'speed'){
+    player.speedBoostT = 8;
+    pushKillFeed('⚡ SPEED BOOST — 8s');
+  } else if(type === 'fly_blue'){
+    player.flyBoostT = 5; player.flyColor = 'blue';
+    pushKillFeed('🔵 FLYING — 5s');
+  } else if(type === 'fly_red'){
+    player.flyBoostT = 10; player.flyColor = 'red';
+    pushKillFeed('🔴 SUPER FLY — 10s');
+  }
+  _updateEffectBar();
+  playPotionSound(type);
+}
+
+function playPotionSound(type) {
+  const ac = getAC(); const vol = _getVol('sfx');
+  const osc = ac.createOscillator();
+  osc.type = type === 'health' ? 'sine' : type === 'speed' ? 'triangle' : 'sine';
+  const freq = type === 'health' ? 660 : type === 'speed' ? 880 : 440;
+  osc.frequency.setValueAtTime(freq, ac.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(freq*2.2, ac.currentTime + 0.25);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(vol * 0.28, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.32);
+  osc.connect(g); g.connect(ac.destination);
+  osc.start(); osc.stop(ac.currentTime + 0.32);
+}
+
+const _effectBarEl   = document.getElementById('effect-bar-container');
+const _effectFillEl  = document.getElementById('effect-bar-fill');
+const _effectIconEl  = document.getElementById('effect-icon');
+const _effectTimerEl = document.getElementById('effect-timer');
+
+function _updateEffectBar() {
+  const hasSpeed = player.speedBoostT > 0;
+  const hasFly   = player.flyBoostT > 0;
+  if(!hasSpeed && !hasFly){ _effectBarEl.style.display='none'; return; }
+  _effectBarEl.style.display = 'flex';
+  if(hasFly){
+    const maxT = player.flyColor === 'red' ? 10 : 5;
+    const cfg  = player.flyColor === 'red' ? _POTION_CFG.fly_red : _POTION_CFG.fly_blue;
+    _effectIconEl.textContent = cfg.icon;
+    _effectFillEl.style.background = cfg.glowCSS;
+    _effectFillEl.style.width = (player.flyBoostT / maxT * 100) + '%';
+    _effectTimerEl.textContent = player.flyBoostT.toFixed(1) + 's';
+  } else {
+    const cfg = _POTION_CFG.speed;
+    _effectIconEl.textContent = cfg.icon;
+    _effectFillEl.style.background = cfg.glowCSS;
+    _effectFillEl.style.width = (player.speedBoostT / 8 * 100) + '%';
+    _effectTimerEl.textContent = player.speedBoostT.toFixed(1) + 's';
+  }
+}
+
 // ============================================================
 //  INPUT
 // ============================================================
@@ -2518,6 +2644,9 @@ document.addEventListener('pointerlockchange',()=>{
       gameStarted=true;
       startLevel(1);
       initSocket();
+      // Show controls hint, fade after 7s
+      const _ch = document.getElementById('controls-hint');
+      if(_ch){ _ch.classList.remove('fade-out'); setTimeout(()=>_ch.classList.add('fade-out'),7000); }
     }
   } else if(!player.dead && !levelTransitioning && !mobileGameActive){
     deactivateScope();
@@ -3260,6 +3389,8 @@ function respawnPlayer(){
   _headBobY = 0; _landDipT = 0; _vignetteAlpha = 0;
   vignetteEl.style.opacity = '0';
   screenCrackEl.style.opacity = '0';
+  player.speedBoostT = 0; player.flyBoostT = 0; player.flyColor = null;
+  _effectBarEl.style.display = 'none';
 }
 
 function _decrementAttachDurability() {
@@ -3323,8 +3454,10 @@ function update(dt){
   camera.position.y -= _headBobY;
   _prevGrounded = grounded;
 
-  // ── Jump / gravity ──────────────────────────────────────
-  velY += GRAVITY*dt;
+  // ── Jump / gravity (flying potion overrides gravity) ────
+  const _isFlying = player.flyBoostT > 0;
+  velY += (_isFlying ? GRAVITY * 0.08 : GRAVITY) * dt;
+  if(_isFlying) velY = Math.max(velY, -1.8);  // soft landing while flying
   camera.position.y += velY*dt;
   const _floorY = getGroundY(camera.position) + EYE_H;
   if(camera.position.y <= _floorY){ camera.position.y = _floorY; velY=0; grounded=true; }
@@ -3351,8 +3484,8 @@ function update(dt){
   if((!pointerLocked() && !mobileGameActive && !killcamActive)||player.dead) return;
 
   // ── Jump input ──────────────────────────────────────────
-  if(keys['Space']&&grounded){
-    velY=JUMP_VEL; grounded=false;
+  if(keys['Space']&&(grounded||_isFlying)){
+    velY=_isFlying?Math.min(velY+6,8):JUMP_VEL; grounded=false;
     // Jet-boost particles burst downward from feet
     const footPos = camera.position.clone().setY(camera.position.y - EYE_H + 0.05);
     for(let _ji=0;_ji<8;_ji++){
@@ -3383,7 +3516,8 @@ function update(dt){
 
   const moving=moveVec.lengthSq()>0;
   if(moving){
-    moveVec.normalize().multiplyScalar(P_SPEED*dt);
+    const _spd = P_SPEED * (player.speedBoostT > 0 ? 1.7 : 1);
+    moveVec.normalize().multiplyScalar(_spd*dt);
     camera.position.add(moveVec);
     resolveCollision(camera.position,P_RADIUS);
   }
@@ -3538,6 +3672,29 @@ function update(dt){
   } else if(crosshairEl.style.transform){
     crosshairEl.style.transform = '';
     crosshairEl.style.filter    = '';
+  }
+
+  // ── Dynamic crosshair spread (shooting / moving / flying) ─
+  {
+    const _shooting = muzzleTimer > 0;
+    const _spreadGap = _shooting ? 14 : (moving ? 9 : 7);
+    crosshairEl.style.setProperty('--gap', _spreadGap + 'px');
+    if(player.flyBoostT > 0){
+      const fc = player.flyColor === 'red' ? '#ff7733' : '#44bbff';
+      crosshairEl.style.setProperty('--col', fc);
+    } else {
+      crosshairEl.style.removeProperty('--col');
+    }
+  }
+
+  // ── Flying potion HUD glow ───────────────────────────────
+  if(player.flyBoostT > 0){
+    const pulse = 0.5 + Math.sin(Date.now() * 0.005) * 0.3;
+    const col = player.flyColor === 'red' ? `rgba(255,100,0,${pulse.toFixed(2)})` : `rgba(0,160,255,${pulse.toFixed(2)})`;
+    vignetteEl.style.background = `radial-gradient(ellipse at center,transparent 68%,${col} 100%)`;
+    vignetteEl.style.opacity = '1';
+  } else if(_vignetteAlpha <= 0){
+    vignetteEl.style.background = 'radial-gradient(ellipse at center,transparent 48%,rgba(200,0,0,0.88) 100%)';
   }
 
   // ── Hurt cooldown ───────────────────────────────────────
@@ -4070,6 +4227,37 @@ function update(dt){
       scene.remove(pk.group);
       ammoPickups.splice(i, 1);
     }
+  }
+
+  // ── Potion pickup animation, collection & effects ────────
+  for(let i=potionPickups.length-1;i>=0;i--){
+    const pk=potionPickups[i];
+    pk.lifetime-=dt; pk.bobClock+=dt*2.1;
+    pk.group.position.y=0.46+Math.sin(pk.bobClock)*0.12;
+    pk.group.rotation.y+=dt*1.4;
+    if(pk.lifetime<5) pk.group.visible=Math.sin(pk.lifetime*12)>0;
+    const dx=camera.position.x-pk.posX, dz=camera.position.z-pk.posZ;
+    if(dx*dx+dz*dz<1.5*1.5 && !player.dead && levelActive){
+      applyPotion(pk.type);
+      scene.remove(pk.group);
+      potionPickups.splice(i,1);
+      continue;
+    }
+    if(pk.lifetime<=0){ scene.remove(pk.group); potionPickups.splice(i,1); }
+  }
+
+  // ── Potion effect timers ─────────────────────────────────
+  if(player.speedBoostT>0){
+    player.speedBoostT=Math.max(0,player.speedBoostT-dt);
+    _updateEffectBar();
+  }
+  if(player.flyBoostT>0){
+    player.flyBoostT=Math.max(0,player.flyBoostT-dt);
+    _updateEffectBar();
+    if(player.flyBoostT===0){ _effectBarEl.style.display='none'; player.flyColor=null; }
+  }
+  if(player.speedBoostT===0 && player.flyBoostT===0){
+    _effectBarEl.style.display='none';
   }
 
   // ── Bullet tracer lines ──────────────────────────────────
@@ -4707,6 +4895,8 @@ function clearBots() {
   bots.length = 0;
   ammoPickups.forEach(pk => { scene.remove(pk.group); disposeGroup(pk.group); });
   ammoPickups.length = 0;
+  potionPickups.forEach(pk => { scene.remove(pk.group); disposeGroup(pk.group); });
+  potionPickups.length = 0;
   botBullets.forEach(b => { scene.remove(b.mesh); b.mesh.geometry.dispose(); b.mesh.material.dispose(); });
   botBullets.length = 0;
 }
@@ -4820,6 +5010,7 @@ function startLevel(n) {
   applyBiome(n);
   const cfg = getLevelConfig(n);
   if (!coopMode || coopIsHost) spawnBots(cfg);  // guests see host's ghost bots instead
+  spawnPotionsForLevel();
   levelActive        = true;
   levelTransitioning = false;
   updateLevelHUD();
@@ -5933,6 +6124,8 @@ function startMobileGame() {
     gameStarted = true;
     startLevel(1);
     initSocket();
+    const _ch = document.getElementById('controls-hint');
+    if(_ch){ _ch.classList.remove('fade-out'); setTimeout(()=>_ch.classList.add('fade-out'),7000); }
   }
 }
 

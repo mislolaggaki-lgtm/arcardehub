@@ -21,48 +21,136 @@ body {
   z-index: 40;
 }
 
-/* Crosshair */
+/* ── Modern Crosshair ──────────────────────────────── */
 #crosshair {
   position:absolute; top:50%; left:50%;
   transform:translate(-50%,-50%);
-  width:24px; height:24px;
+  width:0; height:0;
+  --gap: 7px;
+  --len: 10px;
+  --thick: 2px;
+  --col: rgba(255,255,255,0.92);
+  --shadow: 0 0 3px rgba(0,0,0,0.8);
+  pointer-events:none;
+  transition: --gap 0.06s ease;
 }
-#crosshair::before, #crosshair::after {
-  content:''; position:absolute;
-  background:rgba(255,255,255,0.85);
+.ch-dot {
+  position:absolute;
+  width:3px; height:3px;
+  background:var(--col);
+  border-radius:50%;
+  top:-1.5px; left:-1.5px;
+  box-shadow:var(--shadow);
+}
+.ch-top, .ch-bot, .ch-left, .ch-right {
+  position:absolute;
+  background:var(--col);
   border-radius:1px;
+  box-shadow:var(--shadow);
 }
-#crosshair::before { width:2px; height:24px; top:0; left:11px; }
-#crosshair::after  { width:24px; height:2px; top:11px; left:0; }
+.ch-top  { width:var(--thick); height:var(--len); left:calc(-1px); top:calc(-1px - var(--gap) - var(--len)); }
+.ch-bot  { width:var(--thick); height:var(--len); left:calc(-1px); top:calc(1px + var(--gap)); }
+.ch-left { height:var(--thick); width:var(--len); top:calc(-1px); left:calc(-1px - var(--gap) - var(--len)); }
+.ch-right{ height:var(--thick); width:var(--len); top:calc(-1px); left:calc(1px + var(--gap)); }
 
-/* Health */
+/* ── Bottom-left HUD panel ─────────────────────────── */
 #health-container {
-  position:absolute; bottom:28px; left:28px;
+  position:absolute; bottom:22px; left:22px;
+  display:flex; flex-direction:column; gap:8px;
+  background:rgba(0,0,0,0.48);
+  border:1px solid rgba(255,255,255,0.10);
+  border-radius:10px;
+  backdrop-filter:blur(5px);
+  padding:10px 14px;
+}
+.hud-panel-bg {
+  background:rgba(0,0,0,0.45);
+  border:1px solid rgba(255,255,255,0.10);
+  border-radius:8px;
+  backdrop-filter:blur(4px);
+  padding:8px 12px;
+}
+#health-row {
   display:flex; align-items:center; gap:10px;
 }
+.hud-icon {
+  font-size:14px; line-height:1; opacity:0.9;
+}
 #health-bar {
-  width:180px; height:13px;
-  background:rgba(0,0,0,0.55);
-  border:1px solid rgba(255,255,255,0.2);
-  border-radius:7px; overflow:hidden;
+  width:160px; height:11px;
+  background:rgba(255,255,255,0.10);
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:6px; overflow:hidden;
 }
 #health-fill {
   height:100%; width:100%;
-  background:#2ecc71; border-radius:7px;
+  background:#2ecc71; border-radius:6px;
   transition: width .2s ease, background .3s ease;
+  box-shadow:0 0 6px currentColor;
 }
-#health-text { color:#fff; font-size:13px; text-shadow:1px 1px 3px #000; min-width:28px; }
+#health-text {
+  color:#fff; font-size:13px;
+  text-shadow:1px 1px 3px #000;
+  min-width:26px; text-align:right;
+}
 
-/* Ammo + Gun name */
+/* Potion effect bar */
+#effect-bar-container {
+  display:flex; align-items:center; gap:8px;
+}
+#effect-icon { font-size:16px; line-height:1; }
+#effect-bar-wrap {
+  width:130px; height:8px;
+  background:rgba(255,255,255,0.10);
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:4px; overflow:hidden;
+}
+#effect-bar-fill {
+  height:100%; width:100%;
+  border-radius:4px;
+  transition:width 0.1s linear;
+}
+#effect-timer {
+  color:#fff; font-size:11px; min-width:34px;
+  text-shadow:1px 1px 3px #000;
+}
+
+/* ── Bottom-right ammo panel ───────────────────────── */
+#ammo-panel {
+  position:absolute; bottom:22px; right:22px;
+  background:rgba(0,0,0,0.45);
+  border:1px solid rgba(255,255,255,0.10);
+  border-radius:8px;
+  backdrop-filter:blur(4px);
+  padding:10px 16px;
+  display:flex; flex-direction:column; align-items:flex-end; gap:4px;
+}
 #ammo-display {
-  position:absolute; bottom:46px; right:28px;
-  color:#fff; font-size:22px; letter-spacing:3px;
+  color:#fff; font-size:24px; letter-spacing:3px;
   text-shadow:1px 1px 5px #000;
 }
 #gun-name {
-  position:absolute; bottom:26px; right:28px;
-  color:#f1c40f; font-size:13px; letter-spacing:4px;
+  color:#f1c40f; font-size:11px; letter-spacing:5px;
   text-shadow:1px 1px 4px #000;
+}
+
+/* ── Top-left level/enemy panel ────────────────────── */
+#top-left-hud {
+  position:absolute; top:16px; left:16px;
+  background:rgba(0,0,0,0.45);
+  border:1px solid rgba(255,255,255,0.10);
+  border-radius:8px;
+  backdrop-filter:blur(4px);
+  padding:8px 14px;
+  display:flex; flex-direction:column; gap:4px;
+}
+#level-display {
+  color:#88ccff; font-size:14px; letter-spacing:4px;
+  text-shadow:0 0 8px rgba(136,204,255,0.5);
+}
+#enemy-count {
+  color:#ff8888; font-size:11px; letter-spacing:3px;
+  text-shadow:1px 1px 3px #000;
 }
 
 /* PVP toggle button */
@@ -90,29 +178,15 @@ body {
 
 /* Kill count */
 #kill-count {
-  position:absolute; top:46px; left:50%;
+  position:absolute; top:50px; left:50%;
   transform:translateX(-50%);
-  color:#f1c40f; font-size:15px; letter-spacing:4px;
+  color:#f1c40f; font-size:14px; letter-spacing:4px;
   text-shadow:1px 1px 4px #000;
-}
-
-/* Level display */
-#level-display {
-  position:absolute; top:18px; left:22px;
-  color:#88ccff; font-size:15px; letter-spacing:4px;
-  text-shadow:1px 1px 4px #000;
-}
-
-/* Enemy count */
-#enemy-count {
-  position:absolute; top:40px; left:22px;
-  color:#ff6666; font-size:12px; letter-spacing:3px;
-  text-shadow:1px 1px 3px #000;
 }
 
 /* Bucks HUD */
 #hud-bucks {
-  position:absolute; top:18px; right:18px;
+  position:absolute; top:16px; right:16px;
   color:#ffd700; font-size:13px; letter-spacing:3px;
   text-shadow:1px 1px 4px #000;
   display:flex; align-items:center;
@@ -120,155 +194,304 @@ body {
 
 /* Kill feed */
 #kill-feed {
-  position:absolute; top:50px; right:18px;
-  text-align:right; max-width:270px;
+  position:absolute; top:72px; right:16px;
+  text-align:right; max-width:280px;
 }
 .kill-entry {
-  color:#e74c3c; font-size:13px;
-  text-shadow:1px 1px 3px #000;
-  margin-bottom:5px;
-  animation: kfFade 3s ease-out forwards;
+  color:#ff6b6b; font-size:12px;
+  text-shadow:1px 1px 4px #000;
+  background:rgba(0,0,0,0.35);
+  border-left:2px solid #e74c3c;
+  padding:2px 8px 2px 6px;
+  border-radius:0 4px 4px 0;
+  margin-bottom:4px;
+  animation: kfFade 3.5s ease-out forwards;
 }
-@keyframes kfFade { 0%,65%{opacity:1} 100%{opacity:0} }
+@keyframes kfFade { 0%,60%{opacity:1} 100%{opacity:0} }
 
-/* ── START screen ────────────────────────────────────── */
+/* ── Controls hint bar ─────────────────────────────── */
+#controls-hint {
+  position:absolute; bottom:22px; left:50%;
+  transform:translateX(-50%);
+  display:flex; gap:18px; align-items:center;
+  background:rgba(0,0,0,0.50);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:8px; padding:7px 18px;
+  font-size:11px; color:rgba(255,255,255,0.5);
+  letter-spacing:2px;
+  opacity:1; transition:opacity 1.2s ease;
+  white-space:nowrap;
+  backdrop-filter:blur(4px);
+}
+#controls-hint.fade-out { opacity:0; pointer-events:none; }
+#controls-hint kbd {
+  background:rgba(255,255,255,0.10);
+  border:1px solid rgba(255,255,255,0.22);
+  border-radius:3px; padding:1px 5px;
+  font-family:inherit; color:rgba(255,255,255,0.75);
+  font-size:10px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   START SCREEN — fully redesigned
+   ═══════════════════════════════════════════════════════ */
 #start-screen {
   position:fixed; inset:0;
-  background:radial-gradient(ellipse at center, #180808 0%, #000 70%);
-  display:flex; flex-direction:column;
-  align-items:center; justify-content:center;
-  z-index:100; gap:8px; padding:20px;
+  background:#05050f;
+  display:flex; align-items:center; justify-content:center;
+  z-index:100;
   overflow-y:auto;
+  padding:16px;
 }
 
-#start-screen h1 {
-  font-size:60px; color:#fff;
-  letter-spacing:8px; text-transform:uppercase; line-height:1;
+/* Animated grid background */
+.ss-bg-grid {
+  position:absolute; inset:0; pointer-events:none;
+  background-image:
+    linear-gradient(rgba(231,76,60,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(231,76,60,0.06) 1px, transparent 1px);
+  background-size:44px 44px;
+  mask-image:radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+  animation:gridScroll 18s linear infinite;
 }
-#start-screen h1 span {
+@keyframes gridScroll {
+  0%   { background-position:0 0; }
+  100% { background-position:44px 44px; }
+}
+
+/* ── Inner card ─────────────────────────────────────── */
+.ss-inner {
+  position:relative; z-index:1;
+  width:100%; max-width:860px;
+  background:rgba(8,8,18,0.82);
+  border:1px solid rgba(231,76,60,0.22);
+  border-radius:16px;
+  backdrop-filter:blur(12px);
+  box-shadow:0 0 60px rgba(231,76,60,0.10), 0 24px 80px rgba(0,0,0,0.6);
+  padding:28px 32px;
+  display:flex; flex-direction:column; gap:22px;
+}
+
+/* ── Header ─────────────────────────────────────────── */
+.ss-header {
+  text-align:center;
+  border-bottom:1px solid rgba(255,255,255,0.07);
+  padding-bottom:18px;
+}
+.ss-logo {
+  font-size:52px; font-weight:900; letter-spacing:10px;
+  color:#fff; line-height:1;
+  text-shadow:0 0 40px rgba(255,255,255,0.08);
+}
+.ss-logo span {
   color:#e74c3c;
-  text-shadow:0 0 18px #e74c3c, 0 0 40px rgba(231,76,60,.4);
+  text-shadow:0 0 20px rgba(231,76,60,0.7), 0 0 50px rgba(231,76,60,0.3);
+  animation:logoPulse 3s ease-in-out infinite;
 }
-#start-screen .subtitle {
-  color:#555; font-size:12px; letter-spacing:7px; margin-bottom:12px;
+@keyframes logoPulse {
+  0%,100% { text-shadow:0 0 20px rgba(231,76,60,0.7), 0 0 50px rgba(231,76,60,0.3); }
+  50%     { text-shadow:0 0 30px rgba(231,76,60,1.0), 0 0 70px rgba(231,76,60,0.5); }
+}
+.ss-tagline {
+  margin-top:6px; font-size:11px; letter-spacing:6px;
+  color:rgba(255,255,255,0.28); text-transform:uppercase;
 }
 
-/* Gun selector */
-.selector-label {
-  color:#888; font-size:11px; letter-spacing:5px; margin-bottom:10px;
+/* ── Body row ───────────────────────────────────────── */
+.ss-body {
+  display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap;
 }
+.ss-section { display:flex; flex-direction:column; gap:10px; }
+.ss-section-label {
+  font-size:10px; letter-spacing:5px; color:rgba(255,255,255,0.35);
+  text-transform:uppercase;
+}
+
+/* ── Gun cards ──────────────────────────────────────── */
 .gun-cards {
-  display:flex; gap:14px; margin-bottom:14px; flex-wrap:wrap; justify-content:center;
+  display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-start;
 }
 .gun-card {
-  width:140px; padding:14px 12px;
-  border:1px solid rgba(255,255,255,0.12);
-  border-radius:6px; cursor:pointer;
-  background:rgba(255,255,255,0.04);
-  transition:border-color .15s, background .15s, transform .15s;
-  display:flex; flex-direction:column; align-items:center; gap:8px;
+  width:130px; padding:12px 10px 14px;
+  border:1px solid rgba(255,255,255,0.09);
+  border-radius:10px; cursor:pointer;
+  background:rgba(255,255,255,0.03);
+  transition:border-color .2s, background .2s, transform .18s, box-shadow .2s;
+  display:flex; flex-direction:column; align-items:center; gap:7px;
+  position:relative; overflow:hidden;
 }
-.gun-card:hover {
-  border-color:rgba(231,76,60,.6);
-  background:rgba(231,76,60,.08);
-  transform:translateY(-2px);
+.gun-card::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(135deg,rgba(231,76,60,0.06),transparent 60%);
+  opacity:0; transition:opacity .2s;
 }
+.gun-card:hover { border-color:rgba(231,76,60,0.5); transform:translateY(-3px); box-shadow:0 8px 24px rgba(231,76,60,0.12); }
+.gun-card:hover::after { opacity:1; }
+.gun-card:active { transform:translateY(-1px) scale(0.98); }
 .gun-card.active {
   border-color:#e74c3c;
-  background:rgba(231,76,60,.14);
-  box-shadow:0 0 16px rgba(231,76,60,.3);
+  background:rgba(231,76,60,0.10);
+  box-shadow:0 0 0 1px rgba(231,76,60,0.3), 0 8px 28px rgba(231,76,60,0.2);
 }
+.gun-card.active::after { opacity:1; }
+.gun-card-badge {
+  font-size:8px; letter-spacing:3px; color:rgba(255,255,255,0.3);
+  text-transform:uppercase; align-self:flex-start;
+}
+.gun-card.active .gun-card-badge { color:rgba(231,76,60,0.7); }
 .gun-card-name {
-  color:#fff; font-size:13px; letter-spacing:3px; font-weight:bold;
+  color:#fff; font-size:13px; letter-spacing:3px; font-weight:700;
 }
 
-/* Simple CSS gun silhouettes */
-.gun-card-art { height:36px; display:flex; align-items:center; justify-content:center; }
+/* CSS gun silhouettes — same shapes, slightly brighter on active */
+.gun-card-art { height:38px; display:flex; align-items:center; justify-content:center; }
 .gfx-pistol, .gfx-smg, .gfx-minigun, .gfx-sniper {
-  background:#555; border-radius:2px; position:relative;
+  background:rgba(255,255,255,0.25); border-radius:2px; position:relative;
+  transition:background .2s;
 }
-.gfx-pistol  { width:50px; height:8px; }
-.gfx-pistol::after  { content:''; position:absolute; width:10px; height:14px; background:#555; bottom:-14px; right:10px; border-radius:0 0 3px 3px; }
-.gfx-smg     { width:72px; height:9px; }
-.gfx-smg::before { content:''; position:absolute; width:8px; height:16px; background:#555; bottom:-16px; left:22px; border-radius:0 0 2px 2px; }
-.gfx-smg::after  { content:''; position:absolute; width:24px; height:6px; background:#444; top:-6px; left:0; border-radius:2px 2px 0 0; }
-.gfx-minigun { width:80px; height:14px; border-radius:4px; }
-.gfx-minigun::before { content:''; position:absolute; width:36px; height:5px; background:#444; top:-5px; left:0; border-radius:2px; }
-.gfx-minigun::after  { content:''; position:absolute; width:36px; height:5px; background:#444; bottom:-5px; left:0; border-radius:2px; }
+.gun-card.active .gfx-pistol,
+.gun-card.active .gfx-smg,
+.gun-card.active .gfx-minigun,
+.gun-card.active .gfx-sniper  { background:rgba(231,76,60,0.8); }
 
+.gfx-pistol  { width:50px; height:8px; }
+.gfx-pistol::after  { content:''; position:absolute; width:10px; height:14px; background:inherit; bottom:-14px; right:10px; border-radius:0 0 3px 3px; }
+.gfx-smg     { width:72px; height:9px; }
+.gfx-smg::before { content:''; position:absolute; width:8px; height:16px; background:inherit; bottom:-16px; left:22px; border-radius:0 0 2px 2px; }
+.gfx-smg::after  { content:''; position:absolute; width:24px; height:6px; background:rgba(255,255,255,0.15); top:-6px; left:0; border-radius:2px 2px 0 0; }
+.gfx-minigun { width:80px; height:14px; border-radius:4px; }
+.gfx-minigun::before { content:''; position:absolute; width:36px; height:5px; background:rgba(255,255,255,0.15); top:-5px; left:0; border-radius:2px; }
+.gfx-minigun::after  { content:''; position:absolute; width:36px; height:5px; background:rgba(255,255,255,0.15); bottom:-5px; left:0; border-radius:2px; }
 .gfx-sniper  { width:96px; height:6px; border-radius:1px; }
-/* scope on top */
-.gfx-sniper::before { content:''; position:absolute; width:30px; height:10px; background:#444; top:-10px; left:18px; border-radius:3px; }
-/* grip below */
-.gfx-sniper::after  { content:''; position:absolute; width:9px; height:13px; background:#555; bottom:-13px; right:26px; border-radius:0 0 3px 2px; }
+.gfx-sniper::before { content:''; position:absolute; width:30px; height:10px; background:rgba(255,255,255,0.15); top:-10px; left:18px; border-radius:3px; }
+.gfx-sniper::after  { content:''; position:absolute; width:9px; height:13px; background:inherit; bottom:-13px; right:26px; border-radius:0 0 3px 2px; }
 
 /* Stat bars */
-.gun-card-stats { width:100%; font-size:11px; color:#888; display:flex; flex-direction:column; gap:4px; }
+.gun-card-stats { width:100%; font-size:10px; color:#666; display:flex; flex-direction:column; gap:5px; }
 .gun-card-stats > div { display:flex; align-items:center; gap:6px; }
-.stat-l { width:28px; color:#aaa; flex-shrink:0; }
+.stat-l { width:26px; color:rgba(255,255,255,0.4); flex-shrink:0; letter-spacing:1px; }
 .stat-r { color:#fff; margin-left:auto; }
-.bars { display:flex; gap:2px; }
-.bars::before { content:''; display:block; }
-
-/* Dot bars via JS-free approach using shadows */
-.bars { height:8px; display:flex; gap:3px; }
+.bars { height:6px; display:flex; gap:3px; }
 .bars::before, .bars::after { content:none; }
 .b1::before, .b2::before, .b3::before, .b4::before, .b5::before { content:''; }
+.b1 { width:4px; height:6px; background:#e74c3c; border-radius:1px; box-shadow:7px 0 0 rgba(255,255,255,.12), 14px 0 0 rgba(255,255,255,.12), 21px 0 0 rgba(255,255,255,.12), 28px 0 0 rgba(255,255,255,.12); }
+.b2 { width:4px; height:6px; background:#e74c3c; border-radius:1px; box-shadow:7px 0 0 #e74c3c, 14px 0 0 rgba(255,255,255,.12), 21px 0 0 rgba(255,255,255,.12), 28px 0 0 rgba(255,255,255,.12); }
+.b3 { width:4px; height:6px; background:#e74c3c; border-radius:1px; box-shadow:7px 0 0 #e74c3c, 14px 0 0 #e74c3c, 21px 0 0 rgba(255,255,255,.12), 28px 0 0 rgba(255,255,255,.12); }
+.b4 { width:4px; height:6px; background:#e74c3c; border-radius:1px; box-shadow:7px 0 0 #e74c3c, 14px 0 0 #e74c3c, 21px 0 0 #e74c3c, 28px 0 0 rgba(255,255,255,.12); }
+.b5 { width:4px; height:6px; background:#e74c3c; border-radius:1px; box-shadow:7px 0 0 #e74c3c, 14px 0 0 #e74c3c, 21px 0 0 #e74c3c, 28px 0 0 #e74c3c; }
 
-/* Use outline for empty dots, filled for active — implemented via multiple box-shadows */
-.b1 { width:5px; height:8px; background:#e74c3c; border-radius:1px; box-shadow:8px 0 0 rgba(255,255,255,.15), 16px 0 0 rgba(255,255,255,.15), 24px 0 0 rgba(255,255,255,.15), 32px 0 0 rgba(255,255,255,.15); }
-.b2 { width:5px; height:8px; background:#e74c3c; border-radius:1px; box-shadow:8px 0 0 #e74c3c, 16px 0 0 rgba(255,255,255,.15), 24px 0 0 rgba(255,255,255,.15), 32px 0 0 rgba(255,255,255,.15); }
-.b3 { width:5px; height:8px; background:#e74c3c; border-radius:1px; box-shadow:8px 0 0 #e74c3c, 16px 0 0 #e74c3c, 24px 0 0 rgba(255,255,255,.15), 32px 0 0 rgba(255,255,255,.15); }
-.b4 { width:5px; height:8px; background:#e74c3c; border-radius:1px; box-shadow:8px 0 0 #e74c3c, 16px 0 0 #e74c3c, 24px 0 0 #e74c3c, 32px 0 0 rgba(255,255,255,.15); }
-.b5 { width:5px; height:8px; background:#e74c3c; border-radius:1px; box-shadow:8px 0 0 #e74c3c, 16px 0 0 #e74c3c, 24px 0 0 #e74c3c, 32px 0 0 #e74c3c; }
-
-/* Controls list */
-.controls-list {
-  list-style:none; color:#666; font-size:12px;
-  line-height:2.2; text-align:center; margin-bottom:20px;
-}
-.controls-list kbd {
-  background:rgba(255,255,255,.07);
-  border:1px solid rgba(255,255,255,.16);
-  border-radius:4px; padding:1px 7px;
-  font-family:inherit; color:#ccc; font-size:11px;
+/* ── Right side panel ───────────────────────────────── */
+.ss-side {
+  display:flex; flex-direction:column; gap:18px;
+  flex:1; min-width:200px;
 }
 
+/* Mode pill group */
+.mode-pill-group {
+  display:flex; gap:0; background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.10);
+  border-radius:8px; overflow:hidden;
+}
+.mode-pill {
+  flex:1; padding:9px 0; font-size:10px; letter-spacing:3px;
+  font-family:'Courier New',monospace;
+  background:transparent; color:rgba(255,255,255,0.35);
+  border:none; cursor:pointer;
+  transition:background .18s, color .18s;
+}
+.mode-pill:not(:last-child) { border-right:1px solid rgba(255,255,255,0.08); }
+.mode-pill:hover  { background:rgba(231,76,60,0.10); color:rgba(255,255,255,0.7); }
+.mode-pill.active { background:rgba(231,76,60,0.22); color:#fff; }
+
+/* Controls grid */
+.controls-grid {
+  display:grid; grid-template-columns:auto 1fr; gap:5px 12px;
+  align-items:center;
+}
+.cg-key {
+  font-size:9px; letter-spacing:2px;
+  background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.14);
+  border-radius:4px; padding:2px 7px;
+  color:rgba(255,255,255,0.7); white-space:nowrap;
+  justify-self:start;
+}
+.cg-val { font-size:10px; letter-spacing:1px; color:rgba(255,255,255,0.35); }
+
+/* ── Action area ────────────────────────────────────── */
+.ss-actions {
+  display:flex; flex-direction:column; align-items:center; gap:12px;
+  border-top:1px solid rgba(255,255,255,0.07);
+  padding-top:18px;
+}
+
+/* PLAY button */
 #play-button {
-  padding:13px 56px; font-size:17px;
+  display:flex; align-items:center; gap:12px;
+  padding:14px 64px; font-size:18px;
   font-family:'Courier New',monospace;
-  letter-spacing:5px; background:#e74c3c; color:#fff;
-  border:none; border-radius:3px; cursor:pointer;
-  transition:background .15s, transform .15s, box-shadow .15s;
-  box-shadow:0 0 22px rgba(231,76,60,.35);
+  letter-spacing:6px;
+  color:#fff; border:none; border-radius:10px; cursor:pointer;
+  background:linear-gradient(135deg, #c0392b 0%, #e74c3c 50%, #c0392b 100%);
+  background-size:200% 100%;
+  box-shadow:0 0 28px rgba(231,76,60,0.45), 0 4px 16px rgba(0,0,0,0.4);
+  transition:background-position .35s ease, transform .15s, box-shadow .2s;
+  position:relative; overflow:hidden;
 }
-#play-button:hover { background:#c0392b; transform:scale(1.06); box-shadow:0 0 32px rgba(231,76,60,.65); }
-#play-button:active { transform:scale(0.98); }
-
-#reset-button {
-  margin-top:10px;
-  padding:9px 32px; font-size:12px;
-  font-family:'Courier New',monospace;
-  letter-spacing:4px; background:transparent; color:#666;
-  border:1px solid #333; border-radius:3px; cursor:pointer;
-  transition:color .15s, border-color .15s;
+#play-button::before {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.12) 50%,transparent 100%);
+  transform:translateX(-100%); transition:transform 0.5s ease;
 }
-#reset-button:hover { color:#e74c3c; border-color:#e74c3c; }
-#reset-button:active { transform:scale(0.97); }
+#play-button:hover {
+  background-position:100% 0;
+  transform:translateY(-2px);
+  box-shadow:0 0 40px rgba(231,76,60,0.65), 0 8px 24px rgba(0,0,0,0.4);
+}
+#play-button:hover::before { transform:translateX(100%); }
+#play-button:active { transform:scale(0.97) translateY(0); }
+.play-icon { font-size:14px; opacity:0.85; }
 
-#main-menu-btn {
-  margin-top:8px;
-  padding:9px 32px; font-size:12px;
+/* Secondary buttons row */
+.ss-secondary-row {
+  display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
+}
+.ss-sec-btn {
+  padding:9px 20px; font-size:11px; letter-spacing:3px;
   font-family:'Courier New',monospace;
-  letter-spacing:4px; background:transparent; color:#4a4a6a;
-  border:1px solid #222238; border-radius:3px; cursor:pointer;
-  transition:color .15s, border-color .15s, background .15s;
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.14);
+  border-radius:8px; color:rgba(255,255,255,0.6); cursor:pointer;
+  transition:background .18s, border-color .18s, color .18s, transform .15s;
+}
+.ss-sec-btn:hover {
+  background:rgba(255,255,255,0.10);
+  border-color:rgba(255,255,255,0.30);
+  color:#fff; transform:translateY(-1px);
+}
+.ss-sec-btn:active { transform:scale(0.97); }
+
+/* Ghost (destructive/secondary) row */
+.ss-ghost-row {
+  display:flex; gap:12px; flex-wrap:wrap; justify-content:center;
+}
+.ss-ghost-btn, #reset-button, #main-menu-btn {
+  padding:7px 20px; font-size:10px; letter-spacing:3px;
+  font-family:'Courier New',monospace;
+  background:transparent; color:rgba(255,255,255,0.22);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:6px; cursor:pointer;
+  transition:color .18s, border-color .18s, background .18s;
+}
+.ss-ghost-btn:hover, #reset-button:hover {
+  color:#e74c3c; border-color:rgba(231,76,60,0.45);
+  background:rgba(231,76,60,0.06);
 }
 #main-menu-btn:hover {
-  color:#aaaacc; border-color:#555577;
+  color:rgba(255,255,255,0.6); border-color:rgba(255,255,255,0.22);
   background:rgba(255,255,255,0.04);
 }
-#main-menu-btn:active { transform:scale(0.97); }
+.ss-ghost-btn:active, #reset-button:active, #main-menu-btn:active { transform:scale(0.97); }
 
 /* ── Mobile touch controls ──────────────────────────────────── */
 #touch-controls {
@@ -420,19 +643,21 @@ body {
   }
   #health-bar { width: 130px; height: 11px; }
   #health-text { font-size: 11px; }
-  #ammo-display {
+  #ammo-panel {
     bottom: calc(220px + env(safe-area-inset-bottom, 56px));
-    right: 18px; font-size: 16px; letter-spacing: 2px;
+    right: 14px; padding: 8px 12px;
   }
-  #gun-name {
-    bottom: calc(200px + env(safe-area-inset-bottom, 56px));
-    right: 18px; font-size: 10px; letter-spacing: 2px;
-  }
+  #ammo-display { font-size: 16px; letter-spacing: 2px; }
+  #gun-name     { font-size: 10px; letter-spacing: 2px; }
 
-  /* Start screen — more compact on small screens */
-  #start-screen h1 { font-size: 36px; letter-spacing: 4px; }
-  .gun-card { width: 116px; padding: 10px 8px; }
-  .controls-list { display: none; }  /* keyboard hints not relevant on touch */
+  /* Start screen — stack body vertically on small screens */
+  .ss-logo { font-size: 36px; letter-spacing: 5px; }
+  .ss-body { flex-direction: column; }
+  .ss-side { min-width: unset; }
+  .gun-card { width: 112px; padding: 10px 8px; }
+  .gun-cards { justify-content: center; }
+  .ss-inner { padding: 18px 16px; }
+  .controls-grid { display: none; } /* keyboard hints not relevant on touch */
 }
 
 /* ── Sniper scope overlay ────────────────────────────────────── */
@@ -521,42 +746,7 @@ body {
 }
 .tdm-myteam { font-size:10px; letter-spacing:3px; margin-bottom:4px; }
 
-/* ── Mode selector ────────────────────────────────────────── */
-.mode-selector-row {
-  display:flex; align-items:center; gap:6px; margin:8px 0;
-  flex-wrap:wrap; justify-content:center;
-}
-.mode-btn {
-  padding:6px 14px; font-size:10px; letter-spacing:3px;
-  font-family:'Courier New',monospace;
-  background:transparent; color:#555;
-  border:1px solid #333; border-radius:3px; cursor:pointer;
-  transition:all .15s;
-}
-.mode-btn:hover { color:#aaa; border-color:#555; }
-.mode-btn.active {
-  color:#3b9ee8; border-color:#3b9ee8;
-  background:rgba(59,158,232,0.08);
-  text-shadow:0 0 6px #3b9ee8;
-}
-
-/* ── Start screen action rows ─────────────────────────────── */
-.start-action-row {
-  display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap; justify-content:center;
-}
-.start-action-row-2 {
-  display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap; justify-content:center;
-}
-#leaderboard-btn, #friends-btn, #my-profile-btn {
-  padding:10px 22px; font-size:12px;
-  font-family:'Courier New',monospace;
-  letter-spacing:3px; background:transparent; color:#888;
-  border:1px solid #444; border-radius:3px; cursor:pointer;
-  transition:all .15s;
-}
-#leaderboard-btn:hover { color:#ffd700; border-color:#ffd700; }
-#friends-btn:hover     { color:#22dd88; border-color:#22dd88; }
-#my-profile-btn:hover  { color:#88aaff; border-color:#88aaff; }
+/* ── Leaderboard / Friends / Profile buttons — handled by .ss-sec-btn */
 
 /* ── Leaderboard panel ────────────────────────────────────── */
 #leaderboard-panel {

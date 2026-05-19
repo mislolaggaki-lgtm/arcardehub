@@ -391,19 +391,45 @@
 
   <!-- HUD (shown during gameplay) -->
   <div id="hud">
-    <div id="crosshair"></div>
-    <button id="pvp-btn" title="Press P to toggle PVP">&#9876; PVP ON</button>
-    <div id="health-container">
-      <div id="health-bar"><div id="health-fill"></div></div>
-      <span id="health-text">100</span>
+    <div id="crosshair">
+      <div class="ch-dot"></div>
+      <div class="ch-top"></div>
+      <div class="ch-bot"></div>
+      <div class="ch-left"></div>
+      <div class="ch-right"></div>
     </div>
-    <div id="ammo-display">30 / 90</div>
-    <div id="gun-name">PISTOL</div>
+    <button id="pvp-btn" title="Press P to toggle PVP">&#9876; PVP ON</button>
+    <div id="health-container" class="hud-panel-bg">
+      <div id="health-row">
+        <span class="hud-icon">&#10084;</span>
+        <div id="health-bar"><div id="health-fill"></div></div>
+        <span id="health-text">100</span>
+      </div>
+      <div id="effect-bar-container" style="display:none">
+        <div id="effect-icon"></div>
+        <div id="effect-bar-wrap"><div id="effect-bar-fill"></div></div>
+        <span id="effect-timer">0.0s</span>
+      </div>
+    </div>
+    <div id="ammo-panel">
+      <div id="ammo-display">30 / 90</div>
+      <div id="gun-name">PISTOL</div>
+    </div>
+    <div id="top-left-hud">
+      <div id="level-display">LVL 1</div>
+      <div id="enemy-count">ENEMIES: 0/0</div>
+    </div>
     <div id="kill-count">KILLS: 0</div>
     <div id="rank-display">BRONZE</div>
     <div id="mode-display">SOLO</div>
-    <div id="level-display">LVL 1</div>
-    <div id="enemy-count">ENEMIES: 0/0</div>
+    <div id="controls-hint">
+      <span><kbd>WASD</kbd> Move</span>
+      <span><kbd>Space</kbd> Jump</span>
+      <span><kbd>R</kbd> Reload</span>
+      <span><kbd>C</kbd> Crouch</span>
+      <span><kbd>T</kbd> Pause</span>
+      <span><kbd>B</kbd> Emotes</span>
+    </div>
     <div id="ffa-scoreboard" style="display:none"></div>
     <div id="tdm-scoreboard" style="display:none"></div>
     <div id="hud-bucks">
@@ -416,85 +442,114 @@
 
   <!-- START / GUN SELECT screen -->
   <div id="start-screen">
-    <h1>ARCADE<span>HUB</span></h1>
-    <p class="subtitle">FPS ARENA</p>
+    <div class="ss-bg-grid"></div>
 
-    <p class="selector-label">SELECT WEAPON</p>
-    <div class="gun-cards">
+    <div class="ss-inner">
 
-      <div class="gun-card active" data-gun="pistol">
-        <div class="gun-card-name">PISTOL</div>
-        <div class="gun-card-art">
-          <div class="gfx-pistol"></div>
+      <!-- Header -->
+      <div class="ss-header">
+        <div class="ss-logo">ARCADE<span>HUB</span></div>
+        <div class="ss-tagline">FPS &nbsp;·&nbsp; ARENA &nbsp;·&nbsp; v1.6</div>
+      </div>
+
+      <!-- Main content row: weapon selector + side panel -->
+      <div class="ss-body">
+
+        <!-- Weapon selector -->
+        <div class="ss-section">
+          <div class="ss-section-label">&#9654; SELECT WEAPON</div>
+          <div class="gun-cards">
+
+            <div class="gun-card active" data-gun="pistol">
+              <div class="gun-card-badge">SIDEARM</div>
+              <div class="gun-card-name">PISTOL</div>
+              <div class="gun-card-art"><div class="gfx-pistol"></div></div>
+              <div class="gun-card-stats">
+                <div><span class="stat-l">DMG</span><span class="bars b2"></span></div>
+                <div><span class="stat-l">RPM</span><span class="bars b1"></span></div>
+                <div><span class="stat-l">MAG</span><span class="stat-r">12</span></div>
+              </div>
+            </div>
+
+            <div class="gun-card" data-gun="smg">
+              <div class="gun-card-badge">AUTO</div>
+              <div class="gun-card-name">SMG</div>
+              <div class="gun-card-art"><div class="gfx-smg"></div></div>
+              <div class="gun-card-stats">
+                <div><span class="stat-l">DMG</span><span class="bars b2"></span></div>
+                <div><span class="stat-l">RPM</span><span class="bars b4"></span></div>
+                <div><span class="stat-l">MAG</span><span class="stat-r">30</span></div>
+              </div>
+            </div>
+
+            <div class="gun-card" data-gun="minigun">
+              <div class="gun-card-badge">HEAVY</div>
+              <div class="gun-card-name">MINIGUN</div>
+              <div class="gun-card-art"><div class="gfx-minigun"></div></div>
+              <div class="gun-card-stats">
+                <div><span class="stat-l">DMG</span><span class="bars b3"></span></div>
+                <div><span class="stat-l">RPM</span><span class="bars b5"></span></div>
+                <div><span class="stat-l">MAG</span><span class="stat-r">100</span></div>
+              </div>
+            </div>
+
+            <div class="gun-card" data-gun="sniper">
+              <div class="gun-card-badge">PRECISION</div>
+              <div class="gun-card-name">SNIPER</div>
+              <div class="gun-card-art"><div class="gfx-sniper"></div></div>
+              <div class="gun-card-stats">
+                <div><span class="stat-l">DMG</span><span class="bars b5"></span></div>
+                <div><span class="stat-l">RPM</span><span class="bars b1"></span></div>
+                <div><span class="stat-l">MAG</span><span class="stat-r">1</span></div>
+              </div>
+            </div>
+
+          </div>
         </div>
-        <div class="gun-card-stats">
-          <div><span class="stat-l">DMG</span><span class="bars b2"></span></div>
-          <div><span class="stat-l">RPM</span><span class="bars b1"></span></div>
-          <div><span class="stat-l">MAG</span><span class="stat-r">12</span></div>
+
+        <!-- Right column: mode + controls -->
+        <div class="ss-side">
+
+          <div class="ss-section">
+            <div class="ss-section-label">&#9654; GAME MODE</div>
+            <div class="mode-pill-group">
+              <button class="mode-pill active" id="mode-btn-solo"  onclick="setModeBtn('solo')">SOLO</button>
+              <button class="mode-pill"        id="mode-btn-ffa"   onclick="setModeBtn('ffa')">FFA</button>
+              <button class="mode-pill"        id="mode-btn-tdm"   onclick="setModeBtn('tdm')">TDM</button>
+            </div>
+          </div>
+
+          <div class="ss-section">
+            <div class="ss-section-label">&#9654; CONTROLS</div>
+            <div class="controls-grid">
+              <span class="cg-key">WASD</span><span class="cg-val">Move</span>
+              <span class="cg-key">SPACE</span><span class="cg-val">Jump</span>
+              <span class="cg-key">MOUSE</span><span class="cg-val">Aim</span>
+              <span class="cg-key">LMB</span><span class="cg-val">Shoot / Scope</span>
+              <span class="cg-key">R</span><span class="cg-val">Reload</span>
+              <span class="cg-key">C</span><span class="cg-val">Crouch</span>
+              <span class="cg-key">T</span><span class="cg-val">Pause</span>
+              <span class="cg-key">B</span><span class="cg-val">Emotes</span>
+            </div>
+          </div>
+
         </div>
       </div>
 
-      <div class="gun-card" data-gun="smg">
-        <div class="gun-card-name">SMG</div>
-        <div class="gun-card-art">
-          <div class="gfx-smg"></div>
+      <!-- Action buttons -->
+      <div class="ss-actions">
+        <button id="play-button"><span class="play-icon">&#9654;</span> PLAY</button>
+        <div class="ss-secondary-row">
+          <button class="ss-sec-btn" id="leaderboard-btn" onclick="toggleLeaderboard()">&#127942; LEADERBOARD</button>
+          <button class="ss-sec-btn" id="friends-btn"     onclick="toggleFriendsPanel()">&#128101; FRIENDS</button>
+          <button class="ss-sec-btn" id="my-profile-btn"  onclick="showProfileModal(localStorage.getItem('ah_username'))">&#128100; PROFILE</button>
         </div>
-        <div class="gun-card-stats">
-          <div><span class="stat-l">DMG</span><span class="bars b2"></span></div>
-          <div><span class="stat-l">RPM</span><span class="bars b4"></span></div>
-          <div><span class="stat-l">MAG</span><span class="stat-r">30</span></div>
-        </div>
-      </div>
-
-      <div class="gun-card" data-gun="minigun">
-        <div class="gun-card-name">MINIGUN</div>
-        <div class="gun-card-art">
-          <div class="gfx-minigun"></div>
-        </div>
-        <div class="gun-card-stats">
-          <div><span class="stat-l">DMG</span><span class="bars b3"></span></div>
-          <div><span class="stat-l">RPM</span><span class="bars b5"></span></div>
-          <div><span class="stat-l">MAG</span><span class="stat-r">100</span></div>
+        <div class="ss-ghost-row">
+          <button class="ss-ghost-btn" id="main-menu-btn">&#8962; MAIN MENU</button>
+          <button class="ss-ghost-btn" id="reset-button">&#8635; RESET</button>
         </div>
       </div>
 
-      <div class="gun-card" data-gun="sniper">
-        <div class="gun-card-name">SNIPER</div>
-        <div class="gun-card-art">
-          <div class="gfx-sniper"></div>
-        </div>
-        <div class="gun-card-stats">
-          <div><span class="stat-l">DMG</span><span class="bars b5"></span></div>
-          <div><span class="stat-l">RPM</span><span class="bars b1"></span></div>
-          <div><span class="stat-l">MAG</span><span class="stat-r">1</span></div>
-        </div>
-      </div>
-
-    </div>
-
-    <ul class="controls-list">
-      <li><kbd>W A S D</kbd> Move &nbsp;|&nbsp; <kbd>Space</kbd> Jump</li>
-      <li><kbd>Mouse</kbd> Look &nbsp;|&nbsp; <kbd>LClick</kbd> Shoot &nbsp;|&nbsp; <kbd>Hold LClick</kbd> Scope (sniper) &nbsp;|&nbsp; <kbd>R</kbd> Reload</li>
-      <li><kbd>T</kbd> Pause / switch weapon &nbsp;|&nbsp; <kbd>P</kbd> Toggle PVP</li>
-    </ul>
-
-    <!-- Game mode selector -->
-    <div class="mode-selector-row">
-      <span class="selector-label" style="margin:0 10px 0 0">MODE</span>
-      <button class="mode-btn active" id="mode-btn-solo"  onclick="setModeBtn('solo')">SOLO</button>
-      <button class="mode-btn"        id="mode-btn-ffa"   onclick="setModeBtn('ffa')">FREE FOR ALL</button>
-      <button class="mode-btn"        id="mode-btn-tdm"   onclick="setModeBtn('tdm')">TEAM DEATHMATCH</button>
-    </div>
-
-    <div class="start-action-row">
-      <button id="play-button">&#9654;&nbsp;&nbsp;PLAY</button>
-      <button id="leaderboard-btn" onclick="toggleLeaderboard()">&#127942;&nbsp;LEADERBOARD</button>
-      <button id="friends-btn" onclick="toggleFriendsPanel()">&#128101;&nbsp;FRIENDS</button>
-    </div>
-    <div class="start-action-row-2">
-      <button id="reset-button">&#8635;&nbsp;&nbsp;RESET PROGRESS</button>
-      <button id="main-menu-btn">&#8962;&nbsp;&nbsp;MAIN MENU</button>
-      <button id="my-profile-btn" onclick="showProfileModal(localStorage.getItem('ah_username'))">&#128100;&nbsp;MY PROFILE</button>
     </div>
   </div>
 
