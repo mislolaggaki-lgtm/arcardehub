@@ -271,6 +271,14 @@ const accentLights = [
   mkPt(0xff9900, 1.8, 34, -15, 4,  15),
 ];
 
+// ─── Effect arrays (declared early so arena-build code can populate them) ──
+const bulletTracers    = [];  // { line, age, maxAge }
+const robotDebrisParts = [];  // flying robot parts after death explosion
+const botEnergyPulses  = [];  // energy projectiles from bot arms
+const jumpParticles    = [];  // jet-boost particles under player feet
+const _flickerLights   = [];  // ceiling lights that randomly flicker
+const _dustBeamParts   = [];  // floating dust motes near ceiling lights
+
 // ─── Shared materials (PBR) ──────────────────────────────────
 const GLOVE  = new THREE.MeshStandardMaterial({ color:0x1e2814, roughness:0.88, metalness:0.05 });
 const M_DARK = new THREE.MeshStandardMaterial({ color:0x181818, roughness:0.38, metalness:0.80 });
@@ -654,9 +662,23 @@ TRIM_H.forEach(ty => {
 // Ceiling light fixtures + point lights (spread over larger arena)
 [[-20,-20],[20,-20],[-20,20],[20,20],[0,0],
  [0,-30],[0,30],[-30,0],[30,0],
- [-10,-10],[10,-10],[-10,10],[10,10]].forEach(([lx,lz])=>{
+ [-10,-10],[10,-10],[-10,10],[10,10]].forEach(([lx,lz], idx)=>{
   addBox(4,.09,.3, lx,WH-.04,lz, ARENA_M.clight,false,false);
   const pl=new THREE.PointLight(0xaaccff,1.4,28); pl.position.set(lx,WH-.8,lz); scene.add(pl);
+  // Every 3rd light flickers
+  if(idx % 3 === 1){
+    _flickerLights.push({ light:pl, baseI:1.4, timer:Math.random()*4, interval:3+Math.random()*5, flickering:false, offDur:0 });
+  }
+  // 4 slow dust motes per fixture
+  for(let d=0;d<4;d++){
+    const mesh=new THREE.Mesh(
+      new THREE.SphereGeometry(0.016+Math.random()*0.016,3,3),
+      new THREE.MeshBasicMaterial({color:0xeeeedd,transparent:true,opacity:0.26+Math.random()*0.14})
+    );
+    mesh.position.set(lx+(Math.random()-0.5)*4, WH-1.2-Math.random()*2.6, lz+(Math.random()-0.5)*4);
+    scene.add(mesh);
+    _dustBeamParts.push({mesh, lx, lz, phase:Math.random()*Math.PI*2, vy:0.028+Math.random()*0.04, vx:(Math.random()-0.5)*0.05, vz:(Math.random()-0.5)*0.05});
+  }
 });
 
 // Neon floor-edge strips along all 4 walls
@@ -987,8 +1009,8 @@ function buildPistol(root) {
   const rdDot = new THREE.Mesh(new THREE.SphereGeometry(.006,6,5), new THREE.MeshBasicMaterial({color:0xff0000}));
   rdDot.position.set(0,.074,-.18); root.add(rdDot);
 
-  // Muzzle flash
-  const flash = new THREE.Mesh(new THREE.SphereGeometry(.048,7,6), M_YELO);
+  // Muzzle flash — pistol: bright yellow
+  const flash = new THREE.Mesh(new THREE.SphereGeometry(.048,7,6), new THREE.MeshBasicMaterial({color:0xffee22}));
   flash.position.set(0,.02,-.32); flash.visible=false; root.add(flash);
   root.userData.flash = flash;
 
@@ -1042,7 +1064,8 @@ function buildSMG(root) {
   const holoDot = new THREE.Mesh(new THREE.SphereGeometry(.005,6,5), new THREE.MeshBasicMaterial({color:0xff0000}));
   holoDot.position.set(0,.104,-.252); root.add(holoDot);
 
-  const flash = new THREE.Mesh(new THREE.SphereGeometry(.052,7,6), M_YELO);
+  // Muzzle flash — SMG: deep orange
+  const flash = new THREE.Mesh(new THREE.SphereGeometry(.052,7,6), new THREE.MeshBasicMaterial({color:0xff6600}));
   flash.position.set(0,.062,-.43); flash.visible=false; root.add(flash);
   root.userData.flash = flash;
 
@@ -1111,7 +1134,8 @@ function buildMinigun(root) {
   const laserDot = new THREE.Mesh(new THREE.SphereGeometry(.010,6,5), new THREE.MeshBasicMaterial({color:0x00ff44}));
   laserDot.position.set(.11,.09,-.08); root.add(laserDot);
 
-  const flash = new THREE.Mesh(new THREE.SphereGeometry(.08,7,6), M_YELO);
+  // Muzzle flash — minigun: electric blue
+  const flash = new THREE.Mesh(new THREE.SphereGeometry(.08,7,6), new THREE.MeshBasicMaterial({color:0x44aaff}));
   flash.position.set(0,.06,-.38); flash.visible=false; root.add(flash);
   root.userData.flash = flash;
 
@@ -1192,7 +1216,8 @@ function buildSniper(root) {
   const bipR = new THREE.Mesh(new THREE.BoxGeometry(.006, .006, .10), M_LITE);
   bipR.position.set( .020, -.002, -.60); root.add(bipR);
 
-  const flash = new THREE.Mesh(new THREE.SphereGeometry(.058, 7, 6), M_YELO);
+  // Muzzle flash — sniper: blinding white
+  const flash = new THREE.Mesh(new THREE.SphereGeometry(.058, 7, 6), new THREE.MeshBasicMaterial({color:0xffffff}));
   flash.position.set(0, .020, -.86); flash.visible = false; root.add(flash);
   root.userData.flash = flash;
 
@@ -1639,6 +1664,22 @@ function setupWeapon(id) {
   _weaponRaiseT = 0.5;
   _reloadActive = false; _reloadT = 0;
   _swayX = 0; _swayY = 0;
+
+  // Muzzle light color matches flash per gun
+  const _muzzleColors = { pistol:0xffee22, smg:0xff6600, minigun:0x44aaff, sniper:0xffffff };
+  muzzleLight.color.setHex(_muzzleColors[id] || 0xffee22);
+
+  // Ammo-glow mesh: subtle emissive aura when fully loaded
+  const prevGlow = weaponRoot.getObjectByName('_ammoGlow');
+  if(prevGlow) weaponRoot.remove(prevGlow);
+  const glowMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(0.09, 7, 5),
+    new THREE.MeshBasicMaterial({ color:_muzzleColors[id]||0xffee22, transparent:true, opacity:0.18 })
+  );
+  glowMesh.name = '_ammoGlow';
+  glowMesh.position.set(0, 0, -0.35);
+  weaponRoot.add(glowMesh);
+  weaponRoot.userData.ammoGlow = glowMesh;
 }
 
 // defined in robot-builder.js
@@ -1796,6 +1837,15 @@ function shoot(){
 
   if(socket && socket.connected) socket.emit('playerShot', {});
 
+  // Bullet tracer — thin line from muzzle to target/max range
+  {
+    const muzzleWP = new THREE.Vector3();
+    weaponRoot.userData.flash
+      ? weaponRoot.userData.flash.getWorldPosition(muzzleWP)
+      : camera.getWorldPosition(muzzleWP);
+    spawnBulletTracer(muzzleWP, muzzleWP.clone().addScaledVector(raycaster.ray.direction, 55));
+  }
+
   const maxZ = (def.kick || 0) * 2.5;
   const maxY = (def.kick || 0) * 0.9;
   recoilZ = Math.min(recoilZ + (def.kick || 0), maxZ);
@@ -1825,6 +1875,7 @@ function killBot(bot){
   bot.eyeMatR.color.setHex(0x220000);
   const hitPos = bot.group.position.clone().setY(1.2);
   spawnStaticDeath(hitPos);
+  spawnRobotDebris(bot.group.position.clone());
   spawnAmmoPickup(bot.group.position);
   player.kills++;
   updateKillHUD();
@@ -1988,6 +2039,77 @@ function spawnImpactDust(pos, normal) {
     scene.add(mark);
     setTimeout(() => scene.remove(mark), 8000);
   }
+}
+
+function spawnBulletTracer(fromPos, toPos) {
+  const pts = [fromPos.clone(), toPos.clone()];
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat = new THREE.LineBasicMaterial({ color: 0xffee88, transparent: true, opacity: 0.82 });
+  const line = new THREE.Line(geo, mat);
+  scene.add(line);
+  bulletTracers.push({ line, geo, mat, age: 0, maxAge: 0.065 });
+}
+
+function playShellBounceSound() {
+  const ac = getAC(); const vol = _getVol('sfx');
+  const osc = ac.createOscillator(); osc.type = 'sine';
+  osc.frequency.setValueAtTime(2400 + Math.random() * 700, ac.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(500, ac.currentTime + 0.065);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(vol * 0.10, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.09);
+  osc.connect(g); g.connect(ac.destination);
+  osc.start(); osc.stop(ac.currentTime + 0.09);
+}
+
+function spawnRobotDebris(pos) {
+  const cols = [0x334466, 0x445577, 0x223355, 0x556688, 0x667799];
+  for (let i = 0; i < 7; i++) {
+    const sz = 0.055 + Math.random() * 0.09;
+    const geo = i < 4
+      ? new THREE.BoxGeometry(sz, sz * (0.5 + Math.random()), sz * 0.55)
+      : new THREE.SphereGeometry(sz * 0.6, 5, 4);
+    const mat = new THREE.MeshLambertMaterial({
+      color: cols[i % cols.length], emissive: 0x0033aa, emissiveIntensity: 0.35, transparent: true
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(pos).setY(pos.y + 0.5 + Math.random() * 0.9);
+    const spd = 3.5 + Math.random() * 7.5;
+    const ang = Math.random() * Math.PI * 2;
+    const vel = new THREE.Vector3(Math.cos(ang) * spd, 2.5 + Math.random() * 5, Math.sin(ang) * spd);
+    const rotVel = new THREE.Vector3(
+      (Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14
+    );
+    scene.add(mesh);
+    robotDebrisParts.push({ mesh, geo, mat, vel, rotVel, age: 0, maxAge: 1.3 + Math.random() * 0.7, bounced: false });
+  }
+}
+
+function spawnBotEnergyPulse(fromPos) {
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(0.072, 6, 6),
+    new THREE.MeshBasicMaterial({ color: 0xffdd00, transparent: true, opacity: 0.92 })
+  );
+  mesh.position.copy(fromPos);
+  const dir = new THREE.Vector3(
+    camera.position.x - fromPos.x,
+    camera.position.y - fromPos.y,
+    camera.position.z - fromPos.z
+  ).normalize();
+  scene.add(mesh);
+  botEnergyPulses.push({ mesh, vel: dir.multiplyScalar(20), age: 0, maxAge: 0.55 });
+}
+
+function playAssembleSound() {
+  const ac = getAC(); const vol = _getVol('sfx');
+  const buf = ac.createBuffer(1, ac.sampleRate * 0.09, ac.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.05)) * 0.7;
+  const src = ac.createBufferSource(); src.buffer = buf;
+  const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2200;
+  const g = ac.createGain(); g.gain.value = vol * 0.32;
+  src.connect(hp); hp.connect(g); g.connect(ac.destination);
+  src.start();
 }
 
 // ─── Sound system ────────────────────────────────────────────
@@ -2505,6 +2627,33 @@ document.body.appendChild(flashOverlay);
 const vignetteEl=document.createElement('div');
 vignetteEl.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:39;opacity:0;background:radial-gradient(ellipse at center,transparent 48%,rgba(200,0,0,0.88) 100%)';
 document.body.appendChild(vignetteEl);
+
+// Screen crack overlay — drawn once, shown at very low HP
+const screenCrackEl=document.createElement('canvas');
+screenCrackEl.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:38;opacity:0;transition:opacity 0.3s';
+document.body.appendChild(screenCrackEl);
+(function _initCracks(){
+  screenCrackEl.width=window.innerWidth; screenCrackEl.height=window.innerHeight;
+  const ctx=screenCrackEl.getContext('2d');
+  ctx.strokeStyle='rgba(255,255,255,0.65)'; ctx.lineWidth=1.4;
+  for(let c=0;c<4;c++){
+    const ox=screenCrackEl.width*(0.15+Math.random()*0.7);
+    const oy=screenCrackEl.height*(0.15+Math.random()*0.7);
+    for(let b=0;b<6;b++){
+      let x=ox, y=oy;
+      const baseAngle=Math.random()*Math.PI*2;
+      const segs=8+Math.floor(Math.random()*5);
+      ctx.beginPath(); ctx.moveTo(x,y);
+      for(let s=0;s<segs;s++){
+        x+=Math.cos(baseAngle+(Math.random()-0.5)*0.9)*(90+Math.random()*80)/segs;
+        y+=Math.sin(baseAngle+(Math.random()-0.5)*0.9)*(90+Math.random()*80)/segs;
+        ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+    }
+  }
+})();
+
 function flashDmg(){
   flashOverlay.style.background='rgba(220,0,0,.42)';
   setTimeout(()=>{ flashOverlay.style.background='rgba(220,0,0,0)'; },150);
@@ -3110,6 +3259,7 @@ function respawnPlayer(){
   _reloadActive = false; _reloadT = 0;
   _headBobY = 0; _landDipT = 0; _vignetteAlpha = 0;
   vignetteEl.style.opacity = '0';
+  screenCrackEl.style.opacity = '0';
 }
 
 function _decrementAttachDurability() {
@@ -3201,7 +3351,21 @@ function update(dt){
   if((!pointerLocked() && !mobileGameActive && !killcamActive)||player.dead) return;
 
   // ── Jump input ──────────────────────────────────────────
-  if(keys['Space']&&grounded){ velY=JUMP_VEL; grounded=false; }
+  if(keys['Space']&&grounded){
+    velY=JUMP_VEL; grounded=false;
+    // Jet-boost particles burst downward from feet
+    const footPos = camera.position.clone().setY(camera.position.y - EYE_H + 0.05);
+    for(let _ji=0;_ji<8;_ji++){
+      const mesh=new THREE.Mesh(
+        new THREE.SphereGeometry(0.038+Math.random()*0.038,4,4),
+        new THREE.MeshBasicMaterial({color:0x88ccff,transparent:true,opacity:0.82})
+      );
+      mesh.position.copy(footPos).add(new THREE.Vector3((Math.random()-0.5)*0.28,0,(Math.random()-0.5)*0.28));
+      const vel=new THREE.Vector3((Math.random()-0.5)*2.2,-(2.2+Math.random()*3),(Math.random()-0.5)*2.2);
+      scene.add(mesh);
+      jumpParticles.push({mesh,vel,age:0,maxAge:0.38+Math.random()*0.18});
+    }
+  }
 
   // ── Movement ────────────────────────────────────────────
   viewDir.set(-Math.sin(yaw),0,-Math.cos(yaw));
@@ -3345,6 +3509,26 @@ function update(dt){
     vignetteEl.style.opacity = _vignetteAlpha.toFixed(3);
   }
 
+  // ── Crosshair blink during reload ───────────────────────
+  if(_reloadActive){
+    crosshairEl.style.opacity = (0.35 + 0.65 * (0.5 + Math.sin(Date.now() * 0.013) * 0.5)).toFixed(2);
+  } else if(crosshairEl.style.opacity !== ''){
+    crosshairEl.style.opacity = '';
+  }
+
+  // ── Screen crack at very low HP ──────────────────────────
+  if(player.health > 0 && player.health < 20 && !player.dead){
+    screenCrackEl.style.opacity = ((20 - player.health) / 20 * 0.78).toFixed(2);
+  } else if(screenCrackEl.style.opacity !== '0' && screenCrackEl.style.opacity !== ''){
+    screenCrackEl.style.opacity = '0';
+  }
+
+  // ── Ammo glow — dims as clip empties ────────────────────
+  const _ag = weaponRoot.userData.ammoGlow;
+  if(_ag && gun.def){
+    _ag.material.opacity = 0.06 + 0.22 * (gun.ammo / Math.max(1, gun.def.ammo));
+  }
+
   // ── Crosshair hit-confirm flash ──────────────────────────
   if(_hitConfirmT > 0){
     _hitConfirmT = Math.max(0, _hitConfirmT - dt);
@@ -3415,6 +3599,7 @@ function update(dt){
       c.rotVel.multiplyScalar(0.4);
       c.bounced=true;
       c.mesh.position.y=0.05;
+      playShellBounceSound();
     }
   }
 
@@ -3504,6 +3689,25 @@ function update(dt){
       return;
     }
     if(!bot.alive) return;
+
+    // ── Assembly animation ─────────────────────────────────
+    if(bot.assembling){
+      bot.assembleT = Math.min(1, bot.assembleT + dt / 0.8);
+      const t = bot.assembleT;
+      const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+      bot.legL.position.lerpVectors(bot.assembleFrom.legL, bot.assembleHome.legL, ease);
+      bot.legR.position.lerpVectors(bot.assembleFrom.legR, bot.assembleHome.legR, ease);
+      bot.armGroupL.position.lerpVectors(bot.assembleFrom.armL, bot.assembleHome.armL, ease);
+      bot.armGroupR.position.lerpVectors(bot.assembleFrom.armR, bot.assembleHome.armR, ease);
+      bot.allMats.forEach(m => { m.emissive.setHex(0x0055ff); m.emissiveIntensity = 1.3 * (1 - ease); });
+      if(bot.assembleT >= 1){
+        bot.assembling = false;
+        bot.allMats.forEach(m => { m.emissive.setHex(0x000000); m.emissiveIntensity = 0; });
+        playAssembleSound();
+      }
+      bot.hpBarGroup.lookAt(camera.position);
+      return;
+    }
 
     const bp  = bot.group.position;
     const spd = bot.speed, det=bot.detectR, dmg=bot.damage;
@@ -3618,6 +3822,7 @@ function update(dt){
 
           if(bot.pistol){ bot.pistol.userData.flash.visible=true; bot.flashTimer=0.08; }
           playSpatialBotSound(bPos, 'botShoot');
+          spawnBotEnergyPulse(new THREE.Vector3(bp.x, bp.y + 1.4, bp.z));
           bot.armGroupR.rotation.x = 0.55;
         } else if(bot.shootTimer > bot.shootCooldown * 0.6){
           bot.armGroupR.rotation.x += (1.10 - bot.armGroupR.rotation.x) * dt * 4;
@@ -3694,10 +3899,15 @@ function update(dt){
     const idleBob = isMoving ? 0 : Math.sin(bot.idleClock) * 0.032;
     bot.group.position.y = getGroundY(bot.group.position) + idleBob;
 
-    // Leg swing animation (only when moving)
+    // Leg swing animation (only when moving); low-HP limp exaggerates one leg
     const legSwing = isMoving ? Math.sin(bot.walkClock*2.5)*0.32 : 0;
-    bot.legL.rotation.x =  legSwing;
-    bot.legR.rotation.x = -legSwing;
+    if(bot.hp < bot.maxHp * 0.35 && isMoving){
+      bot.legL.rotation.x =  legSwing * 1.85;
+      bot.legR.rotation.x = -legSwing * 0.45;
+    } else {
+      bot.legL.rotation.x =  legSwing;
+      bot.legR.rotation.x = -legSwing;
+    }
 
     // Shooting aim — torso slightly leans toward player when aiming
     if(bot.mode === 'shooter' && bot.alertLevel >= 2){
@@ -3707,6 +3917,22 @@ function update(dt){
     } else {
       bot.shootAimT += (0 - bot.shootAimT) * Math.min(1, dt * 5);
       bot.group.rotation.x = bot.shootAimT;
+    }
+
+    // Eye color: green (patrol) → red (alert), lerp each frame
+    if(!bot.dying){
+      const eyeTgt = new THREE.Color(bot.alertLevel >= 2 ? 0xff2200 : 0x00ff44);
+      bot.eyeMatL.color.lerp(eyeTgt, Math.min(1, dt * 5));
+      bot.eyeMatR.color.lerp(eyeTgt, Math.min(1, dt * 5));
+    }
+
+    // Low-HP periodic sparks + limp
+    if(bot.hp < bot.maxHp * 0.35){
+      bot.sparkTimer += dt;
+      if(bot.sparkTimer >= 0.35 + Math.random() * 0.45){
+        bot.sparkTimer = 0;
+        spawnHitSparks(bot.group.position.clone().setY(bot.group.position.y + 0.7 + Math.random() * 0.8));
+      }
     }
 
     // Health bar
@@ -3843,6 +4069,86 @@ function update(dt){
     if (pk.lifetime <= 0) {
       scene.remove(pk.group);
       ammoPickups.splice(i, 1);
+    }
+  }
+
+  // ── Bullet tracer lines ──────────────────────────────────
+  for(let i=bulletTracers.length-1;i>=0;i--){
+    const tr=bulletTracers[i]; tr.age+=dt;
+    if(tr.age>=tr.maxAge){ scene.remove(tr.line); tr.geo.dispose(); tr.mat.dispose(); bulletTracers.splice(i,1); continue; }
+    tr.mat.opacity=0.82*(1-tr.age/tr.maxAge);
+  }
+
+  // ── Robot debris parts ───────────────────────────────────
+  for(let i=robotDebrisParts.length-1;i>=0;i--){
+    const p=robotDebrisParts[i]; p.age+=dt;
+    if(p.age>p.maxAge){ scene.remove(p.mesh); p.geo.dispose(); p.mat.dispose(); robotDebrisParts.splice(i,1); continue; }
+    p.vel.y-=18*dt;
+    p.mesh.position.addScaledVector(p.vel,dt);
+    p.mesh.rotation.x+=p.rotVel.x*dt;
+    p.mesh.rotation.y+=p.rotVel.y*dt;
+    p.mesh.rotation.z+=p.rotVel.z*dt;
+    if(p.mesh.position.y<0.04&&!p.bounced){
+      p.vel.y=Math.abs(p.vel.y)*0.28;
+      p.vel.x*=0.45; p.vel.z*=0.45;
+      p.rotVel.multiplyScalar(0.35);
+      p.bounced=true; p.mesh.position.y=0.04;
+    }
+    p.mat.opacity=p.age>p.maxAge*0.6 ? 1-(p.age-p.maxAge*0.6)/(p.maxAge*0.4) : 1;
+  }
+
+  // ── Bot energy pulses ────────────────────────────────────
+  for(let i=botEnergyPulses.length-1;i>=0;i--){
+    const ep=botEnergyPulses[i]; ep.age+=dt;
+    if(ep.age>=ep.maxAge){ scene.remove(ep.mesh); ep.mesh.geometry.dispose(); ep.mesh.material.dispose(); botEnergyPulses.splice(i,1); continue; }
+    ep.mesh.position.addScaledVector(ep.vel,dt);
+    ep.mesh.material.opacity=0.92*(1-ep.age/ep.maxAge);
+    // Slight pulse scale
+    const ps=1+Math.sin(ep.age*30)*0.18;
+    ep.mesh.scale.setScalar(ps);
+  }
+
+  // ── Jump / jet particles ─────────────────────────────────
+  for(let i=jumpParticles.length-1;i>=0;i--){
+    const jp=jumpParticles[i]; jp.age+=dt;
+    if(jp.age>=jp.maxAge){ scene.remove(jp.mesh); jp.mesh.geometry.dispose(); jp.mesh.material.dispose(); jumpParticles.splice(i,1); continue; }
+    jp.vel.y-=12*dt;
+    jp.mesh.position.addScaledVector(jp.vel,dt);
+    jp.mesh.material.opacity=0.82*(1-jp.age/jp.maxAge);
+  }
+
+  // ── Flickering ceiling lights ────────────────────────────
+  for(let i=0;i<_flickerLights.length;i++){
+    const fl=_flickerLights[i]; fl.timer-=dt;
+    if(!fl.flickering){
+      if(fl.timer<=0){
+        fl.flickering=true; fl.offDur=0.04+Math.random()*0.12; fl.timer=fl.offDur;
+        fl.light.intensity=0;
+      }
+    } else {
+      if(fl.timer<=0){
+        // End flicker — may do a rapid second flicker or restore
+        fl.light.intensity=fl.baseI*(0.85+Math.random()*0.3);
+        fl.flickering=false;
+        fl.timer=fl.interval*(0.7+Math.random()*0.6);
+      } else {
+        // Rapid strobe during flicker window
+        fl.light.intensity=Math.sin(fl.timer*180)*fl.baseI>0?fl.baseI*0.9:0;
+      }
+    }
+  }
+
+  // ── Dust beam particles (near ceiling lights) ────────────
+  const _now=Date.now()*0.001;
+  for(let i=0;i<_dustBeamParts.length;i++){
+    const dp=_dustBeamParts[i];
+    dp.mesh.position.y+=dp.vy*dt;
+    dp.mesh.position.x+=Math.sin(_now*0.4+dp.phase)*dp.vx*dt;
+    dp.mesh.position.z+=Math.cos(_now*0.4+dp.phase)*dp.vz*dt;
+    if(dp.mesh.position.y>WH-0.15){
+      dp.mesh.position.y=WH-1.1-Math.random()*2.4;
+      dp.mesh.position.x=dp.lx+(Math.random()-0.5)*4;
+      dp.mesh.position.z=dp.lz+(Math.random()-0.5)*4;
     }
   }
 }
@@ -4419,6 +4725,24 @@ function spawnBots(cfg) {
     r.group.position.copy(rndPos());
     scene.add(r.group);
 
+    // Assembly animation — scatter arm/leg parts, lerp back over 0.8s
+    const _asmHome = {
+      legL: r.legL.position.clone(),
+      legR: r.legR.position.clone(),
+      armL: r.armGroupL.position.clone(),
+      armR: r.armGroupR.position.clone(),
+    };
+    const _asmFrom = {
+      legL: _asmHome.legL.clone().add(new THREE.Vector3((Math.random()-0.5)*3, Math.random()*2+1, (Math.random()-0.5)*3)),
+      legR: _asmHome.legR.clone().add(new THREE.Vector3((Math.random()-0.5)*3, Math.random()*2+1, (Math.random()-0.5)*3)),
+      armL: _asmHome.armL.clone().add(new THREE.Vector3((Math.random()-0.5)*4, Math.random()*3, (Math.random()-0.5)*4)),
+      armR: _asmHome.armR.clone().add(new THREE.Vector3((Math.random()-0.5)*4, Math.random()*3, (Math.random()-0.5)*4)),
+    };
+    r.legL.position.copy(_asmFrom.legL);
+    r.legR.position.copy(_asmFrom.legR);
+    r.armGroupL.position.copy(_asmFrom.armL);
+    r.armGroupR.position.copy(_asmFrom.armR);
+
     // Attach pistol to right arm wrist/palm region
     const pistol = buildBotPistol();
     pistol.position.set(0.09, -1.22, -0.06);
@@ -4451,6 +4775,13 @@ function spawnBots(cfg) {
       velX: 0, velZ: 0,
       shootAimT: 0,
       deathArcT: 0,
+      // assembly
+      assembling: true, assembleT: 0,
+      assembleHome: _asmHome, assembleFrom: _asmFrom,
+      // eye color
+      eyeColorTarget: 0x00ff44,
+      // low-HP sparks
+      sparkTimer: 0,
     });
   }
 }
