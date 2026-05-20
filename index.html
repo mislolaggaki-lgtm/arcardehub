@@ -4732,6 +4732,7 @@
               _saveBucksLocal(); updateBucksDisplay();
             }
             await _ksSaveSound(file);
+            if (typeof _initKillSound === 'function') _initKillSound();
             alert('Kill sound saved!');
             _renderShopGrid();
           };

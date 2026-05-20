@@ -633,7 +633,7 @@ async function start() {
         'emote_sparkle','emote_rainbow','emote_thunder','emote_star','emote_100','emote_eyes','emote_run',
         'emote_jump','emote_spin','emote_dab','emote_breakdance','emote_moonwalk','emote_floss','emote_worm',
         'emote_splits','emote_headbang','emote_airguitar','emote_sing','emote_confused','emote_surprised',
-        'emote_rofl','emote_sneeze','emote_sick','emote_party',
+        'emote_rofl','emote_sneeze','emote_sick','emote_party','emote_honored_one',
       ];
       if (!VALID.includes(emoteId)) return;
       let username = 'Guest';

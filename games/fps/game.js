@@ -3417,8 +3417,8 @@ let _ksNode   = null;
 let _ksGain   = null;
 
 function _initKillSound() {
-  const equipped = JSON.parse(localStorage.getItem('ah_equipped') || '[]');
-  if (!equipped.includes('killsound_slot')) return;
+  const owned = JSON.parse(localStorage.getItem('ah_owned') || '[]');
+  if (!owned.includes('killsound_slot')) return;
   const openReq = indexedDB.open('ah_killsound', 1);
   openReq.onupgradeneeded = e => e.target.result.createObjectStore('data');
   openReq.onsuccess = e => {
