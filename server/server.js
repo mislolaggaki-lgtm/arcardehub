@@ -1135,6 +1135,9 @@ async function start() {
         emote_diamond:500, emote_sparkle:500, emote_rainbow:500, emote_thunder:500,
         emote_100:500, emote_spin:500, emote_breakdance:500, emote_moonwalk:500,
         emote_floss:500, emote_worm:500, emote_splits:500, emote_party:500,
+        emote_honored_one:500,
+        // Special items
+        killsound_slot:1000,
       };
       if (!/^[a-z0-9_]+$/.test(itemId)) return res.status(400).json({ error: 'Invalid item.' });
       const parts  = itemId.split('_');
