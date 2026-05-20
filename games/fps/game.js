@@ -3382,7 +3382,7 @@ function _tickEmoteBody(ea, rp, dt) {
     case 'ea-honored-one': {
       // Rise into the air, arms spread wide, body tilted back — the Honored One pose
       const RISE = 1.5, HOLD = 3.0, FALL = 1.5;
-      const PEAK = 2.42;
+      const PEAK = 0.6;
       const sm = p => p * p * (3 - 2 * p); // smoothstep
       if (t < RISE) {
         const p = t / RISE;
