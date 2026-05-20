@@ -2429,7 +2429,7 @@ function spawnPotionsForLevel() {
 
 // Returns bonus seconds from an equipped item type based on rarity
 function _getEquippedItemBonus(itemPrefix) {
-  const rarityBonus = { common: 1, rare: 2, epic: 2, legendary: 3 };
+  const rarityBonus = { common: 2, rare: 4, epic: 6, legendary: 8 };
   const equipped = JSON.parse(localStorage.getItem('ah_equipped') || '[]');
   for (const id of equipped) {
     if (id.startsWith(itemPrefix + '_')) {
@@ -2926,6 +2926,7 @@ const EMOTE_DEFS = [
   { id:'emote_sneeze',     emoji:'🤧', label:'Sneeze',     anim:'ea-explode',    dur:4 },
   { id:'emote_sick',       emoji:'🤢', label:'Sick',       anim:'ea-worm',       dur:5 },
   { id:'emote_party',      emoji:'🎉', label:'Party',      anim:'ea-party',      dur:5 },
+  { id:'emote_honored_one',emoji:'✨', label:'Honored One', anim:'ea-honored-one', dur:6 },
 ];
 let emoteWheelOpen = false;
 let _emotePage     = 0;
@@ -3378,6 +3379,31 @@ function _tickEmoteBody(ea, rp, dt) {
       rp.armGroupR.rotation.x =  0.85;
       break;
     }
+    case 'ea-honored-one': {
+      // Rise into the air, arms spread wide, body tilted back — the Honored One pose
+      const RISE = 1.5, HOLD = 3.0, FALL = 1.5;
+      const PEAK = 2.42;
+      const sm = p => p * p * (3 - 2 * p); // smoothstep
+      if (t < RISE) {
+        const p = t / RISE;
+        ea._pyOffset = PEAK * sm(p);
+      } else if (t < RISE + HOLD) {
+        ea._pyOffset = PEAK;
+      } else {
+        const p = Math.min((t - RISE - HOLD) / FALL, 1);
+        ea._pyOffset = PEAK * (1 - sm(p));
+      }
+      const phase = Math.min(t / RISE, 1);
+      rp.group.rotation.x     = -0.48 * phase;
+      rp.group.rotation.z     =  0.14 * phase;
+      rp.armGroupR.rotation.x =  1.10 + 0.90 * phase;
+      rp.armGroupR.rotation.z = -0.32 - 0.90 * phase;
+      rp.armGroupL.rotation.x =  1.10 + 0.45 * phase;
+      rp.armGroupL.rotation.z =  0.32 + 0.72 * phase;
+      rp.legL.rotation.x      = -0.55 * phase;
+      rp.legR.rotation.x      =  0.38 * phase;
+      break;
+    }
     default: {
       rp.armGroupR.rotation.x = 1.10 + Math.sin(t * 3) * 0.4;
       break;
@@ -3385,8 +3411,55 @@ function _tickEmoteBody(ea, rp, dt) {
   }
 }
 
+// ── Kill Sound ─────────────────────────────────────────────────
+let _ksBuffer = null;
+let _ksNode   = null;
+let _ksGain   = null;
+
+function _initKillSound() {
+  const equipped = JSON.parse(localStorage.getItem('ah_equipped') || '[]');
+  if (!equipped.includes('killsound_slot')) return;
+  const openReq = indexedDB.open('ah_killsound', 1);
+  openReq.onupgradeneeded = e => e.target.result.createObjectStore('data');
+  openReq.onsuccess = e => {
+    const db  = e.target.result;
+    const req = db.transaction('data','readonly').objectStore('data').get('blob');
+    req.onsuccess = async ee => {
+      const blob = ee.target.result;
+      if (!blob) return;
+      try {
+        const buf = await blob.arrayBuffer();
+        _ksBuffer = await getAC().decodeAudioData(buf);
+      } catch(_) {}
+    };
+  };
+}
+
+function _playKillSound() {
+  if (!_ksBuffer) return;
+  if (_ksNode) { try { _ksNode.stop(); } catch(_) {} }
+  const ac = getAC();
+  _ksNode = ac.createBufferSource();
+  _ksNode.buffer = _ksBuffer;
+  _ksGain = ac.createGain();
+  _ksGain.gain.setValueAtTime(_getVol('sfx') * 0.9, ac.currentTime);
+  _ksNode.connect(_ksGain);
+  _ksGain.connect(ac.destination);
+  _ksNode.start();
+  _ksNode.onended = () => { _ksNode = null; _ksGain = null; };
+}
+
+function _fadeKillSound() {
+  if (!_ksNode || !_ksGain) return;
+  const ac = getAC();
+  _ksGain.gain.setValueAtTime(_ksGain.gain.value, ac.currentTime);
+  _ksGain.gain.linearRampToValueAtTime(0, ac.currentTime + 1.0);
+  setTimeout(() => { if (_ksNode) { try { _ksNode.stop(); } catch(_) {} _ksNode = null; } }, 1100);
+}
+
 function killPlayer(killerRef) {
   if(player.dead) return;
+  _fadeKillSound();
   deactivateScope();
   player.dead=true; player.health=0; updateHealthHUD();
   trackDeath();
@@ -5533,6 +5606,7 @@ function initSocket() {
       if (rp) {
         rp.allMats.forEach(m => { m.emissive.setHex(0xff5500); m.emissiveIntensity=4.0; });
         setTimeout(() => rp.allMats.forEach(m => { m.emissive.setHex(0x000000); m.emissiveIntensity=0; }), 80);
+        if (data.shooterId === socket.id && rp.health - data.damage <= 0) _playKillSound();
       }
     }
   });
@@ -6357,6 +6431,7 @@ function startMobileGame() {
     gameStarted = true;
     startLevel(1);
     initSocket();
+    _initKillSound();
     const _ch = document.getElementById('controls-hint');
     if(_ch){ _ch.classList.remove('fade-out'); setTimeout(()=>_ch.classList.add('fade-out'),7000); }
   }

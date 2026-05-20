@@ -3176,7 +3176,7 @@
       spikes:'Danger on your wrist', cuffs:'Locked and loaded', bangles:'Jingle all the way',
       gauntlet:'Armour upgrade', wraps:'Fighter stance', ringstack:'Bling overload',
       compass:'Always north', holo:'Holographic HUD',
-      jetpack:'Airborne advantage', wings:'Angelic carnage', quiver:'Arrows ready',
+      jetpack:'Airborne advantage', wings:'Fly time extended (+2/4/6/8s by rarity)', quiver:'Arrows ready',
       cape:'Hero aesthetic', spikes2:'Back spikes, why not', shell:'Turtle power',
       solarpanel:'Eco warrior', rocketpack:'Explosive exit', shroud:'Dark aura',
       shoulderpads:'Linebacker mode', epaulettes:'Military rank unlocked',
@@ -3215,7 +3215,8 @@
       boots:'Ground-level power', heels:'Elevated threat level', skates:'Glide to victory',
       hoverboots:'Hover mode active', claws:'Foot claws engaged', fins:'Aquatic mode',
       springs:'Bounce into battle', platforms:'Elevated status', hboots:'Holographic soles',
-      speedboots:'Speed boost extended',
+      speedboots:'Speed boost extended (+2/4/6/8s by rarity)',
+      killsound:'Custom PvP kill sound (1–5s)',
     };
     const _ATTACH_P = { common:200, rare:350, epic:600, legendary:1200 };
     function _si(id,name,cat,type,col,rar,customPrice,gun){
@@ -3496,9 +3497,10 @@
       _si('hboots_white_rare',    'Holo Boots (White)',   'feet','hboots','#f5f5f5','rare'),
       _si('hboots_neon_epic',     'Holo Boots (Neon)',    'feet','hboots','#00ffcc','epic'),
       _si('hboots_gold_legendary','Holo Boots (Gold)',    'feet','hboots','#ffd700','legendary'),
-      _si('speedboots_grey_common',   'Speed Boots (Grey)',   'feet','speedboots','#888888','common'),
-      _si('speedboots_red_rare',      'Speed Boots (Red)',    'feet','speedboots','#e74c3c','rare'),
-      _si('speedboots_neon_legendary','Speed Boots (Neon)',   'feet','speedboots','#00ffcc','legendary'),
+      _si('speedboots_grey_common',    'Speed Boots (Grey)',   'feet','speedboots','#888888','common'),
+      _si('speedboots_red_rare',       'Speed Boots (Red)',    'feet','speedboots','#e74c3c','rare'),
+      _si('speedboots_purple_epic',    'Speed Boots (Purple)', 'feet','speedboots','#8b00ff','epic'),
+      _si('speedboots_neon_legendary', 'Speed Boots (Neon)',   'feet','speedboots','#00ffcc','legendary'),
       // ── HATS extra ──
       _si('cap_orange_common',     'Cap (Orange)',          'hats','cap','#e67e22','common'),
       _si('cap_purple_rare',       'Cap (Purple)',          'hats','cap','#8b00ff','rare'),
@@ -3823,7 +3825,10 @@
       _si('emote_rofl',       'ROFL',       'emotes','emote_rofl',       '#ff8a65','rare',   400),
       _si('emote_sneeze',     'Sneeze',     'emotes','emote_sneeze',     '#4fc3f7','rare',   400),
       _si('emote_sick',       'Sick',       'emotes','emote_sick',       '#aed581','common', 300),
-      _si('emote_party',      'Party',      'emotes','emote_party',      '#ff4081','epic',   500),
+      _si('emote_party',       'Party',       'emotes','emote_party',       '#ff4081','epic',      500),
+      _si('emote_honored_one', 'Honored One', 'emotes','emote_honored_one', '#ffd700','legendary', 500),
+      // ── SPECIAL ──
+      _si('killsound_slot',    'Kill Sound',  'special','killsound',        '#ff8822','legendary', 1000),
     ];
 
     // ── SVG template helpers ─────────────────────────────────────
@@ -4008,6 +4013,8 @@
       emote_sneeze:     c=>`<svg viewBox="0 0 64 64"><text x="32" y="46" text-anchor="middle" font-size="40">🤧</text><rect x="10" y="52" width="44" height="6" rx="3" fill="${c}" opacity="0.3"/></svg>`,
       emote_sick:       c=>`<svg viewBox="0 0 64 64"><text x="32" y="46" text-anchor="middle" font-size="40">🤢</text><rect x="10" y="52" width="44" height="6" rx="3" fill="${c}" opacity="0.3"/></svg>`,
       emote_party:      c=>`<svg viewBox="0 0 64 64"><text x="32" y="46" text-anchor="middle" font-size="40">🎉</text><rect x="10" y="52" width="44" height="6" rx="3" fill="${c}" opacity="0.3"/></svg>`,
+      emote_honored_one:c=>`<svg viewBox="0 0 64 64"><circle cx="32" cy="14" r="8" fill="${c}"/><rect x="27" y="22" width="10" height="16" rx="3" fill="${c}"/><line x1="27" y1="27" x2="10" y2="18" stroke="${c}" stroke-width="4" stroke-linecap="round"/><line x1="37" y1="27" x2="54" y2="22" stroke="${c}" stroke-width="4" stroke-linecap="round"/><line x1="30" y1="38" x2="24" y2="54" stroke="${c}" stroke-width="4" stroke-linecap="round"/><line x1="34" y1="38" x2="40" y2="54" stroke="${c}" stroke-width="4" stroke-linecap="round"/><circle cx="32" cy="8" r="3" fill="#fff" opacity="0.6"/></svg>`,
+      killsound:        c=>`<svg viewBox="0 0 64 64"><polygon points="16,22 16,42 28,42 44,54 44,10 28,22" fill="${c}"/><path d="M48,20 Q58,32 48,44" stroke="${c}" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M52,14 Q66,32 52,50" stroke="${c}" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.5"/><circle cx="16" cy="32" r="3" fill="#ff8822" opacity="0.8"/></svg>`,
     };
     function getItemSvg(it) {
       const fn = _SVGF[it.type] || _SVGF[it.type.split('_')[0]];
@@ -4027,6 +4034,7 @@
       { key:'shoulders', label:'SHOULDERS',    icon:'💪' },
       { key:'face',      label:'FACE',         icon:'🎭' },
       { key:'feet',      label:'FEET',         icon:'👟' },
+      { key:'special',   label:'SPECIAL',      icon:'⭐' },
     ];
     let _shopTab = 'attachments';
     let _pendingBuyId = null;
@@ -4504,7 +4512,14 @@
         const owned    = _ownedItems.has(it.id);
         const equipped = _equippedItems.has(it.id);
         let btn = '';
-        if (it.cat === 'emotes') {
+        if (it.type === 'killsound') {
+          if (!owned) {
+            const can = _bucks >= it.price;
+            btn = `<button class="shop-btn buy${can?'':' disabled'}" onclick="_maybeConfirmBuy('${it.id}')" ${can?'':'disabled'}>${BUCKS_ICON_SM} ${it.price}</button>`;
+          } else {
+            btn = `<button class="shop-btn owned" onclick="_openKillSoundPicker()" style="font-size:0.78em">CONFIGURE (${BUCKS_ICON_SM} 200)</button>`;
+          }
+        } else if (it.cat === 'emotes') {
           if (!owned) {
             const can = _bucks >= it.price;
             btn = `<button class="shop-btn buy${can?'':' disabled'}" onclick="_maybeConfirmBuy('${it.id}')" ${can?'':'disabled'}>${BUCKS_ICON_SM} ${it.price}</button>`;
@@ -4648,6 +4663,82 @@
         } catch {}
       }
       _saveBucksLocal(); _renderShopGrid(); _renderShopAvatar();
+    }
+
+    // ── Kill Sound picker ─────────────────────────────────────────
+    function _ksOpenDB() {
+      return new Promise((res, rej) => {
+        const r = indexedDB.open('ah_killsound', 1);
+        r.onupgradeneeded = e => e.target.result.createObjectStore('data');
+        r.onsuccess = e => res(e.target.result);
+        r.onerror   = e => rej(e.target.error);
+      });
+    }
+    async function _ksHasSound() {
+      try {
+        const db = await _ksOpenDB();
+        return await new Promise(res => {
+          const req = db.transaction('data','readonly').objectStore('data').get('blob');
+          req.onsuccess = e => res(!!e.target.result);
+          req.onerror   = () => res(false);
+        });
+      } catch { return false; }
+    }
+    async function _ksSaveSound(blob) {
+      const db = await _ksOpenDB();
+      return new Promise((res, rej) => {
+        const tx  = db.transaction('data','readwrite');
+        const req = tx.objectStore('data').put(blob, 'blob');
+        req.onsuccess = () => res();
+        req.onerror   = e => rej(e.target.error);
+      });
+    }
+
+    function _openKillSoundPicker() {
+      if (!_ownedItems.has('killsound_slot')) return;
+      _ksHasSound().then(has => {
+        const changeFee = 200;
+        const msg = has
+          ? `Change your kill sound? This costs ${changeFee} B$ — pick a 1–5 second video or audio file.`
+          : 'Pick a 1–5 second video or audio file to use as your kill sound.';
+        if (has && _bucks < changeFee) { alert('Not enough B$ to change kill sound (need 200 B$).'); return; }
+        if (!confirm(msg)) return;
+        const inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = 'video/*,audio/*';
+        inp.onchange = async () => {
+          const file = inp.files[0];
+          if (!file) return;
+          const tmpUrl = URL.createObjectURL(file);
+          const med = document.createElement(file.type.startsWith('video') ? 'video' : 'audio');
+          med.src = tmpUrl;
+          med.onloadedmetadata = async () => {
+            URL.revokeObjectURL(tmpUrl);
+            if (med.duration < 0.5 || med.duration > 5.1) {
+              alert(`File must be between 1 and 5 seconds (yours is ${med.duration.toFixed(1)}s).`);
+              return;
+            }
+            if (has) {
+              _bucks -= changeFee;
+              const token = localStorage.getItem('ah_token');
+              if (token) {
+                try {
+                  await fetch(`${API}/shop/purchase`, {
+                    method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+                    body: JSON.stringify({ itemId:'_ks_change_fee' }),
+                  });
+                } catch { /* offline — deduct locally */ }
+              }
+              _saveBucksLocal(); updateBucksDisplay();
+            }
+            await _ksSaveSound(file);
+            alert('Kill sound saved!');
+            _renderShopGrid();
+          };
+          med.onerror = () => { URL.revokeObjectURL(tmpUrl); alert('Could not read file duration.'); };
+        };
+        inp.click();
+      });
     }
 
     // ── Chat + voice state (pre-declared so restoreSession → chatConnect can use them) ──
@@ -5686,6 +5777,18 @@
     }
 
     const UPDATES = [
+      {
+        version: '1.9', date: 'May 2026', title: 'KILL SOUND, HONORED ONE & FIXES',
+        changes: [
+          'New SPECIAL tab in the Shop — unlocks unique features beyond cosmetics',
+          'Kill Sound (1000 B$): upload a 1–5 second audio or video clip that plays whenever you kill a player in PvP — fades out when you respawn. Change it any time for 200 B$',
+          'New Legendary emote: Honored One — your avatar rises 2.4 units into the air in a dramatic floating pose, arms spread wide, body tilted back, for 6 seconds',
+          'Epic Speed Boots (Purple) added to the Shop',
+          'Wings taunt text updated to correctly read "Fly time extended"',
+          'Passive bonus for Wings and Speed Boots corrected to +2/+4/+6/+8s by rarity (Common/Rare/Epic/Legendary)',
+          'Speed Boots description now shows the rarity-based bonus in the shop card',
+        ]
+      },
       {
         version: '1.8', date: 'May 2026', title: 'BIOME ROBOTS, SHOP & PASSIVE GEAR',
         changes: [
