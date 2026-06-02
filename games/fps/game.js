@@ -3590,6 +3590,7 @@ function update(dt){
 
   // ── Jump input ──────────────────────────────────────────
   if(keys['Space']&&(grounded||_isFlying)){
+    if (isSliding) { isSliding = false; slideSpeed = 0; slideCooldownT = SLIDE_COOLDOWN; }
     velY=_isFlying?Math.min(velY+6,8):JUMP_VEL; grounded=false;
     // Jet-boost particles burst downward from feet
     const footPos = camera.position.clone().setY(camera.position.y - EYE_H + 0.05);
@@ -6677,7 +6678,10 @@ if (isMobile) {
   if (jumpBtn) {
     jumpBtn.addEventListener('touchstart', e => {
       e.preventDefault();
-      if (grounded && mobileGameActive && !player.dead) { velY = JUMP_VEL; grounded = false; }
+      if (grounded && mobileGameActive && !player.dead) {
+        if (isSliding) { isSliding = false; slideSpeed = 0; slideCooldownT = SLIDE_COOLDOWN; }
+        velY = JUMP_VEL; grounded = false;
+      }
     }, { passive: false });
   }
 
