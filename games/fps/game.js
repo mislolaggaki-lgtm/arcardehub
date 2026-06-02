@@ -162,8 +162,8 @@ let _crouchOffset  = 0;        // smoothed crouch camera offset (also used by sl
 let _vignetteAlpha = 0;        // damage vignette opacity
 
 // ── Slide state ──────────────────────────────────────────────
-const SLIDE_SPEED_START = 15.0;  // fast burst speed
-const SLIDE_DECEL       = 6.5;   // units/s² deceleration (~2.1s slide duration)
+const SLIDE_SPEED_START = 17.25; // fast burst speed (+15%)
+const SLIDE_DECEL       = 7.56;  // units/s² deceleration (~2.1s slide duration)
 const SLIDE_CANCEL_SPD  = 1.2;   // cancel when speed drops below this
 const SLIDE_COOLDOWN    = 4.0;   // seconds
 
@@ -1835,16 +1835,23 @@ function shoot(){
   const livingGroups  = bots.filter(b=>b.alive).map(b=>b.group);
   const remoteGroups  = [...remotePlayers.values()].map(rp=>rp.group);
   const ghostGroups   = (coopMode && !coopIsHost) ? coopGhostBots.filter(gb=>gb.alive).map(gb=>gb.group) : [];
+  const HEAD_THRESHOLD = 1.25; // units above group base = head zone
   const hits = raycaster.intersectObjects([...livingGroups, ...remoteGroups, ...ghostGroups], true);
   if(hits.length>0){
-    const bot = findBot(hits[0].object);
+    const h0 = hits[0];
+    const bot = findBot(h0.object);
     if(bot){
-      damageBot(bot);
+      const isHeadshot = (h0.point.y - bot.group.position.y) > HEAD_THRESHOLD;
+      damageBot(bot, isHeadshot);
     } else {
-      const hit = findRemotePlayer(hits[0].object);
-      if(hit && socket) socket.emit('shoot', { targetId: hit[0] });
-      else {
-        const ghostIdx = findGhostBot(hits[0].object);
+      const hit = findRemotePlayer(h0.object);
+      if(hit && socket){
+        const rp = remotePlayers.get(hit[0]);
+        const isHeadshot = rp ? (h0.point.y - rp.group.position.y) > HEAD_THRESHOLD : false;
+        if (isHeadshot) pushKillFeed('🎯 HEADSHOT!');
+        socket.emit('shoot', { targetId: hit[0], isHeadshot });
+      } else {
+        const ghostIdx = findGhostBot(h0.object);
         if(ghostIdx !== null && socket) socket.emit('coopBotHit', { botIndex: ghostIdx });
       }
     }
@@ -1875,14 +1882,21 @@ function shoot(){
   gun.canShoot=false; gun.shootTimer=def.fireRate;
 }
 
-function damageBot(bot){
-  if(gun.def && gun.def.oneShot) bot.hp = 0; else bot.hp -= 1;
-  bot.allMats.forEach(mat=>{ mat.emissive.setHex(0xff5500); mat.emissiveIntensity=4.0; });
+function damageBot(bot, isHeadshot = false){
+  if(gun.def && gun.def.oneShot) {
+    bot.hp = 0;
+  } else {
+    bot.hp -= isHeadshot ? 2 : 1; // headshot: ~50% more (integer ceiling)
+  }
+  const flashCol = isHeadshot ? 0xffdd00 : 0xff5500;
+  bot.allMats.forEach(mat=>{ mat.emissive.setHex(flashCol); mat.emissiveIntensity=4.0; });
   setTimeout(()=>{
     if(!bot.phantomGlowing) bot.allMats.forEach(mat=>{ mat.emissive.setHex(0x000000); mat.emissiveIntensity=0; });
   },80);
-  // Hit sparks (bright blue + white, no blood)
-  spawnHitSparks(bot.group.position.clone().setY(1.15 + Math.random() * 0.5));
+  // Headshot sparks are gold; normal are blue-white
+  const sparkY = isHeadshot ? (bot.group.position.y + 1.45) : (bot.group.position.y + 1.15 + Math.random() * 0.5);
+  spawnHitSparks(bot.group.position.clone().setY(sparkY));
+  if (isHeadshot) pushKillFeed('🎯 HEADSHOT!');
   _hitConfirmT = 0.14;
   if(bot.hp<=0) killBot(bot);
 }
@@ -5712,20 +5726,28 @@ function initSocket() {
 
   // A hit was registered by the server
   socket.on('playerHit', data => {
+    const useForcedHealth = data.forcedHealth !== undefined && data.forcedHealth !== null;
     if (data.targetId === socket.id) {
-      // We were hit — only apply if we have PVP on (server already guards, but belt+suspenders)
       if (!pvpMode) return;
-      player.health -= data.damage;
+      if (useForcedHealth) {
+        player.health = Math.max(0, data.forcedHealth);
+      } else {
+        player.health -= data.damage;
+      }
       updateHealthHUD();
       flashDmg();
       if (player.health <= 0) killPlayer();
     } else {
-      // Someone else was hit — flash their robot
       const rp = remotePlayers.get(data.targetId);
       if (rp) {
-        rp.allMats.forEach(m => { m.emissive.setHex(0xff5500); m.emissiveIntensity=4.0; });
+        const flashCol = data.isHeadshot ? 0xffdd00 : 0xff5500;
+        rp.allMats.forEach(m => { m.emissive.setHex(flashCol); m.emissiveIntensity=4.0; });
         setTimeout(() => rp.allMats.forEach(m => { m.emissive.setHex(0x000000); m.emissiveIntensity=0; }), 80);
-        if (data.shooterId === socket.id && rp.health - data.damage <= 0) _playKillSound();
+        if (useForcedHealth) {
+          if (data.shooterId === socket.id && data.forcedHealth <= 0) _playKillSound();
+        } else {
+          if (data.shooterId === socket.id && rp.health - data.damage <= 0) _playKillSound();
+        }
       }
     }
   });

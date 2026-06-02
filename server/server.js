@@ -315,10 +315,30 @@ async function start() {
       socket.broadcast.emit('playerShot', { id: socket.id });
     });
 
-    socket.on('shoot', ({ targetId }) => {
-      const target = players.get(targetId);
-      if (!target || !target.pvpMode) return;
-      io.emit('playerHit', { shooterId: socket.id, targetId, damage: 25 });
+    socket.on('shoot', ({ targetId, isHeadshot }) => {
+      const shooter = players.get(socket.id);
+      const target  = players.get(targetId);
+      if (!target || !target.pvpMode || !shooter) return;
+
+      const isSniperShot     = shooter.gunId === 'sniper';
+      const hasEnhancedScope = (shooter.equippedItems || []).includes('enhanced_scope');
+
+      let damage      = null;
+      let forcedHealth = null;
+
+      if (isSniperShot) {
+        if (hasEnhancedScope) {
+          forcedHealth = isHeadshot ? 0 : 10; // enhanced scope: headshot kills, torso → 10 HP
+        } else if (isHeadshot) {
+          forcedHealth = 10;                  // normal sniper headshot → 10 HP
+        } else {
+          damage = 25;                        // normal sniper torso → standard damage
+        }
+      } else {
+        damage = isHeadshot ? 38 : 25;        // all other guns: headshot +50%
+      }
+
+      io.emit('playerHit', { shooterId: socket.id, targetId, damage, forcedHealth, isHeadshot: !!isHeadshot });
     });
 
     socket.on('banPlayer', async ({ targetUsername }) => {
@@ -1138,6 +1158,7 @@ async function start() {
         emote_honored_one:500,
         // Special items
         killsound_slot:1000,
+        enhanced_scope:1200,  // sniper attachment: torso→10HP, headshot→instakill
       };
       if (!/^[a-z0-9_]+$/.test(itemId)) return res.status(400).json({ error: 'Invalid item.' });
       const parts  = itemId.split('_');
