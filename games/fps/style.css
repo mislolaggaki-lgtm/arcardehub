@@ -585,6 +585,28 @@ body {
 }
 #touch-reload-btn:active { background: rgba(241,196,15,0.45); }
 
+/* SLIDE — above FIRE */
+#touch-slide-btn {
+  position: absolute;
+  right: 22px; bottom: 128px;   /* 28px fire-bottom + 84px fire-height + 16px gap */
+  width: 64px; height: 64px;
+  background: rgba(100,180,255,0.26);
+  border: 2px solid rgba(100,180,255,0.70);
+  border-radius: 50%;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: bold;
+  font-size: 10px; letter-spacing: 1.5px;
+  color: #88ccff;
+  cursor: pointer;
+  pointer-events: auto;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: opacity 0.2s, background 0.1s;
+}
+#touch-slide-btn:active { background: rgba(100,180,255,0.52); }
+#touch-slide-btn.slide-cooldown { opacity: 0.32; pointer-events: none; }
+
 #touch-pause-btn {
   position: absolute;
   top: 18px; left: 18px;
@@ -634,6 +656,11 @@ body {
   #touch-reload-btn {
     bottom: calc(116px + env(safe-area-inset-bottom, 56px));
     right: 122px;
+  }
+  /* SLIDE — same vertical shift */
+  #touch-slide-btn {
+    bottom: calc(128px + env(safe-area-inset-bottom, 56px));
+    right: 18px;
   }
 
   /* HUD — move bottom elements above the touch-button zone so they're readable */

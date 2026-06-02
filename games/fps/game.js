@@ -158,9 +158,23 @@ let _swayY         = 0;        // smoothed vertical sway
 let _headBobY      = 0;        // current head-bob camera offset (un-applied each frame before physics)
 let _prevGrounded  = true;     // landing detection
 let _landDipT      = 0;        // landing camera dip timer
-let _crouchOffset  = 0;        // smoothed crouch camera offset
-let _crouchTarget  = 0;        // desired crouch offset (0 = standing, -0.4 = crouched)
+let _crouchOffset  = 0;        // smoothed crouch camera offset (also used by slide)
 let _vignetteAlpha = 0;        // damage vignette opacity
+
+// ── Slide state ──────────────────────────────────────────────
+const SLIDE_SPEED_START = 11.5;  // P_SPEED + 2.5
+const SLIDE_DECEL       = 9.0;   // units/s² deceleration
+const SLIDE_CANCEL_SPD  = 1.2;   // cancel when speed drops below this
+const SLIDE_COOLDOWN    = 4.0;   // seconds
+
+let isSliding      = false;
+let slideSpeed     = 0;
+const slideDir     = new THREE.Vector3();
+let slideCooldownT = 0;
+let _slideCamTilt  = 0;          // smoothed camera Z-roll for cinematic lean
+
+const slideParticles = [];       // same structure as jumpParticles
+let   _slidePartTimer = 0;
 let _hitConfirmT   = 0;        // crosshair hit-confirm flash timer
 
 // Minigun spin state
@@ -1422,6 +1436,7 @@ function addRemotePlayer(data) {
     targetPos:  new THREE.Vector3(data.x || 0, groundY, data.z || 0),
     targetRotY: data.rotationY || 0,
     walkClock:  0,
+    isSliding:  false,
   });
 }
 
@@ -3604,13 +3619,63 @@ function update(dt){
     moveVec.addScaledVector(rightDir,  touchMoveInput.x);
   }
 
-  const moving=moveVec.lengthSq()>0;
-  if(moving){
-    const _spd = P_SPEED * (player.speedBoostT > 0 ? 1.7 : 1);
-    moveVec.normalize().multiplyScalar(_spd*dt);
-    camera.position.add(moveVec);
-    resolveCollision(camera.position,P_RADIUS);
+  // ── Slide trigger (C key — forward movement only) ────────
+  const _movingForward = keys['KeyW'] || touchMoveInput.y < -0.3;
+  if (keys['KeyC'] && !isSliding && grounded && slideCooldownT <= 0 && _movingForward) {
+    slideDir.copy(viewDir).setY(0).normalize();
+    slideSpeed   = SLIDE_SPEED_START;
+    isSliding    = true;
+    keys['KeyC'] = false;
   }
+
+  // ── Movement / slide physics ─────────────────────────────
+  let moving;
+  if (isSliding) {
+    slideSpeed -= SLIDE_DECEL * dt;
+    if (slideSpeed <= SLIDE_CANCEL_SPD) {
+      isSliding      = false;
+      slideSpeed     = 0;
+      slideCooldownT = SLIDE_COOLDOWN;
+      moving = false;
+    } else {
+      camera.position.addScaledVector(slideDir, slideSpeed * dt);
+      resolveCollision(camera.position, P_RADIUS);
+      moving = true;
+
+      // Dust trail
+      _slidePartTimer -= dt;
+      if (_slidePartTimer <= 0) {
+        _slidePartTimer = 0.045;
+        const footPos = camera.position.clone().setY(camera.position.y - EYE_H + 0.05);
+        for (let _si = 0; _si < 3; _si++) {
+          const mesh = new THREE.Mesh(
+            new THREE.SphereGeometry(0.045 + Math.random() * 0.03, 4, 4),
+            new THREE.MeshBasicMaterial({ color: 0xaaccff, transparent: true, opacity: 0.55 })
+          );
+          mesh.position.copy(footPos).add(new THREE.Vector3(
+            (Math.random() - 0.5) * 0.5, Math.random() * 0.08, (Math.random() - 0.5) * 0.5
+          ));
+          scene.add(mesh);
+          slideParticles.push({
+            mesh,
+            vel: new THREE.Vector3((Math.random()-0.5)*1.4, 0.3+Math.random()*0.6, (Math.random()-0.5)*1.4),
+            age: 0, maxAge: 0.28 + Math.random() * 0.14,
+          });
+        }
+      }
+    }
+  } else {
+    moving = moveVec.lengthSq() > 0;
+    if (moving) {
+      const _spd = P_SPEED * (player.speedBoostT > 0 ? 1.7 : 1);
+      moveVec.normalize().multiplyScalar(_spd * dt);
+      camera.position.add(moveVec);
+      resolveCollision(camera.position, P_RADIUS);
+    }
+  }
+
+  // Tick slide cooldown
+  if (slideCooldownT > 0) slideCooldownT = Math.max(0, slideCooldownT - dt);
 
   // ── Auto fire ───────────────────────────────────────────
   if((mouseHeld || touchFireHeld) && gun.def && gun.def.auto && !_chatTyping) shoot();
@@ -3666,10 +3731,14 @@ function update(dt){
     _swayY += (swayTargetY * 0.014 - _swayY) * Math.min(1, dt * 6);
 
     // 3. Sprint tilt — weapon tilts right when running forward
-    const isSprinting = (keys['KeyW'] || (touchMoveInput.y < -0.5)) && moving;
+    const isSprinting = (keys['KeyW'] || (touchMoveInput.y < -0.5)) && moving && !isSliding;
     const sprintTiltTarget = isSprinting ? 0.14 : 0;
     const _sprintTilt = (weaponRoot.userData._sprintTilt || 0);
     weaponRoot.userData._sprintTilt = _sprintTilt + (sprintTiltTarget - _sprintTilt) * Math.min(1, dt * 7);
+
+    // 3b. Slide gun pose — dips down and tilts 30° forward
+    const _slideGunT = (weaponRoot.userData._slideGunT || 0);
+    weaponRoot.userData._slideGunT = _slideGunT + ((isSliding ? 1 : 0) - _slideGunT) * Math.min(1, dt * 11);
 
     // 4. Per-weapon reload animation (visual only)
     let reloadOffsetY = 0, reloadOffsetZ = 0;
@@ -3698,10 +3767,11 @@ function update(dt){
     }
 
     // 5. Compose final position/rotation
-    weaponRoot.position.y  = bY + Math.sin(bobClock) * bobAmp + recoilY + raiseOffset + _swayY + reloadOffsetY;
+    const _sgt = weaponRoot.userData._slideGunT || 0;
+    weaponRoot.position.y  = bY + Math.sin(bobClock) * bobAmp + recoilY + raiseOffset + _swayY + reloadOffsetY - _sgt * 0.10;
     weaponRoot.position.x  = bX + Math.sin(bobClock * 0.5) * bobAmp * 0.55 + _swayX;
     weaponRoot.position.z  = bZ + recoilZ + reloadOffsetZ;
-    weaponRoot.rotation.x  = -recoilY * 1.6 + reloadRotX;
+    weaponRoot.rotation.x  = -recoilY * 1.6 + reloadRotX + _sgt * 0.524;  // 30° forward dip
     weaponRoot.rotation.z  = weaponRoot.userData._sprintTilt + reloadRotZ;
   }
 
@@ -3715,9 +3785,25 @@ function update(dt){
     _headBobY -= Math.sin(dipFrac * Math.PI) * 0.065;
   }
   // Smooth crouch
-  _crouchTarget = keys['KeyC'] ? -0.35 : 0;
-  _crouchOffset += (_crouchTarget - _crouchOffset) * Math.min(1, dt * 10);
+  // Slide camera — lower + Z-roll while sliding
+  const _crouchTarget = isSliding ? -0.38 : 0;
+  _crouchOffset += (_crouchTarget - _crouchOffset) * Math.min(1, dt * 12);
   camera.position.y += _headBobY + _crouchOffset;
+  const _tiltTarget = isSliding ? 0.06 : 0;
+  _slideCamTilt += (_tiltTarget - _slideCamTilt) * Math.min(1, dt * 10);
+  camera.rotation.z = _slideCamTilt;
+
+  // Slide cooldown desktop HUD
+  const _scdEl  = document.getElementById('slide-cd-hud');
+  const _scdVal = document.getElementById('slide-cd-val');
+  if (_scdEl) {
+    if (slideCooldownT > 0) {
+      _scdEl.style.display = 'block';
+      if (_scdVal) _scdVal.textContent = slideCooldownT.toFixed(1);
+    } else {
+      _scdEl.style.display = 'none';
+    }
+  }
 
   // ── Low-health breathing pulse ───────────────────────────
   if(player.health > 0 && player.health < 25 && !player.dead){
@@ -4272,11 +4358,32 @@ function update(dt){
       if(dy >  Math.PI) dy -= Math.PI*2;
       if(dy < -Math.PI) dy += Math.PI*2;
       rp.group.rotation.y += dy * 0.2;
-      // Leg swing when moving
-      if(moving) {
-        rp.walkClock += 0.1;
-        rp.legL.rotation.x =  Math.sin(rp.walkClock * 2.5) * 0.32;
-        rp.legR.rotation.x = -Math.sin(rp.walkClock * 2.5) * 0.32;
+
+      if (rp.isSliding) {
+        // ── Slide pose (visible to other players) ────────────
+        const sp = Math.min(1, dt * 14);
+        // Whole body leans forward dramatically + slight roll
+        rp.group.rotation.x += (-0.50 - rp.group.rotation.x) * sp;
+        rp.group.rotation.z += ( 0.09 - rp.group.rotation.z) * sp;
+        // Legs: front leg extended, back leg swept behind
+        rp.legL.rotation.x  += ( 0.75 - rp.legL.rotation.x) * sp;
+        rp.legR.rotation.x  += (-0.55 - rp.legR.rotation.x) * sp;
+        // Arms pulled back (gun low)
+        rp.armGroupR.rotation.x += (1.65 - rp.armGroupR.rotation.x) * Math.min(1, dt * 11);
+        rp.armGroupL.rotation.x += (1.65 - rp.armGroupL.rotation.x) * Math.min(1, dt * 11);
+      } else {
+        // Restore to upright
+        const rs = Math.min(1, dt * 9);
+        rp.group.rotation.x += (0   - rp.group.rotation.x) * rs;
+        rp.group.rotation.z += (0   - rp.group.rotation.z) * rs;
+        rp.armGroupR.rotation.x += (1.10 - rp.armGroupR.rotation.x) * rs;
+        rp.armGroupL.rotation.x += (1.10 - rp.armGroupL.rotation.x) * rs;
+        // Normal walk cycle
+        if (moving) {
+          rp.walkClock += 0.1;
+          rp.legL.rotation.x =  Math.sin(rp.walkClock * 2.5) * 0.32;
+          rp.legR.rotation.x = -Math.sin(rp.walkClock * 2.5) * 0.32;
+        }
       }
     }
     // Muzzle flash fade
@@ -4413,6 +4520,15 @@ function update(dt){
     jp.vel.y-=12*dt;
     jp.mesh.position.addScaledVector(jp.vel,dt);
     jp.mesh.material.opacity=0.82*(1-jp.age/jp.maxAge);
+  }
+
+  // ── Slide dust particles ─────────────────────────────────
+  for (let i = slideParticles.length - 1; i >= 0; i--) {
+    const sp = slideParticles[i]; sp.age += dt;
+    if (sp.age >= sp.maxAge) { scene.remove(sp.mesh); sp.mesh.geometry.dispose(); sp.mesh.material.dispose(); slideParticles.splice(i, 1); continue; }
+    sp.vel.y -= 4 * dt;
+    sp.mesh.position.addScaledVector(sp.vel, dt);
+    sp.mesh.material.opacity = 0.55 * (1 - sp.age / sp.maxAge);
   }
 
   // ── Flickering ceiling lights ────────────────────────────
@@ -5422,6 +5538,7 @@ function initSocket() {
           rotationY: yaw,
           health: player.health,
           gunId: selectedGunId,
+          isSliding,
         });
       }
     }, 50);
@@ -5580,6 +5697,7 @@ function initSocket() {
       rp.group.add(rp.remoteGun.group);
       needsLabelRefresh = true;
     }
+    if (data.isSliding !== undefined) rp.isSliding = !!data.isSliding;
     if (needsLabelRefresh) refreshPlayerLabel(rp);
   });
 
@@ -6445,6 +6563,7 @@ if (isMobile) {
   const shootBtn  = document.getElementById('touch-shoot-btn');
   const jumpBtn   = document.getElementById('touch-jump-btn');
   const reloadBtn = document.getElementById('touch-reload-btn');
+  const slideBtn  = document.getElementById('touch-slide-btn');
 
   const JOYSTICK_RADIUS = 52;
   let joystickTouchId = null, joystickCenterX = 0, joystickCenterY = 0;
@@ -6568,6 +6687,25 @@ if (isMobile) {
       e.preventDefault();
       reloadGun();
     }, { passive: false });
+  }
+
+  // ── Slide button ───────────────────────────────────────
+  if (slideBtn) {
+    slideBtn.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (!mobileGameActive || player.dead || !grounded || isSliding || slideCooldownT > 0) return;
+      if (touchMoveInput.y >= -0.3) return; // forward joystick required
+      slideDir.copy(viewDir).setY(0).normalize();
+      slideSpeed = SLIDE_SPEED_START;
+      isSliding  = true;
+    }, { passive: false });
+
+    // Keep button dimmed during cooldown / active slide
+    const _updateSlideBtn = () => {
+      slideBtn.classList.toggle('slide-cooldown', isSliding || slideCooldownT > 0);
+      requestAnimationFrame(_updateSlideBtn);
+    };
+    requestAnimationFrame(_updateSlideBtn);
   }
 }
 

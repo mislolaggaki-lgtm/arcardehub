@@ -426,7 +426,7 @@
       <span><kbd>WASD</kbd> Move</span>
       <span><kbd>Space</kbd> Jump</span>
       <span><kbd>R</kbd> Reload</span>
-      <span><kbd>C</kbd> Crouch</span>
+      <span><kbd>C</kbd> Slide (fwd)</span>
       <span><kbd>T</kbd> Pause</span>
       <span><kbd>B</kbd> Emotes</span>
     </div>
@@ -438,6 +438,10 @@
     <div id="ping-display" style="display:none">-- ms</div>
     <div id="fps-counter" style="position:absolute;top:8px;left:50%;transform:translateX(-50%);font-size:11px;color:rgba(100,200,100,0.7);font-family:'Courier New',monospace;letter-spacing:1px;pointer-events:none"></div>
     <div id="kill-feed"></div>
+    <div id="slide-cd-hud" style="display:none; position:absolute; bottom:90px; left:50%; transform:translateX(-50%);
+      font-size:10px; letter-spacing:3px; color:#88ccff; text-shadow:0 0 8px rgba(136,204,255,0.6); pointer-events:none;">
+      SLIDE CD: <span id="slide-cd-val">4.0</span>s
+    </div>
   </div>
 
   <!-- START / GUN SELECT screen -->
@@ -719,6 +723,7 @@
     <button id="touch-emote-btn" onclick="toggleEmoteWheel()">&#128526;</button>
     <button id="touch-jump-btn">&#8679;</button>
     <button id="touch-reload-btn">R</button>
+    <button id="touch-slide-btn">SLIDE</button>
     <button id="touch-shoot-btn">FIRE</button>
   </div>
 
