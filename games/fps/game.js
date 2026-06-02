@@ -162,8 +162,8 @@ let _crouchOffset  = 0;        // smoothed crouch camera offset (also used by sl
 let _vignetteAlpha = 0;        // damage vignette opacity
 
 // ── Slide state ──────────────────────────────────────────────
-const SLIDE_SPEED_START = 11.5;  // P_SPEED + 2.5
-const SLIDE_DECEL       = 9.0;   // units/s² deceleration
+const SLIDE_SPEED_START = 15.0;  // fast burst speed
+const SLIDE_DECEL       = 6.5;   // units/s² deceleration (~2.1s slide duration)
 const SLIDE_CANCEL_SPD  = 1.2;   // cancel when speed drops below this
 const SLIDE_COOLDOWN    = 4.0;   // seconds
 
