@@ -50,44 +50,32 @@ async function validateEmailDomain(email) {
 // Map<username, { code: string, expires: number }>
 const loginCodes = new Map();
 
-// ── Email sender ──────────────────────────────────────────────
+// ── Email sender (SendGrid HTTP API) ─────────────────────────
 async function _sendMail(to, subject, html) {
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
-    console.error('[MAIL] GMAIL_USER or GMAIL_PASS not set');
+  if (!process.env.SENDGRID_API_KEY) {
+    console.error('[MAIL] SENDGRID_API_KEY not set');
     throw new Error('Email not configured on server.');
   }
-  // Resolve to IPv4 explicitly — Render blocks outbound IPv6
-  let smtpHost = 'smtp.gmail.com';
-  try {
-    const addrs = await dns.resolve4('smtp.gmail.com');
-    if (addrs && addrs.length) smtpHost = addrs[0];
-    console.log('[MAIL] Resolved smtp.gmail.com →', smtpHost);
-  } catch (dnsErr) {
-    console.warn('[MAIL] DNS resolve4 failed, using hostname:', dnsErr.message);
-  }
-  const transport = nodemailer.createTransport({
-    host: smtpHost,
-    port: 587,
-    secure: false,
-    tls: { servername: 'smtp.gmail.com' },
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_PASS.replace(/\s+/g, ''),
+  const fromEmail = process.env.GMAIL_USER || 'ioannismislis1206@gmail.com';
+  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+      'Content-Type': 'application/json',
     },
-    requireTLS: true,
-    connectionTimeout: 10000,
-    greetingTimeout:   10000,
-    socketTimeout:    12000,
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: to }] }],
+      from: { email: fromEmail, name: 'ArcadeHub' },
+      subject,
+      content: [{ type: 'text/html', value: html }],
+    }),
   });
-  const send    = transport.sendMail({ from: `"ArcadeHub" <${process.env.GMAIL_USER}>`, to, subject, html });
-  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Mail timeout after 12s')), 12000));
-  try {
-    await Promise.race([send, timeout]);
-    console.log('[MAIL] Sent to', to);
-  } catch (err) {
-    console.error('[MAIL] Send failed:', err.message);
-    throw err;
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('[MAIL] SendGrid error:', err);
+    throw new Error(`SendGrid error: ${res.status}`);
   }
+  console.log('[MAIL] Sent to', to);
 }
 
 // ── Express + HTTP server ─────────────────────────────────────
