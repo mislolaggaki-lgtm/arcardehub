@@ -1235,6 +1235,23 @@ async function start() {
     }
   });
 
+  // ── DELETE /api/admin/accounts/:username ────────────────────
+  app.delete('/api/admin/accounts/:username', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      if (!payload.isAdmin || payload.username !== 'Stotch')
+        return res.status(403).json({ error: 'Forbidden.' });
+      const target = req.params.username;
+      if (target === 'Stotch') return res.status(400).json({ error: 'Cannot delete the root admin account.' });
+      const result = await usersCol.deleteOne({ username: target });
+      if (result.deletedCount === 0) return res.status(404).json({ error: `No account found with username "${target}".` });
+      res.json({ success: true, deleted: target });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
   // ── POST /api/bucks/gift ────────────────────────────────────
   app.post('/api/bucks/gift', async (req, res) => {
     try {
