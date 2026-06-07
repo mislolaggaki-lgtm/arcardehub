@@ -8,6 +8,7 @@ const jwt        = require('jsonwebtoken');
 const path       = require('path');
 const nodemailer = require('nodemailer');
 const webpush    = require('web-push');
+const dns        = require('dns').promises;
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const { Server } = require('socket.io');
 
@@ -17,6 +18,31 @@ const JWT_SECRET  = process.env.JWT_SECRET  || 'arcadehub-dev-secret-change-in-p
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/arcadehub';
 const SALT_ROUNDS    = 10;
 const TERMS_VERSION  = 1;
+
+// ── Disposable-email blocklist + DNS MX validation ────────────
+const DISPOSABLE_DOMAINS = new Set([
+  'mailinator.com','guerrillamail.com','guerrillamail.info','guerrillamail.biz',
+  'guerrillamail.de','guerrillamail.net','guerrillamail.org','guerrillamailblock.com',
+  'grr.la','sharklasers.com','spam4.me','trashmail.com','trashmail.me','trashmail.net',
+  'dispostable.com','mailnull.com','spamgourmet.com','yopmail.com','yopmail.fr',
+  'maildrop.cc','mailnesia.com','getairmail.com','tempr.email','discard.email',
+  'temp-mail.org','tempmail.com','throwam.com','fakeinbox.com','spamspot.com',
+  'mytrashmail.com','filzmail.com','rcpt.at','proxymail.eu','mt2014.com','mt2015.com',
+  'cool.fr.nf','jetable.fr.nf','nospam.ze.tc','nomail.xl.cx','courriel.fr.nf',
+]);
+
+async function validateEmailDomain(email) {
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!domain) return 'Invalid email address.';
+  if (DISPOSABLE_DOMAINS.has(domain)) return 'Disposable/temporary email addresses are not allowed.';
+  try {
+    const records = await dns.resolveMx(domain);
+    if (!records || records.length === 0) return 'That email domain cannot receive mail. Please use a real email address.';
+    return null; // valid
+  } catch {
+    return 'That email domain does not exist. Please use a real email address.';
+  }
+}
 
 // ── Email transporter (set GMAIL_USER + GMAIL_PASS env vars) ──
 const _mailTransport = nodemailer.createTransport({
@@ -822,6 +848,8 @@ async function start() {
         return res.status(400).json({ error: 'Please enter a valid email address.' });
 
       const emailLower = email.toLowerCase().trim();
+      const domainErr = await validateEmailDomain(emailLower);
+      if (domainErr) return res.status(400).json({ error: domainErr });
 
       // Check banned list
       const isBanned = await bannedCol.findOne({ username: username.toLowerCase() });
@@ -1417,6 +1445,8 @@ async function start() {
         const emailLower = String(newEmail).toLowerCase().trim();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLower))
           return res.status(400).json({ error: 'Please enter a valid email address.' });
+        const domainErr2 = await validateEmailDomain(emailLower);
+        if (domainErr2) return res.status(400).json({ error: domainErr2 });
         const existing = await usersCol.findOne({ email: emailLower, _id: { $ne: new (require('mongodb').ObjectId)(payload.userId) } });
         if (existing) return res.status(409).json({ error: 'That email is already linked to another account.' });
         $set.email = emailLower;
