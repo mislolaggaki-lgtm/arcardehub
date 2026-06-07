@@ -312,6 +312,19 @@
     }
     .badge-admin { background: rgba(59,158,232,0.15); color: #3b9ee8; border: 1px solid rgba(59,158,232,0.3); }
     .badge-user  { background: rgba(255,255,255,0.05); color: #555; border: 1px solid rgba(255,255,255,0.08); }
+    .admin-card-wide { flex-basis: 100%; }
+    .admin-accounts-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+    .admin-accounts-table th {
+      text-align: left; font-size: 9px; letter-spacing: 2px; color: #3b9ee8;
+      padding: 6px 10px; border-bottom: 1px solid rgba(59,158,232,0.2); text-transform: uppercase;
+    }
+    .admin-accounts-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); color: #bbb; vertical-align: middle; }
+    .admin-accounts-table tr:last-child td { border-bottom: none; }
+    .admin-accounts-table tr:hover td { background: rgba(255,255,255,0.03); }
+    .acc-email { color: #888; font-size: 11px; }
+    .acc-verified-yes { color: #44dd88; font-size: 10px; letter-spacing: 1px; }
+    .acc-verified-no  { color: #e74c3c; font-size: 10px; letter-spacing: 1px; }
+    .acc-scroll { max-height: 320px; overflow-y: auto; }
 
     /* ── Auth modal ───────────────────────────────────────── */
     .auth-overlay {
@@ -2437,6 +2450,32 @@
         <div class="admin-players-list" id="ap-players-list"></div>
       </div>
 
+      <!-- All Accounts card -->
+      <div class="admin-card admin-card-wide">
+        <div class="admin-card-title" style="display:flex;align-items:center;justify-content:space-between">
+          <span>👥 All Accounts</span>
+          <button class="admin-btn admin-btn-blue" style="font-size:9px;padding:4px 10px" onclick="apLoadAccounts()">REFRESH</button>
+        </div>
+        <div class="acc-scroll">
+          <table class="admin-accounts-table">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Verified</th>
+                <th>Role</th>
+                <th>Created</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="ap-accounts-body">
+              <tr><td colspan="6" style="color:#555;text-align:center;padding:20px">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="admin-status" id="ap-accounts-status"></div>
+      </div>
+
     </div>
   </section>
 
@@ -2711,7 +2750,7 @@
       // Show admin panel for Stotch only
       if (localStorage.getItem('isAdmin') === 'true' && username === 'Stotch') {
         const ap = document.getElementById('admin-section');
-        if (ap) { ap.style.display = 'block'; apLoadPlayers(); }
+        if (ap) { ap.style.display = 'block'; apLoadPlayers(); apLoadAccounts(); }
         _setupAdminPush();
       }
       chatConnect();
@@ -6108,6 +6147,52 @@
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
+    async function apLoadAccounts() {
+      const token = localStorage.getItem('ah_token');
+      const tbody = document.getElementById('ap-accounts-body');
+      if (!tbody || !token) return;
+      tbody.innerHTML = '<tr><td colspan="6" style="color:#555;text-align:center;padding:20px">Loading…</td></tr>';
+      try {
+        const r = await fetch(`${API}/admin/accounts`, { headers: { Authorization: `Bearer ${token}` } });
+        const d = await r.json();
+        if (!r.ok || !d.accounts) { tbody.innerHTML = '<tr><td colspan="6" style="color:#e74c3c;text-align:center">Failed to load.</td></tr>'; return; }
+        if (d.accounts.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="color:#555;text-align:center">No accounts found.</td></tr>'; return; }
+        tbody.innerHTML = d.accounts.map(a => `
+          <tr>
+            <td><strong style="color:#ddd">${a.username}</strong>${a.isAdmin ? ' <span class="admin-player-badge badge-admin">ADMIN</span>' : ''}</td>
+            <td class="acc-email">${a.email || '<span style="color:#444">—</span>'}</td>
+            <td>${a.emailVerified ? '<span class="acc-verified-yes">✓ YES</span>' : '<span class="acc-verified-no">✗ NO</span>'}</td>
+            <td><span class="admin-player-badge ${a.isAdmin ? 'badge-admin' : 'badge-user'}">${a.isAdmin ? 'ADMIN' : 'USER'}</span></td>
+            <td style="color:#555;font-size:11px">${a.created ? a.created.slice(0,10) : '—'}</td>
+            <td>${a.username === 'Stotch' ? '' : `<button class="admin-btn admin-btn-red" style="font-size:9px;padding:3px 10px" onclick="apDeleteAccount('${a.username}')">DELETE</button>`}</td>
+          </tr>`).join('');
+      } catch { tbody.innerHTML = '<tr><td colspan="6" style="color:#e74c3c;text-align:center">Could not reach server.</td></tr>'; }
+    }
+
+    async function apDeleteAccount(username) {
+      if (!confirm(`Delete account "${username}"? This cannot be undone.`)) return;
+      const token = localStorage.getItem('ah_token');
+      const statusEl = document.getElementById('ap-accounts-status');
+      try {
+        const r = await fetch(`${API}/admin/accounts/${encodeURIComponent(username)}`, {
+          method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+        });
+        const d = await r.json();
+        if (r.ok) {
+          statusEl.textContent = `✓ "${username}" deleted.`;
+          statusEl.className = 'admin-status';
+          apLoadAccounts();
+        } else {
+          statusEl.textContent = d.error || 'Error.';
+          statusEl.className = 'admin-status err';
+        }
+      } catch {
+        statusEl.textContent = 'Could not reach server.';
+        statusEl.className = 'admin-status err';
+      }
+      setTimeout(() => { statusEl.textContent = ''; }, 3000);
     }
 
     async function apLoadPlayers() {
