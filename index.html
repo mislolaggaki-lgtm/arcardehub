@@ -658,31 +658,83 @@
     .bucks-display:hover { background: rgba(200,162,21,0.18); border-color: rgba(200,162,21,0.5); }
     .bucks-display svg { flex-shrink: 0; }
 
-    /* ── Shop button ────────────────────────────────────── */
-    .btn-shop {
-      padding: 7px 18px;
-      background: transparent;
-      border: 1px solid rgba(200,162,21,0.30);
-      border-radius: 5px; color: #c8a215;
-      font-family: 'Inter', sans-serif;
-      font-size: 12px; font-weight: 700;
-      letter-spacing: 2px; text-transform: uppercase;
-      cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+    /* ── Nav dropdown ────────────────────────────────────── */
+    .nav-dd-wrap { position: relative; }
+    .nav-dd-btn {
+      display: flex; flex-direction: column; gap: 5px; align-items: center; justify-content: center;
+      padding: 9px 11px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 9px; cursor: pointer;
+      transition: background .2s, border-color .2s;
     }
-    .btn-shop:hover { background: rgba(200,162,21,0.12); border-color: rgba(200,162,21,0.6); color: #ffd700; }
-
-    /* ── FPS Settings button ─────────────────────────────── */
-    .btn-settings {
-      padding: 7px 18px;
-      background: transparent;
-      border: 1px solid rgba(150,200,255,0.25);
-      border-radius: 5px; color: #7090c0;
-      font-family: 'Inter', sans-serif;
-      font-size: 12px; font-weight: 700;
-      letter-spacing: 2px; text-transform: uppercase;
-      cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+    .nav-dd-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.25); }
+    .nav-dd-btn.open  { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.3); }
+    .ham {
+      display: block; width: 22px; height: 2.5px; background: #9999cc;
+      border-radius: 2px; transition: all 0.38s cubic-bezier(0.4,0,0.2,1);
+      transform-origin: center;
     }
-    .btn-settings:hover { background: rgba(150,200,255,0.10); border-color: rgba(150,200,255,0.5); color: #aad0ff; }
+    .nav-dd-btn.open .ham:nth-child(1) { transform: translateY(7.5px) rotate(45deg); background: #c0c0ff; }
+    .nav-dd-btn.open .ham:nth-child(2) { transform: scaleX(0); opacity: 0; }
+    .nav-dd-btn.open .ham:nth-child(3) { transform: translateY(-7.5px) rotate(-45deg); background: #c0c0ff; }
+    .nav-dd-menu {
+      position: absolute; top: calc(100% + 12px); right: 0;
+      min-width: 230px; z-index: 2000;
+      background: rgba(10,10,24,0.98); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04);
+      pointer-events: none; opacity: 0;
+      transform: translateY(-10px) scale(0.96);
+      transform-origin: top right;
+      transition: opacity 0.28s cubic-bezier(0.4,0,0.2,1), transform 0.28s cubic-bezier(0.4,0,0.2,1);
+      backdrop-filter: blur(20px);
+    }
+    .nav-dd-menu.open { pointer-events: all; opacity: 1; transform: translateY(0) scale(1); }
+    .dd-user-info {
+      padding: 14px 18px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.02);
+    }
+    .dd-greeting { font-size: 9px; letter-spacing: 3px; color: #444; text-transform: uppercase; margin-bottom: 3px; }
+    .dd-username  { font-size: 15px; font-weight: 700; color: #c0c0ee; }
+    .dd-bucks-row {
+      display: flex; align-items: center; gap: 6px; margin-top: 8px;
+      cursor: pointer; color: #ffd700; font-size: 13px; font-weight: 700;
+      transition: opacity .15s;
+    }
+    .dd-bucks-row:hover { opacity: 0.8; }
+    .dd-sep { height: 1px; background: rgba(255,255,255,0.06); margin: 3px 0; }
+    .dd-item {
+      display: flex; align-items: center; gap: 12px;
+      width: 100%; padding: 11px 18px; text-align: left;
+      background: none; border: none; cursor: pointer;
+      font-family: 'Inter', sans-serif; font-size: 13px; color: #9090c0;
+      transition: background .15s, color .15s;
+      opacity: 0; transform: translateX(8px);
+    }
+    .nav-dd-menu.open .dd-item { opacity: 1; transform: translateX(0); }
+    .nav-dd-menu.open .dd-item:nth-child(1)  { transition: opacity .22s .04s ease, transform .22s .04s ease, background .15s, color .15s; }
+    .nav-dd-menu.open .dd-item:nth-child(2)  { transition: opacity .22s .07s ease, transform .22s .07s ease, background .15s, color .15s; }
+    .nav-dd-menu.open .dd-item:nth-child(3)  { transition: opacity .22s .10s ease, transform .22s .10s ease, background .15s, color .15s; }
+    .nav-dd-menu.open .dd-item:nth-child(4)  { transition: opacity .22s .13s ease, transform .22s .13s ease, background .15s, color .15s; }
+    .nav-dd-menu.open .dd-item:nth-child(5)  { transition: opacity .22s .16s ease, transform .22s .16s ease, background .15s, color .15s; }
+    .nav-dd-menu.open .dd-item:nth-child(6)  { transition: opacity .22s .19s ease, transform .22s .19s ease, background .15s, color .15s; }
+    .nav-dd-menu.open .dd-item:nth-child(7)  { transition: opacity .22s .22s ease, transform .22s .22s ease, background .15s, color .15s; }
+    .nav-dd-menu.open .dd-item:nth-child(8)  { transition: opacity .22s .25s ease, transform .22s .25s ease, background .15s, color .15s; }
+    .nav-dd-menu.open .dd-item:nth-child(9)  { transition: opacity .22s .28s ease, transform .22s .28s ease, background .15s, color .15s; }
+    .nav-dd-menu.open .dd-item:nth-child(10) { transition: opacity .22s .31s ease, transform .22s .31s ease, background .15s, color .15s; }
+    .nav-dd-menu.open .dd-item:nth-child(11) { transition: opacity .22s .34s ease, transform .22s .34s ease, background .15s, color .15s; }
+    .nav-dd-menu.open .dd-item:nth-child(12) { transition: opacity .22s .37s ease, transform .22s .37s ease, background .15s, color .15s; }
+    .dd-item:hover { background: rgba(255,255,255,0.05); color: #e0e0ff; }
+    .dd-item-danger { color: #774444; }
+    .dd-item-danger:hover { color: #e74c3c; background: rgba(231,76,60,0.07); }
+    .dd-icon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
+    .dd-icon-img { width: 20px; height: 20px; object-fit: contain; border-radius: 4px; flex-shrink: 0; }
+    .dd-badge {
+      margin-left: auto; background: rgba(59,158,232,0.2); color: #3b9ee8;
+      border-radius: 10px; padding: 1px 8px; font-size: 11px; font-weight: 700;
+    }
+    .dd-badge-red { background: rgba(231,76,60,0.2); color: #e74c3c; }
 
     /* ── Settings Modal ──────────────────────────────────── */
     .settings-overlay {
@@ -1201,19 +1253,7 @@
       nav { padding: 0 16px; height: 54px; }
       .logo { font-size: 20px; letter-spacing: 3px; }
       .btn-login { padding: 8px 16px; font-size: 11px; }
-      #nav-user .nav-username,
-      #nav-user .btn-changelog,
-      #nav-user .btn-feedback,
-      #nav-user .btn-profile,
-      #nav-user .btn-shop,
-      #nav-user .btn-logout,
-      #nav-user .btn-delete-account,
-      #nav-user .btn-settings,
-      #nav-user .btn-notif,
-      #nav-user .btn-friends,
-      #nav-user .online-badge { display: none !important; }
-      #nav-user .bucks-display { display: flex; }
-      .nav-hamburger { display: flex !important; }
+      #nav-user .nav-username { display: none; }
       .hero { padding: 100px 18px 60px; }
       .games-section { padding: 10px 14px 80px; }
       .cards-grid { grid-template-columns: 1fr; gap: 14px; }
@@ -1225,70 +1265,8 @@
       .badge-card { width: 118px; }
       .badge-icon-wrap { width: 72px; height: 72px; }
       .badge-icon-wrap svg { width: 72px; height: 72px; }
+      .nav-dd-menu { right: -8px; min-width: 210px; }
     }
-
-    /* ── Hamburger button ──────────────────────────────────── */
-    .nav-hamburger {
-      display: none;
-      flex-direction: column; gap: 5px;
-      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 8px; cursor: pointer; padding: 8px 10px;
-      transition: background .15s;
-    }
-    .nav-hamburger:hover { background: rgba(255,255,255,0.10); }
-    .nav-hamburger span { display: block; width: 20px; height: 2px; background: #9999bb; border-radius: 2px; }
-
-    /* ── Mobile slide-in drawer ────────────────────────────── */
-    .mobile-drawer-overlay {
-      display: none; position: fixed; inset: 0; z-index: 1800;
-      background: rgba(0,0,0,0.72); backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-    }
-    .mobile-drawer-overlay.open { display: block; }
-    .mobile-drawer {
-      position: absolute; top: 0; right: 0; bottom: 0;
-      width: 290px; max-width: 88vw;
-      background: #0a0a18;
-      border-left: 1px solid rgba(255,255,255,0.08);
-      display: flex; flex-direction: column;
-      transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
-    }
-    .mobile-drawer-overlay.open .mobile-drawer { transform: translateX(0); }
-    .md-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 18px 20px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);
-    }
-    .md-logo { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 3px; color: #fff; }
-    .md-logo em { font-style: normal; color: #e74c3c; }
-    .md-close {
-      background: rgba(255,255,255,0.05); border: none; color: #555; font-size: 16px;
-      border-radius: 7px; padding: 6px 10px; cursor: pointer; transition: color .15s, background .15s;
-    }
-    .md-close:hover { color: #fff; background: rgba(255,255,255,0.10); }
-    .md-user {
-      padding: 14px 20px 10px; border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
-    .md-greeting { font-size: 11px; color: #4a4a70; letter-spacing: 2px; margin-bottom: 2px; }
-    .md-username-text { font-size: 16px; font-weight: 700; color: #c0c0ee; }
-    .md-bucks-row {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px 20px 14px; border-bottom: 1px solid rgba(255,255,255,0.05);
-      font-size: 18px; font-weight: 800; color: #ffd700; letter-spacing: 1px;
-    }
-    .md-bucks-row span { font-size: 11px; color: #6a6a30; font-weight: 600; letter-spacing: 3px; margin-left: 2px; }
-    .md-list { flex: 1; overflow-y: auto; padding: 6px 0; }
-    .md-item {
-      display: flex; align-items: center; gap: 14px;
-      padding: 14px 20px; width: 100%; text-align: left;
-      background: none; border: none; cursor: pointer;
-      font-family: 'Inter', sans-serif; font-size: 14px; color: #9090c0;
-      transition: background .15s, color .15s;
-    }
-    .md-item:hover { background: rgba(255,255,255,0.04); color: #e0e0ff; }
-    .md-item-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
-    .md-sep { height: 1px; background: rgba(255,255,255,0.05); margin: 4px 0; }
-    .md-item.md-danger { color: #774444; }
-    .md-item.md-danger:hover { color: #e74c3c; background: rgba(231,76,60,0.07); }
 
     /* ── Chat widget ──────────────────────────────────────────── */
     #chat-fab {
@@ -1420,143 +1398,130 @@
     }
 
     /* ── Notification bell button ────────────────────────────── */
-    .btn-notif {
-      position: relative;
-      padding: 7px 12px;
-      background: transparent;
-      border: 1px solid rgba(255,255,255,0.14);
-      border-radius: 5px; color: #9090bb;
-      font-family: 'Inter', sans-serif;
-      font-size: 16px; cursor: pointer;
-      transition: background .15s, border-color .15s, color .15s;
-      display: flex; align-items: center; gap: 5px;
+    /* ── AI Chat modal (Apple Intelligence style) ───────────── */
+    @keyframes ai-bubble-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
-    .btn-notif:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.3); color: #fff; }
-
-    /* ── Friends button ──────────────────────────────────────── */
-    .btn-friends {
-      padding: 7px 14px;
-      background: transparent;
-      border: 1px solid rgba(59,158,232,0.25);
-      border-radius: 5px; color: #5588bb;
-      font-family: 'Inter', sans-serif;
-      font-size: 12px; font-weight: 600;
-      letter-spacing: 1.5px; text-transform: uppercase;
-      cursor: pointer; display: flex; align-items: center; gap: 6px;
-      transition: background .15s, border-color .15s, color .15s;
+    @keyframes ai-orb-spin {
+      to { transform: rotate(360deg); }
     }
-    .btn-friends:hover { background: rgba(59,158,232,0.1); border-color: rgba(59,158,232,0.5); color: #7ec8ff; }
-
-    /* ── Profile button ──────────────────────────────────────── */
-    .btn-profile {
-      padding: 6px 12px;
-      background: transparent;
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 5px; color: #6666aa;
-      font-family: 'Inter', sans-serif;
-      font-size: 12px; font-weight: 600;
-      letter-spacing: 1px; cursor: pointer;
-      transition: background .15s, border-color .15s, color .15s;
+    @keyframes ai-orb-pulse {
+      0%,100% { transform: scale(1);   opacity: 0.9; }
+      50%      { transform: scale(1.06); opacity: 1; }
     }
-    .btn-profile:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.25); color: #c0c0ee; }
-    .btn-changelog {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(34,221,100,0.07); border: 1px solid rgba(34,221,100,0.25);
-      color: #22dd64; border-radius: 6px; padding: 7px 13px;
-      font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700;
-      letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer;
-      transition: background .15s, border-color .15s, color .15s;
-    }
-    .btn-changelog:hover { background: rgba(34,221,100,0.14); border-color: rgba(34,221,100,0.5); color: #44ff88; }
-    .btn-feedback {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(150,100,255,0.07); border: 1px solid rgba(150,100,255,0.25);
-      color: #aa88ff; border-radius: 6px; padding: 7px 13px;
-      font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700;
-      letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer;
-      transition: background .15s, border-color .15s, color .15s;
-    }
-    .btn-feedback:hover { background: rgba(150,100,255,0.14); border-color: rgba(150,100,255,0.5); color: #cc99ff; }
-    .btn-ai {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(0,200,255,0.07); border: 1px solid rgba(0,200,255,0.25);
-      color: #00c8ff; border-radius: 6px; padding: 7px 13px;
-      font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700;
-      letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer;
-      transition: background .15s, border-color .15s, color .15s;
-    }
-    .btn-ai:hover { background: rgba(0,200,255,0.14); border-color: rgba(0,200,255,0.5); color: #66dfff; }
-
-    /* ── AI Chat modal ─────────────────────────────────────────── */
     .ai-overlay {
       position: fixed; inset: 0; z-index: 900;
-      background: rgba(0,0,0,0.72); backdrop-filter: blur(8px);
+      background: rgba(0,0,0,0.8); backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       display: none; align-items: center; justify-content: center;
     }
     .ai-overlay.open { display: flex; }
     .ai-modal {
-      background: #0d0d1e; border: 1px solid rgba(0,200,255,0.2);
-      border-radius: 14px; width: 680px; max-width: 96vw;
-      height: 78vh; max-height: 680px;
+      background: #080814; border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px; width: 700px; max-width: 97vw;
+      height: 82vh; max-height: 720px;
       display: flex; flex-direction: column; overflow: hidden;
-      box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+      box-shadow: 0 32px 100px rgba(0,0,0,0.9);
+      position: relative;
     }
-    .ai-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 20px; border-bottom: 1px solid rgba(0,200,255,0.12);
-      background: rgba(0,200,255,0.04);
+    /* Subtle siri-color border glow on modal */
+    .ai-modal::before {
+      content: ''; position: absolute; inset: -1px; border-radius: 21px; z-index: -1;
+      background: conic-gradient(from 0deg, #FFD60A, #FF9F0A, #FF453A, #BF5AF2, #0A84FF, #FFD60A);
+      opacity: 0; transition: opacity 0.5s ease;
+      filter: blur(8px);
     }
-    .ai-header-title { font-size: 12px; font-weight: 700; letter-spacing: 3px; color: #00c8ff; }
-    .ai-header-sub   { font-size: 10px; color: #555; margin-top: 2px; letter-spacing: 1px; }
-    .ai-close { background: none; border: none; color: #555; font-size: 18px; cursor: pointer; line-height: 1; padding: 4px 8px; }
-    .ai-close:hover { color: #aaa; }
+    .ai-modal.thinking-active::before { opacity: 0.5; animation: ai-orb-spin 4s linear infinite; }
+
+    .ai-modal-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.02); flex-shrink: 0;
+    }
+    .ai-logo-img { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+    .ai-header-text { flex: 1; }
+    .ai-header-title { font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #e0e0ff; }
+    .ai-header-sub   { font-size: 10px; color: #444; margin-top: 2px; letter-spacing: 1.5px; text-transform: uppercase; }
+    .ai-header-actions { display: flex; align-items: center; gap: 8px; }
+    .ai-clear-btn {
+      background: none; border: 1px solid rgba(255,255,255,0.08); color: #555;
+      border-radius: 6px; padding: 5px 11px; font-size: 10px; font-family: inherit;
+      letter-spacing: 1px; cursor: pointer; transition: color .15s, border-color .15s;
+    }
+    .ai-clear-btn:hover { color: #aaa; border-color: rgba(255,255,255,0.2); }
+    .ai-close-btn {
+      background: none; border: none; color: #444; font-size: 18px;
+      cursor: pointer; padding: 4px 8px; line-height: 1; transition: color .15s;
+    }
+    .ai-close-btn:hover { color: #aaa; }
+
+    /* Siri wave canvas */
+    .ai-wave-wrap {
+      height: 0; overflow: hidden; flex-shrink: 0;
+      transition: height 0.4s cubic-bezier(0.4,0,0.2,1);
+      position: relative;
+    }
+    .ai-wave-wrap.active { height: 72px; }
+    #ai-wave-canvas { display: block; width: 100%; height: 72px; }
+
     .ai-messages {
-      flex: 1; overflow-y: auto; padding: 20px 20px 8px;
-      display: flex; flex-direction: column; gap: 14px;
-      scrollbar-width: thin; scrollbar-color: rgba(0,200,255,0.2) transparent;
+      flex: 1; overflow-y: auto; padding: 22px 22px 10px;
+      display: flex; flex-direction: column; gap: 16px;
+      scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent;
     }
     .ai-bubble {
-      max-width: 82%; padding: 11px 15px; border-radius: 10px;
-      font-size: 13px; line-height: 1.65; white-space: pre-wrap; word-break: break-word;
+      max-width: 80%; padding: 12px 16px; border-radius: 14px;
+      font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; word-break: break-word;
+      animation: ai-bubble-in 0.3s ease forwards;
     }
     .ai-bubble.user {
       align-self: flex-end;
-      background: rgba(0,200,255,0.12); border: 1px solid rgba(0,200,255,0.22); color: #dde;
+      background: linear-gradient(135deg, rgba(191,90,242,0.18), rgba(10,132,255,0.18));
+      border: 1px solid rgba(191,90,242,0.25); color: #dde;
     }
     .ai-bubble.assistant {
       align-self: flex-start;
       background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #ccc;
     }
-    .ai-bubble.thinking {
-      align-self: flex-start; color: #555; font-style: italic; font-size: 12px;
-      background: none; border: none; padding: 4px 0;
+    .ai-bubble.error-msg {
+      align-self: flex-start; color: #e74c3c; font-size: 12px;
+      background: rgba(231,76,60,0.07); border: 1px solid rgba(231,76,60,0.2);
+    }
+    .ai-empty {
+      color: #2a2a44; font-size: 14px; text-align: center;
+      margin: auto; line-height: 2.2; user-select: none;
+    }
+    .ai-empty span {
+      display: block; font-size: 38px; margin-bottom: 10px; opacity: 0.5;
     }
     .ai-input-row {
       display: flex; gap: 10px; padding: 14px 20px;
-      border-top: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.2);
+      border-top: 1px solid rgba(255,255,255,0.05);
+      background: rgba(0,0,0,0.25); flex-shrink: 0;
     }
     .ai-input-row textarea {
       flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 8px; color: #ddd; font-family: inherit; font-size: 13px;
-      padding: 10px 14px; outline: none; resize: none; height: 42px; max-height: 120px;
-      overflow-y: auto; line-height: 1.5;
+      border-radius: 10px; color: #ddd; font-family: inherit; font-size: 13px;
+      padding: 10px 14px; outline: none; resize: none; height: 44px; max-height: 120px;
+      overflow-y: auto; line-height: 1.55; transition: border-color .2s;
     }
-    .ai-input-row textarea:focus { border-color: rgba(0,200,255,0.4); }
+    .ai-input-row textarea:focus {
+      border-color: rgba(191,90,242,0.4);
+      box-shadow: 0 0 0 3px rgba(191,90,242,0.08);
+    }
     .ai-send-btn {
-      background: rgba(0,200,255,0.12); border: 1px solid rgba(0,200,255,0.3);
-      color: #00c8ff; border-radius: 8px; padding: 0 18px; font-family: inherit;
+      background: linear-gradient(135deg, rgba(191,90,242,0.2), rgba(10,132,255,0.2));
+      border: 1px solid rgba(191,90,242,0.35);
+      color: #c090ff; border-radius: 10px; padding: 0 18px; font-family: inherit;
       font-size: 10px; font-weight: 700; letter-spacing: 2px; cursor: pointer;
-      transition: background .15s; white-space: nowrap;
+      transition: all .2s; white-space: nowrap;
     }
-    .ai-send-btn:hover:not(:disabled) { background: rgba(0,200,255,0.22); }
-    .ai-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .ai-clear-btn {
-      background: none; border: 1px solid rgba(255,255,255,0.08); color: #555;
-      border-radius: 6px; padding: 4px 10px; font-size: 10px; font-family: inherit;
-      letter-spacing: 1px; cursor: pointer; margin-left: 4px;
+    .ai-send-btn:hover:not(:disabled) {
+      background: linear-gradient(135deg, rgba(191,90,242,0.35), rgba(10,132,255,0.35));
+      border-color: rgba(191,90,242,0.6); color: #e0b0ff;
     }
-    .ai-clear-btn:hover { color: #aaa; border-color: rgba(255,255,255,0.2); }
-    .ai-empty { color: #333; font-size: 13px; text-align: center; margin: auto; line-height: 2; }
+    .ai-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
     /* ── Update Log modal ──────────────────────────────────────── */
     .changelog-overlay {
@@ -2340,59 +2305,49 @@
       <!-- Logged-in state (hidden until auth) -->
       <div id="nav-user">
         <span class="nav-username">Hello,&nbsp;<strong id="nav-username-text"></strong></span>
-        <button class="btn-changelog" onclick="openChangelog()">★ WHAT'S NEW</button>
-        <button class="btn-feedback"  onclick="openFeedback()">✉ FEEDBACK</button>
-        <button class="btn-profile" onclick="openProfile()" title="Profile Settings">⚙ PROFILE</button>
-        <div class="bucks-display" id="bucks-display" onclick="openShop()" title="Open Avatar Shop">
-          <svg width="16" height="16" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>
-          <span id="bucks-balance">0</span>
+        <!-- Hidden legacy elements kept for JS compatibility -->
+        <span id="notif-badge"        style="display:none">0</span>
+        <span id="friends-online-count" style="display:none">0</span>
+        <button id="btn-logout"        style="display:none"></button>
+        <button id="btn-delete-account" style="display:none"></button>
+        <!-- Single dropdown button -->
+        <div class="nav-dd-wrap">
+          <button class="nav-dd-btn" id="nav-dd-btn" onclick="toggleNavDD()">
+            <span class="ham"></span>
+            <span class="ham"></span>
+            <span class="ham"></span>
+          </button>
+          <div class="nav-dd-menu" id="nav-dd-menu">
+            <div class="dd-user-info">
+              <div class="dd-greeting">Logged in as</div>
+              <div class="dd-username" id="dd-username-display"></div>
+              <div class="dd-bucks-row" onclick="toggleNavDD();openShop()">
+                <svg width="16" height="16" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>
+                <span id="dd-bucks-balance">0</span>&nbsp;BUCKS
+              </div>
+            </div>
+            <div class="dd-sep"></div>
+            <button class="dd-item" onclick="toggleNavDD();openProfile()"><span class="dd-icon">⚙️</span>Profile Settings</button>
+            <button class="dd-item" onclick="toggleNavDD();openShop()"><span class="dd-icon">🛍️</span>Avatar Shop</button>
+            <button class="dd-item" onclick="toggleNavDD();openTrade()"><span class="dd-icon">⇄</span>Trade</button>
+            <div class="dd-sep"></div>
+            <button class="dd-item" onclick="toggleNavDD();openAI()"><img class="dd-icon-img" src="/dropdown-gameai-logo.png" alt="AI">Gaming AI</button>
+            <div class="dd-sep"></div>
+            <button class="dd-item" onclick="toggleNavDD();openFriends()"><span class="dd-icon">👥</span>Friends<span class="dd-badge" id="dd-friends-badge" style="display:none">0</span></button>
+            <button class="dd-item" onclick="toggleNavDD();openNotifPanel()"><span class="dd-icon">🔔</span>Notifications<span class="dd-badge dd-badge-red" id="dd-notif-badge" style="display:none">0</span></button>
+            <div class="dd-sep"></div>
+            <button class="dd-item" onclick="toggleNavDD();openSettings()"><span class="dd-icon">🎮</span>FPS Settings</button>
+            <button class="dd-item" onclick="toggleNavDD();openChangelog()"><span class="dd-icon">★</span>What's New</button>
+            <button class="dd-item" onclick="toggleNavDD();openFeedback()"><span class="dd-icon">✉️</span>Feedback</button>
+            <div class="dd-sep"></div>
+            <button class="dd-item dd-item-danger" id="dd-logout-btn"><span class="dd-icon">↩</span>Log Out</button>
+            <button class="dd-item dd-item-danger" id="dd-delete-btn"><span class="dd-icon">🗑️</span>Delete Account</button>
+          </div>
         </div>
-        <button class="btn-shop" onclick="openShop()">SHOP</button>
-        <button class="btn-shop" onclick="openTrade()" title="Trade accessories with other players" style="background:rgba(0,200,120,0.08);border-color:rgba(0,200,120,0.3);color:#00c878">TRADE</button>
-        <button class="btn-settings" onclick="openSettings()">&#9881; FPS SETTINGS</button>
-        <button class="btn-ai" onclick="openAI()" title="Ask AI anything">🤖 AI</button>
-        <button class="btn-notif" id="btn-notif" onclick="openNotifPanel()" title="Notifications">🔔 <span class="notif-badge" id="notif-badge" style="display:none">0</span></button>
-        <button class="btn-friends" onclick="openFriends()" title="Friends">👥 FRIENDS <span class="notif-badge" id="friends-online-count" style="display:none">0</span></button>
-        <button class="btn-logout" id="btn-logout">LOGOUT</button>
-        <button class="btn-delete-account" id="btn-delete-account">DELETE ACCOUNT</button>
-        <button class="nav-hamburger" onclick="openMobileDrawer()" aria-label="Menu">
-          <span></span><span></span><span></span>
-        </button>
       </div>
     </div>
   </nav>
 
-  <!-- ── Mobile Navigation Drawer ──────────────────────────── -->
-  <div class="mobile-drawer-overlay" id="mobile-drawer-overlay" onclick="if(event.target===this)closeMobileDrawer()">
-    <div class="mobile-drawer">
-      <div class="md-header">
-        <span class="md-logo">ARCADE<em>HUB</em></span>
-        <button class="md-close" onclick="closeMobileDrawer()">✕</button>
-      </div>
-      <div class="md-user">
-        <div class="md-greeting">LOGGED IN AS</div>
-        <div class="md-username-text" id="md-username"></div>
-      </div>
-      <div class="md-bucks-row">
-        <svg width="20" height="20" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#c8a215"/><circle cx="16" cy="16" r="12" fill="#ffd700"/><text x="16" y="21" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="900" font-family="Arial">B$</text></svg>
-        <span id="md-bucks">0</span><span>BUCKS</span>
-      </div>
-      <div class="md-list">
-        <button class="md-item" onclick="closeMobileDrawer();openShop()"><span class="md-item-icon">🛍️</span>Avatar Shop</button>
-        <button class="md-item" onclick="closeMobileDrawer();openTrade()"><span class="md-item-icon">⇄</span>Trade</button>
-        <div class="md-sep"></div>
-        <button class="md-item" onclick="closeMobileDrawer();openFriends()"><span class="md-item-icon">👥</span>Friends <span id="md-friends-count" style="margin-left:auto;background:rgba(59,158,232,0.2);color:#3b9ee8;border-radius:10px;padding:1px 7px;font-size:11px;display:none"></span></button>
-        <button class="md-item" onclick="closeMobileDrawer();openNotifPanel()"><span class="md-item-icon">🔔</span>Notifications <span id="md-notif-count" style="margin-left:auto;background:rgba(231,76,60,0.2);color:#e74c3c;border-radius:10px;padding:1px 7px;font-size:11px;display:none"></span></button>
-        <div class="md-sep"></div>
-        <button class="md-item" onclick="closeMobileDrawer();openSettings()"><span class="md-item-icon">🎮</span>FPS Settings</button>
-        <button class="md-item" onclick="closeMobileDrawer();openProfile()"><span class="md-item-icon">⚙️</span>Profile Settings</button>
-        <button class="md-item" onclick="closeMobileDrawer();openChangelog()"><span class="md-item-icon">★</span>What's New</button>
-        <button class="md-item" onclick="closeMobileDrawer();openFeedback()"><span class="md-item-icon">✉️</span>Send Feedback</button>
-        <div class="md-sep"></div>
-        <button class="md-item md-danger" onclick="closeMobileDrawer();document.getElementById('btn-logout').click()"><span class="md-item-icon">↩</span>Log Out</button>
-      </div>
-    </div>
-  </div>
 
   <main>
 
@@ -2827,6 +2782,11 @@
         badge.textContent = '🔨';
         nameEl.appendChild(badge);
       }
+      // Populate dropdown user info
+      const ddUser = document.getElementById('dd-username-display');
+      if (ddUser) ddUser.textContent = username;
+      const ddBucks = document.getElementById('dd-bucks-balance');
+      if (ddBucks) ddBucks.textContent = parseInt(localStorage.getItem('ah_bucks') || '0').toLocaleString();
       document.getElementById('nav-user').style.display = 'flex';
       // Show admin panel for Stotch only
       if (localStorage.getItem('isAdmin') === 'true' && username === 'Stotch') {
@@ -3062,6 +3022,16 @@
         return;
       }
       openDeleteConfirm();
+    });
+
+    // ── Dropdown logout / delete wiring ──────────────────────
+    document.getElementById('dd-logout-btn').addEventListener('click', () => {
+      toggleNavDD();
+      document.getElementById('btn-logout').click();
+    });
+    document.getElementById('dd-delete-btn').addEventListener('click', () => {
+      toggleNavDD();
+      document.getElementById('btn-delete-account').click();
     });
 
     function openDeleteConfirm() {
@@ -4188,9 +4158,10 @@
     }
 
     function updateBucksDisplay() {
-      document.getElementById('bucks-balance').textContent = _bucks;
       const sb = document.getElementById('shop-bucks-balance');
       if (sb) sb.textContent = _bucks;
+      const ddBucks = document.getElementById('dd-bucks-balance');
+      if (ddBucks) ddBucks.textContent = parseInt(_bucks).toLocaleString();
     }
 
     async function loadShopProfile() {
@@ -5361,12 +5332,86 @@
     // ── AI Chat ──────────────────────────────────────────────────
     let _aiHistory = [];
 
+    // ── AI Wave Canvas Animation ──────────────────────────────
+    let _aiWaveRaf = null;
+    let _aiWaveStartTime = null;
+    const _AI_WAVE_COLORS = ['#FFD60A','#FF9F0A','#FF453A','#BF5AF2','#0A84FF'];
+
+    function _initAICanvas() {
+      const canvas = document.getElementById('ai-wave-canvas');
+      if (!canvas) return;
+      const wrap = canvas.parentElement;
+      canvas.width  = wrap.offsetWidth  || 500;
+      canvas.height = 72;
+    }
+
+    function startAIWave() {
+      const wrap = document.getElementById('ai-wave-wrap');
+      const modal = document.getElementById('ai-modal');
+      if (wrap)  wrap.classList.add('active');
+      if (modal) modal.classList.add('thinking-active');
+      _initAICanvas();
+      if (_aiWaveRaf) return;
+      _aiWaveStartTime = performance.now();
+      _animateAIWave();
+    }
+
+    function stopAIWave() {
+      const wrap = document.getElementById('ai-wave-wrap');
+      const modal = document.getElementById('ai-modal');
+      if (wrap)  wrap.classList.remove('active');
+      if (modal) modal.classList.remove('thinking-active');
+      if (_aiWaveRaf) { cancelAnimationFrame(_aiWaveRaf); _aiWaveRaf = null; }
+      const canvas = document.getElementById('ai-wave-canvas');
+      if (canvas) { const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); }
+    }
+
+    function _animateAIWave() {
+      const canvas = document.getElementById('ai-wave-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      const t = (performance.now() - _aiWaveStartTime) / 1000;
+
+      ctx.clearRect(0, 0, W, H);
+
+      _AI_WAVE_COLORS.forEach((color, i) => {
+        const phase    = (i / _AI_WAVE_COLORS.length) * Math.PI * 2;
+        const freq     = 1.6 + i * 0.18;
+        const amp      = 10 + i * 3;
+        const speed    = 1.4 + i * 0.25;
+        const yCenter  = H / 2;
+        const alpha    = 0.55 + (i % 2 === 0 ? 0.2 : 0);
+
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth   = 2.2;
+        ctx.globalAlpha = alpha;
+        ctx.shadowColor = color;
+        ctx.shadowBlur  = 8;
+
+        for (let x = 0; x <= W; x++) {
+          const y = yCenter
+            + Math.sin((x / W) * Math.PI * 2 * freq + t * speed * Math.PI * 2 + phase) * amp
+            + Math.sin((x / W) * Math.PI * 2 * (freq * 0.5) + t * speed * 0.7 * Math.PI * 2 + phase + 1) * (amp * 0.4);
+          x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      });
+
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur  = 0;
+      _aiWaveRaf = requestAnimationFrame(_animateAIWave);
+    }
+
     function openAI() {
       document.getElementById('ai-overlay').classList.add('open');
+      _initAICanvas();
       document.getElementById('ai-input').focus();
     }
     function closeAI() {
       document.getElementById('ai-overlay').classList.remove('open');
+      stopAIWave();
     }
     function clearAIChat() {
       _aiHistory = [];
@@ -5406,7 +5451,7 @@
       aiInputResize(input);
       btn.disabled = true;
 
-      const thinking = _aiAppendBubble('thinking', '● thinking…');
+      startAIWave();
 
       try {
         const token = localStorage.getItem('ah_token');
@@ -5416,7 +5461,7 @@
           body: JSON.stringify({ message: msg, history: _aiHistory.slice(-20) }),
         });
         const d = await r.json();
-        thinking.remove();
+        stopAIWave();
         if (!r.ok) {
           _aiAppendBubble('thinking', '⚠ ' + (d.error || 'Error — please try again.'));
         } else {
@@ -5424,7 +5469,7 @@
           _aiHistory.push({ role: 'assistant', content: d.reply });
         }
       } catch {
-        thinking.remove();
+        stopAIWave();
         _aiAppendBubble('thinking', '⚠ Could not reach server — please try again.');
       }
       btn.disabled = false;
@@ -6069,24 +6114,45 @@
     // ══════════════════════════════════════════════════════════
     //  MOBILE DRAWER
     // ══════════════════════════════════════════════════════════
-    function openMobileDrawer() {
-      document.getElementById('md-username').textContent = localStorage.getItem('ah_user') || '';
-      document.getElementById('md-bucks').textContent = parseInt(localStorage.getItem('ah_bucks') || '0').toLocaleString();
-      // Sync notification badges
-      const notifBadge = document.getElementById('notif-badge');
-      const mdNotif = document.getElementById('md-notif-count');
-      if (notifBadge && notifBadge.style.display !== 'none') {
-        mdNotif.textContent = notifBadge.textContent; mdNotif.style.display = '';
-      } else { mdNotif.style.display = 'none'; }
-      const friendsBadge = document.getElementById('friends-online-count');
-      const mdFriends = document.getElementById('md-friends-count');
-      if (friendsBadge && friendsBadge.style.display !== 'none') {
-        mdFriends.textContent = friendsBadge.textContent; mdFriends.style.display = '';
-      } else { mdFriends.style.display = 'none'; }
-      document.getElementById('mobile-drawer-overlay').classList.add('open');
-    }
-    function closeMobileDrawer() {
-      document.getElementById('mobile-drawer-overlay').classList.remove('open');
+    function openMobileDrawer() { toggleNavDD(); }
+    function closeMobileDrawer() { toggleNavDD(); }
+
+    function toggleNavDD() {
+      const btn  = document.getElementById('nav-dd-btn');
+      const menu = document.getElementById('nav-dd-menu');
+      const isOpen = menu.classList.contains('open');
+      if (isOpen) {
+        btn.classList.remove('open');
+        menu.classList.remove('open');
+      } else {
+        // Sync user info
+        const user  = localStorage.getItem('ah_user') || '';
+        const bucks = parseInt(localStorage.getItem('ah_bucks') || '0');
+        const ddUser  = document.getElementById('dd-username-display');
+        const ddBucks = document.getElementById('dd-bucks-balance');
+        if (ddUser)  ddUser.textContent  = user;
+        if (ddBucks) ddBucks.textContent = bucks.toLocaleString();
+        // Sync notification badge
+        const notifBadge = document.getElementById('notif-badge');
+        const ddNotif    = document.getElementById('dd-notif-badge');
+        if (ddNotif) {
+          if (notifBadge && notifBadge.style.display !== 'none' && notifBadge.textContent !== '0') {
+            ddNotif.textContent = notifBadge.textContent;
+            ddNotif.style.display = '';
+          } else { ddNotif.style.display = 'none'; }
+        }
+        // Sync friends badge
+        const friendsBadge = document.getElementById('friends-online-count');
+        const ddFriends    = document.getElementById('dd-friends-badge');
+        if (ddFriends) {
+          if (friendsBadge && friendsBadge.style.display !== 'none' && friendsBadge.textContent !== '0') {
+            ddFriends.textContent = friendsBadge.textContent;
+            ddFriends.style.display = '';
+          } else { ddFriends.style.display = 'none'; }
+        }
+        btn.classList.add('open');
+        menu.classList.add('open');
+      }
     }
 
     const UPDATES = [
@@ -6488,16 +6554,22 @@
 
   <!-- ── AI Chat Modal ────────────────────────────────────── -->
   <div class="ai-overlay" id="ai-overlay" onclick="if(event.target===this)closeAI()">
-    <div class="ai-modal">
-      <div class="ai-header">
-        <div>
-          <div class="ai-header-title">🤖 AI ASSISTANT</div>
-          <div class="ai-header-sub">POWERED BY GROQ · ASK ANYTHING</div>
+    <div class="ai-modal" id="ai-modal">
+      <div class="ai-modal-header">
+        <div style="display:flex;align-items:center;gap:12px">
+          <img src="/arcadehub-game-logo.png" alt="ArcadeHub" style="width:36px;height:36px;border-radius:8px;object-fit:contain">
+          <div class="ai-header-text">
+            <div class="ai-header-title">GAMING AI</div>
+            <div class="ai-header-sub">POWERED BY GROQ · ASK ANYTHING</div>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
+        <div class="ai-header-actions">
           <button class="ai-clear-btn" onclick="clearAIChat()">CLEAR</button>
           <button class="ai-close" onclick="closeAI()">✕</button>
         </div>
+      </div>
+      <div class="ai-wave-wrap" id="ai-wave-wrap">
+        <canvas id="ai-wave-canvas"></canvas>
       </div>
       <div class="ai-messages" id="ai-messages">
         <div class="ai-empty" id="ai-empty">
