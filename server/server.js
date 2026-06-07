@@ -36,10 +36,12 @@ async function validateEmailDomain(email) {
   if (!domain) return 'Invalid email address.';
   if (DISPOSABLE_DOMAINS.has(domain)) return 'Disposable/temporary email addresses are not allowed.';
   try {
-    const records = await dns.resolveMx(domain);
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000));
+    const records = await Promise.race([dns.resolveMx(domain), timeout]);
     if (!records || records.length === 0) return 'That email domain cannot receive mail. Please use a real email address.';
-    return null; // valid
-  } catch {
+    return null;
+  } catch (err) {
+    if (err.message === 'timeout') return null; // fail open on slow DNS — don't block real users
     return 'That email domain does not exist. Please use a real email address.';
   }
 }
@@ -851,6 +853,11 @@ async function start() {
       const domainErr = await validateEmailDomain(emailLower);
       if (domainErr) return res.status(400).json({ error: domainErr });
 
+      // Case-insensitive username uniqueness check
+      const esc = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const existingUser = await usersCol.findOne({ username: { $regex: new RegExp(`^${esc}$`, 'i') } });
+      if (existingUser) return res.status(409).json({ error: 'Username already taken.' });
+
       // Check banned list
       const isBanned = await bannedCol.findOne({ username: username.toLowerCase() });
       if (isBanned)
@@ -863,7 +870,7 @@ async function start() {
 
       const hashed = await bcrypt.hash(password, SALT_ROUNDS);
       const verifCode   = String(Math.floor(100000 + Math.random() * 900000));
-      const verifExpiry = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+      const verifExpiry = Date.now() + 24 * 60 * 60 * 1000;
 
       const doc = {
         username,
@@ -886,20 +893,27 @@ async function start() {
         created_at:     new Date().toISOString(),
       };
 
-      await usersCol.insertOne(doc);
+      const insertResult = await usersCol.insertOne(doc);
 
-      // Send verification email
-      await _sendMail(emailLower, 'Verify your ArcadeHub account', `
-        <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
-          <h2 style="color:#4fc3f7;margin-top:0">Welcome to ArcadeHub!</h2>
-          <p style="color:#ccc">Thanks for signing up, <strong>${username}</strong>. Enter the code below to verify your email address.</p>
-          <div style="text-align:center;margin:24px 0">
-            <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${verifCode}</span>
-          </div>
-          <p style="color:#888;font-size:12px">This code expires in 24 hours. If you didn't create an account, you can ignore this email.</p>
-        </div>`
-      );
-      console.log(`[REGISTER] ${username} (${emailLower}) — verif code: ${verifCode}`);
+      // Send verification email — roll back user if this fails
+      try {
+        await _sendMail(emailLower, 'Verify your ArcadeHub account', `
+          <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
+            <h2 style="color:#4fc3f7;margin-top:0">Welcome to ArcadeHub!</h2>
+            <p style="color:#ccc">Thanks for signing up, <strong>${username}</strong>. Enter the code below to verify your email address.</p>
+            <div style="text-align:center;margin:24px 0">
+              <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${verifCode}</span>
+            </div>
+            <p style="color:#888;font-size:12px">This code expires in 24 hours. If you didn't create an account, you can ignore this email.</p>
+          </div>`
+        );
+      } catch (mailErr) {
+        console.error('[REGISTER] Mail send failed — rolling back user:', mailErr.message);
+        await usersCol.deleteOne({ _id: insertResult.insertedId });
+        return res.status(500).json({ error: 'Failed to send verification email. Please double-check your email address and try again.' });
+      }
+
+      console.log(`[REGISTER] ${username} (${emailLower}) — verif code sent`);
       res.status(201).json({ success: true, username });
     } catch (err) {
       if (err.code === 11000)
@@ -946,18 +960,24 @@ async function start() {
       const verifCode   = String(Math.floor(100000 + Math.random() * 900000));
       const verifExpiry = Date.now() + 24 * 60 * 60 * 1000;
       await usersCol.updateOne({ _id: user._id }, { $set: { verifCode, verifExpiry } });
-      await _sendMail(user.email, 'Your ArcadeHub verification code', `
-        <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
-          <h2 style="color:#4fc3f7;margin-top:0">ArcadeHub — New Verification Code</h2>
-          <p style="color:#ccc">Hi <strong>${user.username}</strong>, here is your new verification code:</p>
-          <div style="text-align:center;margin:24px 0">
-            <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${verifCode}</span>
-          </div>
-          <p style="color:#888;font-size:12px">Expires in 24 hours.</p>
-        </div>`
-      );
+      try {
+        await _sendMail(user.email, 'Your ArcadeHub verification code', `
+          <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
+            <h2 style="color:#4fc3f7;margin-top:0">ArcadeHub — New Verification Code</h2>
+            <p style="color:#ccc">Hi <strong>${user.username}</strong>, here is your new verification code:</p>
+            <div style="text-align:center;margin:24px 0">
+              <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${verifCode}</span>
+            </div>
+            <p style="color:#888;font-size:12px">Expires in 24 hours.</p>
+          </div>`
+        );
+      } catch (mailErr) {
+        console.error('[RESEND-VERIF] Mail send failed:', mailErr.message);
+        return res.status(500).json({ error: 'Failed to send email. Please try again in a moment.' });
+      }
       res.json({ success: true });
     } catch (err) {
+      console.error('/api/auth/resend-verif error:', err);
       res.status(500).json({ error: 'Server error.' });
     }
   });
