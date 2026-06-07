@@ -1694,6 +1694,49 @@ async function start() {
   });
 
   // ── Catch-all: serve index.html ─────────────────────────────
+  // ── POST /api/ai/chat ────────────────────────────────────────
+  app.post('/api/ai/chat', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { message, history = [] } = req.body;
+      if (!message || typeof message !== 'string' || !message.trim())
+        return res.status(400).json({ error: 'Message is required.' });
+      if (message.length > 4000)
+        return res.status(400).json({ error: 'Message too long (max 4000 chars).' });
+
+      const apiKey = process.env.GROQ_API_KEY;
+      if (!apiKey) return res.status(503).json({ error: 'AI service not configured. Set GROQ_API_KEY on the server.' });
+
+      const messages = [
+        { role: 'system', content: 'You are a helpful AI assistant on ArcadeHub, a browser-based multiplayer gaming platform. Answer any question accurately and helpfully. Be concise unless asked for detail.' },
+        ...history.slice(-20).map(m => ({ role: m.role, content: String(m.content).slice(0, 2000) })),
+        { role: 'user', content: message.trim() },
+      ];
+
+      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages, max_tokens: 1024, temperature: 0.7 }),
+      });
+
+      if (!groqRes.ok) {
+        const errBody = await groqRes.json().catch(() => ({}));
+        console.error('[AI] Groq error:', groqRes.status, errBody);
+        return res.status(502).json({ error: 'AI service returned an error. Please try again.' });
+      }
+
+      const data = await groqRes.json();
+      const reply = data.choices?.[0]?.message?.content;
+      if (!reply) return res.status(502).json({ error: 'No response from AI.' });
+
+      res.json({ reply });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      console.error('/api/ai/chat error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
   app.get('*', (_req, res) => {
     res.sendFile(path.join(__dirname, '..', 'index.html'));
   });
