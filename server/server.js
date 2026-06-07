@@ -27,6 +27,11 @@ const _mailTransport = nodemailer.createTransport({
   },
 });
 
+async function _sendMail(to, subject, html) {
+  if (!process.env.GMAIL_USER) { console.log(`[MAIL] No GMAIL_USER set — skipping email to ${to}: ${subject}`); return; }
+  await _mailTransport.sendMail({ from: `"ArcadeHub" <${process.env.GMAIL_USER}>`, to, subject, html });
+}
+
 // ── Express + HTTP server ─────────────────────────────────────
 const app        = express();
 const httpServer = http.createServer(app);
@@ -806,43 +811,125 @@ async function start() {
   // ── POST /api/register ──────────────────────────────────────
   app.post('/api/register', async (req, res) => {
     try {
-      const { username, password } = req.body;
-      if (!username || !password)
-        return res.status(400).json({ error: 'Username and password are required.' });
+      const { username, password, email } = req.body;
+      if (!username || !password || !email)
+        return res.status(400).json({ error: 'Username, password, and email are required.' });
       if (username.length < 3 || username.length > 24)
         return res.status(400).json({ error: 'Username must be 3–24 characters.' });
       if (password.length < 6)
         return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        return res.status(400).json({ error: 'Please enter a valid email address.' });
+
+      const emailLower = email.toLowerCase().trim();
 
       // Check banned list
       const isBanned = await bannedCol.findOne({ username: username.toLowerCase() });
       if (isBanned)
         return res.status(403).json({ error: 'This username is not allowed.' });
 
+      // Check email uniqueness
+      const emailTaken = await usersCol.findOne({ email: emailLower });
+      if (emailTaken)
+        return res.status(409).json({ error: 'An account with that email already exists.' });
+
       const hashed = await bcrypt.hash(password, SALT_ROUNDS);
+      const verifCode   = String(Math.floor(100000 + Math.random() * 900000));
+      const verifExpiry = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+
       const doc = {
         username,
-        password:      hashed,
-        isAdmin:       false,
-        banned:        false,
-        termsAccepted: false,
-        termsVersion:  0,
-        bucks:         0,
-        ownedItems:    [],
-        equippedItems: [],
-        kills:         0,
-        deaths:        0,
-        bio:           '',
-        friends:       [],
-        created_at:    new Date().toISOString(),
+        password:       hashed,
+        email:          emailLower,
+        emailVerified:  false,
+        verifCode,
+        verifExpiry,
+        isAdmin:        false,
+        banned:         false,
+        termsAccepted:  false,
+        termsVersion:   0,
+        bucks:          0,
+        ownedItems:     [],
+        equippedItems:  [],
+        kills:          0,
+        deaths:         0,
+        bio:            '',
+        friends:        [],
+        created_at:     new Date().toISOString(),
       };
 
-      const result = await usersCol.insertOne(doc);
-      res.status(201).json({ success: true, userId: result.insertedId.toString() });
+      await usersCol.insertOne(doc);
+
+      // Send verification email
+      await _sendMail(emailLower, 'Verify your ArcadeHub account', `
+        <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
+          <h2 style="color:#4fc3f7;margin-top:0">Welcome to ArcadeHub!</h2>
+          <p style="color:#ccc">Thanks for signing up, <strong>${username}</strong>. Enter the code below to verify your email address.</p>
+          <div style="text-align:center;margin:24px 0">
+            <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${verifCode}</span>
+          </div>
+          <p style="color:#888;font-size:12px">This code expires in 24 hours. If you didn't create an account, you can ignore this email.</p>
+        </div>`
+      );
+      console.log(`[REGISTER] ${username} (${emailLower}) — verif code: ${verifCode}`);
+      res.status(201).json({ success: true, username });
     } catch (err) {
       if (err.code === 11000)
         return res.status(409).json({ error: 'Username already taken.' });
       console.error('/api/register error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── POST /api/auth/verify-email ──────────────────────────────
+  app.post('/api/auth/verify-email', async (req, res) => {
+    try {
+      const { username, code } = req.body;
+      if (!username || !code)
+        return res.status(400).json({ error: 'Username and code are required.' });
+      const esc  = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const user = await usersCol.findOne({ username: { $regex: new RegExp(`^${esc}$`, 'i') } });
+      if (!user)
+        return res.status(404).json({ error: 'Account not found.' });
+      if (user.emailVerified)
+        return res.json({ success: true, alreadyVerified: true });
+      if (!user.verifCode || user.verifCode !== code.trim() || Date.now() > (user.verifExpiry || 0))
+        return res.status(400).json({ error: 'Invalid or expired verification code.' });
+      await usersCol.updateOne({ _id: user._id }, {
+        $set:   { emailVerified: true },
+        $unset: { verifCode: '', verifExpiry: '' },
+      });
+      res.json({ success: true });
+    } catch (err) {
+      console.error('/api/auth/verify-email error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── POST /api/auth/resend-verif ──────────────────────────────
+  app.post('/api/auth/resend-verif', async (req, res) => {
+    try {
+      const { username } = req.body;
+      if (!username) return res.status(400).json({ error: 'Username required.' });
+      const esc  = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const user = await usersCol.findOne({ username: { $regex: new RegExp(`^${esc}$`, 'i') } });
+      if (!user || user.emailVerified)
+        return res.status(400).json({ error: 'Account not found or already verified.' });
+      const verifCode   = String(Math.floor(100000 + Math.random() * 900000));
+      const verifExpiry = Date.now() + 24 * 60 * 60 * 1000;
+      await usersCol.updateOne({ _id: user._id }, { $set: { verifCode, verifExpiry } });
+      await _sendMail(user.email, 'Your ArcadeHub verification code', `
+        <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
+          <h2 style="color:#4fc3f7;margin-top:0">ArcadeHub — New Verification Code</h2>
+          <p style="color:#ccc">Hi <strong>${user.username}</strong>, here is your new verification code:</p>
+          <div style="text-align:center;margin:24px 0">
+            <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${verifCode}</span>
+          </div>
+          <p style="color:#888;font-size:12px">Expires in 24 hours.</p>
+        </div>`
+      );
+      res.json({ success: true });
+    } catch (err) {
       res.status(500).json({ error: 'Server error.' });
     }
   });
@@ -864,6 +951,10 @@ async function start() {
       const match = await bcrypt.compare(password, user.password);
       if (!match)
         return res.status(401).json({ error: 'Invalid username or password.' });
+
+      // Block login for new accounts that haven't verified their email yet
+      if (user.emailVerified === false)
+        return res.status(403).json({ error: 'Please verify your email before logging in. Check your inbox for the 6-digit code.', emailNotVerified: true, username: user.username });
 
       const token = jwt.sign(
         { userId: user._id.toString(), username: user.username, isAdmin: !!user.isAdmin },
@@ -1268,9 +1359,15 @@ async function start() {
   // ── GET /api/profile/:username ──────────────────────────────
   app.get('/api/profile/:username', async (req, res) => {
     try {
+      const isSelf = (() => {
+        try {
+          const p = verifyToken(req.headers.authorization);
+          return p.username === req.params.username;
+        } catch { return false; }
+      })();
       const user = await usersCol.findOne(
         { username: req.params.username },
-        { projection: { username:1, kills:1, deaths:1, bio:1, avatar:1, equippedItems:1, created_at:1, usernameChangedAt:1 } }
+        { projection: { username:1, kills:1, deaths:1, bio:1, avatar:1, equippedItems:1, created_at:1, usernameChangedAt:1, email:1 } }
       );
       if (!user) return res.status(404).json({ error: 'User not found.' });
       res.json({
@@ -1283,6 +1380,8 @@ async function start() {
         online:       onlinePlayers().has(user.username),
         memberSince:  user.created_at,
         usernameChangedAt: user.usernameChangedAt || null,
+        // Only expose email to the account owner
+        email:        isSelf ? (user.email || '') : undefined,
       });
     } catch { res.status(500).json({ error: 'Server error.' }); }
   });
@@ -1306,11 +1405,20 @@ async function start() {
     try {
       const payload = verifyToken(req.headers.authorization);
       const { ObjectId } = require('mongodb');
-      const { bio, avatar, username: newUsername } = req.body;
+      const { bio, avatar, username: newUsername, email: newEmail } = req.body;
       const $set = {};
 
       if (bio !== undefined) {
         $set.bio = String(bio || '').trim().slice(0, 200);
+      }
+
+      if (newEmail !== undefined) {
+        const emailLower = String(newEmail).toLowerCase().trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLower))
+          return res.status(400).json({ error: 'Please enter a valid email address.' });
+        const existing = await usersCol.findOne({ email: emailLower, _id: { $ne: new (require('mongodb').ObjectId)(payload.userId) } });
+        if (existing) return res.status(409).json({ error: 'That email is already linked to another account.' });
+        $set.email = emailLower;
       }
 
       if (avatar !== undefined) {
@@ -1451,11 +1559,23 @@ async function start() {
       const esc = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const user = await usersCol.findOne({ username: { $regex: new RegExp(`^${esc}$`, 'i') } });
       if (!user) return res.status(404).json({ error: 'No account found with that username.' });
+      if (!user.email) return res.status(400).json({ error: 'No email on file for this account. Please contact support.' });
       const code   = Math.random().toString(36).slice(2, 8).toUpperCase();
       const expiry = Date.now() + 15 * 60 * 1000;
       await usersCol.updateOne({ _id: user._id }, { $set: { resetCode: code, resetExpiry: expiry } });
       console.log(`[RESET] ${user.username} → ${code}`);
-      res.json({ success: true, code, username: user.username });
+      await _sendMail(user.email, 'ArcadeHub — Password Reset Code', `
+        <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
+          <h2 style="color:#4fc3f7;margin-top:0">Password Reset Request</h2>
+          <p style="color:#ccc">Hi <strong>${user.username}</strong>, use the code below to reset your ArcadeHub password.</p>
+          <div style="text-align:center;margin:24px 0">
+            <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${code}</span>
+          </div>
+          <p style="color:#888;font-size:12px">This code expires in 15 minutes. If you didn't request this, you can safely ignore it.</p>
+        </div>`
+      );
+      // Return username but NOT the code — it's only in the email now
+      res.json({ success: true, username: user.username });
     } catch (err) { res.status(500).json({ error: 'Server error.' }); }
   });
 

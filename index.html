@@ -2181,12 +2181,13 @@
         </div>
         <!-- Step 2: enter code + new password -->
         <div class="reset-step" id="reset-step2">
-          <div class="reset-code-note">Your reset code:</div>
-          <div class="reset-code-display" id="reset-code-display">------</div>
-          <div class="reset-code-note" style="color:#444">Save this code — it expires in 15 minutes</div>
+          <div class="reset-code-note" style="text-align:center;line-height:1.6">
+            A reset code has been sent to your email address.<br>
+            <span style="color:#888;font-size:11px">It expires in 15 minutes.</span>
+          </div>
           <div class="auth-field" style="margin-top:8px">
             <label for="reset-code-input">Reset code</label>
-            <input id="reset-code-input" type="text" placeholder="Enter the code above" maxlength="6" autocomplete="off">
+            <input id="reset-code-input" type="text" placeholder="Enter the code from your email" maxlength="6" autocomplete="off">
           </div>
           <div class="auth-field">
             <label for="reset-new-pw">New password</label>
@@ -2205,12 +2206,31 @@
           <input id="reg-username" type="text" placeholder="Choose a username (3–24 chars)" autocomplete="username">
         </div>
         <div class="auth-field">
+          <label for="reg-email">Email</label>
+          <input id="reg-email" type="email" placeholder="Your email address" autocomplete="email">
+        </div>
+        <div class="auth-field">
           <label for="reg-password">Password</label>
           <input id="reg-password" type="password" placeholder="Choose a password (min 6 chars)" autocomplete="new-password">
         </div>
         <div class="auth-msg" id="reg-msg"></div>
         <button type="submit" class="auth-submit">Create Account</button>
       </form>
+
+      <!-- Email verification step (shown after registration) -->
+      <div class="auth-form" id="form-verify-email" style="display:none;flex-direction:column;gap:12px">
+        <div style="font-size:13px;color:#aaa;text-align:center;line-height:1.6">
+          A verification code has been sent to your email.<br>
+          Enter it below to activate your account.
+        </div>
+        <div class="auth-field">
+          <label for="verify-code-input">Verification code</label>
+          <input id="verify-code-input" type="text" placeholder="6-digit code" maxlength="6" autocomplete="one-time-code" style="letter-spacing:4px;font-size:20px;text-align:center">
+        </div>
+        <div class="auth-msg" id="verify-msg"></div>
+        <button class="auth-submit" onclick="verifyEmail()">VERIFY EMAIL</button>
+        <div class="reset-back-link" onclick="resendVerifCode()" id="resend-verif-link">Resend code</div>
+      </div>
     </div>
   </div>
 
@@ -2759,9 +2779,10 @@
       document.querySelectorAll('.auth-tab').forEach(t =>
         t.classList.toggle('active', t.dataset.tab === tab)
       );
-      document.getElementById('form-login').style.display    = tab === 'login'    ? 'flex' : 'none';
-      document.getElementById('form-register').style.display = tab === 'register' ? 'flex' : 'none';
-      document.getElementById('form-reset').style.display    = tab === 'reset'    ? 'flex' : 'none';
+      document.getElementById('form-login').style.display       = tab === 'login'    ? 'flex' : 'none';
+      document.getElementById('form-register').style.display    = tab === 'register' ? 'flex' : 'none';
+      document.getElementById('form-reset').style.display       = tab === 'reset'    ? 'flex' : 'none';
+      document.getElementById('form-verify-email').style.display = 'none';
       if (tab === 'reset') {
         // Reset back to step 1 each time
         document.getElementById('reset-step1').classList.add('active');
@@ -2795,10 +2816,14 @@
     );
 
     // ── Register ─────────────────────────────────────────────
+    let _pendingVerifUsername = '';
+    let _pendingVerifPassword = '';
+
     document.getElementById('form-register').addEventListener('submit', async e => {
       e.preventDefault();
       console.log('[REGISTER] Form submitted');
       const username = document.getElementById('reg-username').value.trim();
+      const email    = document.getElementById('reg-email').value.trim();
       const password = document.getElementById('reg-password').value;
       const btn = e.target.querySelector('.auth-submit');
       console.log('[REGISTER] Username:', username, '| API:', API);
@@ -2811,7 +2836,7 @@
         const res  = await fetch(`${API}/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify({ username, email, password }),
         });
         const data = await res.json();
         console.log('[REGISTER] Response status:', res.status, '| data:', data);
@@ -2820,33 +2845,12 @@
           showMsg('reg-msg', data.error, 'error');
           btn.disabled = false;
         } else {
-          console.log('[REGISTER] Success — auto-logging in');
-          try {
-            const loginRes  = await fetch(`${API}/login`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ username, password }),
-            });
-            const loginData = await loginRes.json();
-            console.log('[REGISTER] Auto-login status:', loginRes.status, '| data:', loginData);
-            if (loginRes.ok) {
-              localStorage.setItem('ah_token',    loginData.token);
-              localStorage.setItem('ah_username', loginData.username);
-              localStorage.setItem('isAdmin',     loginData.isAdmin ? 'true' : 'false');
-              localStorage.setItem('ah_visited',  'true');
-              console.log('[REGISTER] Token saved, redirecting to /terms.html');
-              window.location.href = '/terms.html';
-            } else {
-              showMsg('reg-msg', 'Account created! Please log in.', 'success');
-              setTimeout(() => { clearMsg('reg-msg'); switchTab('login'); }, 1500);
-              btn.disabled = false;
-            }
-          } catch(err) {
-            console.warn('[REGISTER] Auto-login network error:', err);
-            showMsg('reg-msg', 'Account created! Please log in.', 'success');
-            setTimeout(() => { clearMsg('reg-msg'); switchTab('login'); }, 1500);
-            btn.disabled = false;
-          }
+          _pendingVerifUsername = username;
+          _pendingVerifPassword = password;
+          document.getElementById('form-register').style.display    = 'none';
+          document.getElementById('form-verify-email').style.display = 'flex';
+          clearMsg('verify-msg');
+          document.getElementById('verify-code-input').value = '';
         }
       } catch(err) {
         console.error('[REGISTER] Network error:', err);
@@ -2878,7 +2882,16 @@
         console.log('[LOGIN] Response status:', res.status, '| data:', data);
 
         if (!res.ok) {
-          showMsg('login-msg', data.error, 'error');
+          if (data.emailNotVerified) {
+            _pendingVerifUsername = data.username || '';
+            _pendingVerifPassword = document.getElementById('login-password').value;
+            document.getElementById('form-login').style.display      = 'none';
+            document.getElementById('form-verify-email').style.display = 'flex';
+            clearMsg('verify-msg');
+            document.getElementById('verify-code-input').value = '';
+          } else {
+            showMsg('login-msg', data.error, 'error');
+          }
         } else {
           console.log('[LOGIN] Saving token & username to localStorage');
           localStorage.setItem('ah_token',    data.token);
@@ -5225,6 +5238,71 @@
 
     // ── Password Reset ───────────────────────────────────────────
     let _resetUsername = '';
+    async function verifyEmail() {
+      const code = document.getElementById('verify-code-input').value.trim();
+      if (!code) return;
+      clearMsg('verify-msg');
+      const btn = document.querySelector('#form-verify-email .auth-submit');
+      btn.disabled = true; btn.textContent = 'VERIFYING…';
+      try {
+        const r = await fetch(`${API}/auth/verify-email`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: _pendingVerifUsername, code }),
+        });
+        const d = await r.json();
+        if (!r.ok) {
+          showMsg('verify-msg', d.error || 'Invalid code.', 'error');
+          btn.disabled = false; btn.textContent = 'VERIFY EMAIL';
+          return;
+        }
+        // Email verified — now log in
+        showMsg('verify-msg', 'Email verified! Logging in…', 'success');
+        try {
+          const loginRes  = await fetch(`${API}/login`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: _pendingVerifUsername, password: _pendingVerifPassword }),
+          });
+          const loginData = await loginRes.json();
+          if (loginRes.ok) {
+            localStorage.setItem('ah_token',    loginData.token);
+            localStorage.setItem('ah_username', loginData.username);
+            localStorage.setItem('isAdmin',     loginData.isAdmin ? 'true' : 'false');
+            localStorage.setItem('ah_terms',    loginData.termsAccepted ? TERMS_VERSION : '0');
+            _bucks = loginData.bucks || 0;
+            _ownedItems    = new Set(loginData.ownedItems    || []);
+            _equippedItems = new Set(loginData.equippedItems || []);
+            _saveBucksLocal(); updateBucksDisplay();
+            _pendingVerifPassword = '';
+            if (!loginData.termsAccepted) { window.location.href = '/terms.html'; return; }
+            setLoggedIn(loginData.username);
+            closeModal();
+            loadBadges();
+          } else {
+            showMsg('verify-msg', 'Verified! Please log in.', 'success');
+            setTimeout(() => { document.getElementById('form-verify-email').style.display = 'none'; switchTab('login'); }, 1500);
+          }
+        } catch {
+          showMsg('verify-msg', 'Verified! Please log in.', 'success');
+          setTimeout(() => { document.getElementById('form-verify-email').style.display = 'none'; switchTab('login'); }, 1500);
+        }
+      } catch { showMsg('verify-msg', 'Could not reach server.', 'error'); btn.disabled = false; btn.textContent = 'VERIFY EMAIL'; }
+    }
+
+    async function resendVerifCode() {
+      const link = document.getElementById('resend-verif-link');
+      link.textContent = 'Sending…';
+      try {
+        const r = await fetch(`${API}/auth/resend-verif`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: _pendingVerifUsername }),
+        });
+        const d = await r.json();
+        if (r.ok) { showMsg('verify-msg', 'New code sent!', 'success'); }
+        else       { showMsg('verify-msg', d.error || 'Error.', 'error'); }
+      } catch { showMsg('verify-msg', 'Could not reach server.', 'error'); }
+      link.textContent = 'Resend code';
+    }
+
     async function resetRequest() {
       const username = document.getElementById('reset-username').value.trim();
       if (!username) return;
@@ -5239,7 +5317,6 @@
         if (!r.ok) { showMsg('reset-msg1', d.error || 'Error.', 'error'); }
         else {
           _resetUsername = d.username;
-          document.getElementById('reset-code-display').textContent = d.code;
           document.getElementById('reset-step1').classList.remove('active');
           document.getElementById('reset-step2').classList.add('active');
         }
@@ -5664,16 +5741,20 @@
       document.getElementById('profile-bio-input').value = '';
       document.getElementById('profile-bio-chars').textContent = '0/200';
       document.getElementById('profile-username-note').textContent = '';
+      document.getElementById('profile-email-input').value = '';
       _profileAvatarB64 = null;
       if (token && username) {
         try {
-          const r = await fetch(`${API}/profile/${encodeURIComponent(username)}`);
+          const r = await fetch(`${API}/profile/${encodeURIComponent(username)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
           const d = await r.json();
           if (d.bio) {
             document.getElementById('profile-bio-input').value = d.bio;
             document.getElementById('profile-bio-chars').textContent = d.bio.length + '/200';
           }
           if (d.avatar) _setProfilePreview(d.avatar);
+          if (d.email) document.getElementById('profile-email-input').value = d.email;
           if (d.usernameChangedAt) {
             const daysLeft = Math.ceil(7 - (Date.now() - new Date(d.usernameChangedAt).getTime()) / 86400000);
             if (daysLeft > 0) document.getElementById('profile-username-note').textContent = `Next change in ${daysLeft} day(s)`;
@@ -5727,8 +5808,10 @@
       if (!token) return;
       const bio      = document.getElementById('profile-bio-input').value.trim().slice(0, 200);
       const username = document.getElementById('profile-username-input').value.trim();
+      const email    = document.getElementById('profile-email-input').value.trim();
       const payload  = { bio };
       if (username) payload.username = username;
+      if (email)    payload.email    = email;
       if (_profileAvatarB64) payload.avatar = _profileAvatarB64;
       const statusEl = document.getElementById('profile-save-status');
       statusEl.textContent = 'Saving…';
@@ -6113,6 +6196,12 @@
         <div class="profile-section-label">USERNAME</div>
         <input id="profile-username-input" type="text" maxlength="24" autocomplete="off" placeholder="New username…">
         <div id="profile-username-note" style="font-size:11px;color:#ff8a65;margin-top:4px"></div>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-section-label">EMAIL</div>
+        <input id="profile-email-input" type="email" autocomplete="email" placeholder="Your email address">
+        <div id="profile-email-note" style="font-size:11px;color:#888;margin-top:4px">Used for password resets and verification</div>
       </div>
 
       <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
