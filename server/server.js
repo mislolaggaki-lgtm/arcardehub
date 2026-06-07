@@ -1211,6 +1211,30 @@ async function start() {
     }
   });
 
+  // ── GET /api/admin/accounts ─────────────────────────────────
+  app.get('/api/admin/accounts', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      if (!payload.isAdmin || payload.username !== 'Stotch')
+        return res.status(403).json({ error: 'Forbidden.' });
+      const all = await usersCol
+        .find({}, { projection: { username: 1, email: 1, emailVerified: 1, created_at: 1, banned: 1, isAdmin: 1 } })
+        .sort({ created_at: 1 })
+        .toArray();
+      res.json({ accounts: all.map(u => ({
+        username:      u.username,
+        email:         u.email || null,
+        emailVerified: u.emailVerified === false ? false : true,
+        isAdmin:       !!u.isAdmin,
+        banned:        !!u.banned,
+        created:       u.created_at || null,
+      }))});
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
   // ── POST /api/bucks/gift ────────────────────────────────────
   app.post('/api/bucks/gift', async (req, res) => {
     try {
