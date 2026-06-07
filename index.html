@@ -2962,6 +2962,14 @@
       }
     });
 
+    // ── Fetch with timeout helper ──────────────────────────────
+    function fetchWithTimeout(url, options, ms = 15000) {
+      const ctrl = new AbortController();
+      const id   = setTimeout(() => ctrl.abort(), ms);
+      return fetch(url, { ...options, signal: ctrl.signal })
+        .finally(() => clearTimeout(id));
+    }
+
     // ── Login ─────────────────────────────────────────────────
     let _pending2faUsername = '';
     let _pending2faPassword = '';
@@ -2996,7 +3004,7 @@
       btn.disabled = true;
 
       try {
-        const res  = await fetch(`${API}/login`, {
+        const res  = await fetchWithTimeout(`${API}/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password }),
@@ -3039,7 +3047,7 @@
       clearMsg('login-2fa-msg');
       btn.disabled = true;
       try {
-        const res  = await fetch(`${API}/auth/verify-2fa`, {
+        const res  = await fetchWithTimeout(`${API}/auth/verify-2fa`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: _pending2faUsername, code }),
@@ -3065,7 +3073,7 @@
       link.style.pointerEvents = 'none';
       link.textContent = 'Sending…';
       try {
-        const res  = await fetch(`${API}/login`, {
+        const res  = await fetchWithTimeout(`${API}/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: _pending2faUsername, password: _pending2faPassword }),

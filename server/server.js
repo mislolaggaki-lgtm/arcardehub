@@ -57,11 +57,19 @@ const _mailTransport = nodemailer.createTransport({
     user: process.env.GMAIL_USER || '',
     pass: process.env.GMAIL_PASS || '',
   },
+  connectionTimeout: 8000,
+  greetingTimeout:   8000,
+  socketTimeout:    10000,
 });
 
 async function _sendMail(to, subject, html) {
-  if (!process.env.GMAIL_USER) { console.log(`[MAIL] No GMAIL_USER set — skipping email to ${to}: ${subject}`); return; }
-  await _mailTransport.sendMail({ from: `"ArcadeHub" <${process.env.GMAIL_USER}>`, to, subject, html });
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
+    console.log(`[MAIL] GMAIL_USER or GMAIL_PASS not set — skipping email to ${to}`);
+    throw new Error('Email not configured on server.');
+  }
+  const send    = _mailTransport.sendMail({ from: `"ArcadeHub" <${process.env.GMAIL_USER}>`, to, subject, html });
+  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Mail timeout after 12s')), 12000));
+  await Promise.race([send, timeout]);
 }
 
 // ── Express + HTTP server ─────────────────────────────────────
