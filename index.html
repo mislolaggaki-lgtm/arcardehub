@@ -6428,7 +6428,7 @@
           <tr>
             <td><strong style="color:#ddd">${a.username}</strong>${a.isAdmin ? ' <span class="admin-player-badge badge-admin">ADMIN</span>' : ''}</td>
             <td class="acc-email">${a.email || '<span style="color:#444">—</span>'}</td>
-            <td>${a.emailVerified ? '<span class="acc-verified-yes">✓ YES</span>' : '<span class="acc-verified-no">✗ NO</span>'}</td>
+            <td>${a.email && a.emailVerified ? '<span class="acc-verified-yes">✓ YES</span>' : a.email ? '<span class="acc-verified-no">✗ NO</span>' : '<span style="color:#666">—</span>'}</td>
             <td><span class="admin-player-badge ${a.isAdmin ? 'badge-admin' : 'badge-user'}">${a.isAdmin ? 'ADMIN' : 'USER'}</span></td>
             <td style="color:#555;font-size:11px">${a.created ? a.created.slice(0,10) : '—'}</td>
             <td>${a.username === 'Stotch' ? '' : `<button class="admin-btn admin-btn-red" style="font-size:9px;padding:3px 10px" onclick="apDeleteAccount('${a.username}')">DELETE</button>`}</td>

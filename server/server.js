@@ -1307,7 +1307,7 @@ async function start() {
       res.json({ accounts: all.map(u => ({
         username:      u.username,
         email:         u.email || null,
-        emailVerified: u.emailVerified === false ? false : true,
+        emailVerified: !!(u.email && u.emailVerified),
         isAdmin:       !!u.isAdmin,
         banned:        !!u.banned,
         created:       u.created_at || null,
