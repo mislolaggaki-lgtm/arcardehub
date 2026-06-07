@@ -50,36 +50,40 @@ async function validateEmailDomain(email) {
 // Map<username, { code: string, expires: number }>
 const loginCodes = new Map();
 
-// ── Email transporter (set GMAIL_USER + GMAIL_PASS env vars) ──
-function _makeMailTransport() {
-  return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
+// ── Email sender ──────────────────────────────────────────────
+async function _sendMail(to, subject, html) {
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
+    console.error('[MAIL] GMAIL_USER or GMAIL_PASS not set');
+    throw new Error('Email not configured on server.');
+  }
+  // Resolve to IPv4 explicitly — Render blocks outbound IPv6
+  let smtpHost = 'smtp.gmail.com';
+  try {
+    const addrs = await dns.resolve4('smtp.gmail.com');
+    if (addrs && addrs.length) smtpHost = addrs[0];
+    console.log('[MAIL] Resolved smtp.gmail.com →', smtpHost);
+  } catch (dnsErr) {
+    console.warn('[MAIL] DNS resolve4 failed, using hostname:', dnsErr.message);
+  }
+  const transport = nodemailer.createTransport({
+    host: smtpHost,
     port: 587,
     secure: false,
-    family: 4, // force IPv4 — Render blocks outbound IPv6
+    tls: { servername: 'smtp.gmail.com' },
     auth: {
-      user: process.env.GMAIL_USER || '',
-      pass: (process.env.GMAIL_PASS || '').replace(/\s+/g, ''),
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_PASS.replace(/\s+/g, ''),
     },
     requireTLS: true,
     connectionTimeout: 10000,
     greetingTimeout:   10000,
     socketTimeout:    12000,
-    logger: false,
-    debug:  false,
   });
-}
-
-async function _sendMail(to, subject, html) {
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
-    console.error('[MAIL] GMAIL_USER or GMAIL_PASS not set — cannot send email');
-    throw new Error('Email not configured on server.');
-  }
-  const transport = _makeMailTransport();
-  const send      = transport.sendMail({ from: `"ArcadeHub" <${process.env.GMAIL_USER}>`, to, subject, html });
-  const timeout   = new Promise((_, rej) => setTimeout(() => rej(new Error('Mail timeout after 12s')), 12000));
+  const send    = transport.sendMail({ from: `"ArcadeHub" <${process.env.GMAIL_USER}>`, to, subject, html });
+  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Mail timeout after 12s')), 12000));
   try {
     await Promise.race([send, timeout]);
+    console.log('[MAIL] Sent to', to);
   } catch (err) {
     console.error('[MAIL] Send failed:', err.message);
     throw err;
