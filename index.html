@@ -2832,6 +2832,7 @@
       btn.disabled = true;
 
       try {
+        showMsg('reg-msg', 'Connecting…', '');
         console.log('[REGISTER] Sending POST to', `${API}/register`);
         const res  = await fetch(`${API}/register`, {
           method: 'POST',
@@ -2854,7 +2855,7 @@
         }
       } catch(err) {
         console.error('[REGISTER] Network error:', err);
-        showMsg('reg-msg', 'Could not reach server. Is it running on port 3001?', 'error');
+        showMsg('reg-msg', 'Server is starting up — please wait a moment and try again.', 'error');
         btn.disabled = false;
       }
     });
@@ -2918,7 +2919,7 @@
         }
       } catch(err) {
         console.error('[LOGIN] Network error:', err);
-        showMsg('login-msg', 'Could not reach server. Is it running on port 3001?', 'error');
+        showMsg('login-msg', 'Server is starting up — please wait a moment and try again.', 'error');
       } finally {
         btn.disabled = false;
       }
@@ -2974,7 +2975,7 @@
           alert(data.error || 'Failed to delete account.');
         }
       } catch {
-        alert('Could not reach server. Is it running on port 3001?');
+        alert('Server is starting up — please wait a moment and try again.');
       }
     }
 
