@@ -55,7 +55,8 @@ function _makeMailTransport() {
   return nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
-    secure: false, // STARTTLS
+    secure: false,
+    family: 4, // force IPv4 — Render blocks outbound IPv6
     auth: {
       user: process.env.GMAIL_USER || '',
       pass: (process.env.GMAIL_PASS || '').replace(/\s+/g, ''),
