@@ -2280,6 +2280,22 @@
         <button type="submit" class="auth-submit">Create Account</button>
       </form>
 
+      <!-- Login 2FA step -->
+      <div class="auth-form" id="form-login-2fa" style="display:none;flex-direction:column;gap:12px">
+        <div style="font-size:13px;color:#aaa;text-align:center;line-height:1.6">
+          A 6-digit login code has been sent to your email.<br>
+          <span style="color:#888;font-size:11px">It expires in 10 minutes.</span>
+        </div>
+        <div class="auth-field">
+          <label for="login-2fa-code">Login code</label>
+          <input id="login-2fa-code" type="text" placeholder="6-digit code" maxlength="6" autocomplete="one-time-code" style="letter-spacing:4px;font-size:20px;text-align:center">
+        </div>
+        <div class="auth-msg" id="login-2fa-msg"></div>
+        <button class="auth-submit" onclick="verify2FA()">VERIFY &amp; SIGN IN</button>
+        <div class="reset-back-link" onclick="resend2FACode()" id="resend-2fa-link">Resend code</div>
+        <div class="reset-back-link" onclick="switchTab('login')" style="color:#666">← Back to login</div>
+      </div>
+
       <!-- Email verification step (shown after registration) -->
       <div class="auth-form" id="form-verify-email" style="display:none;flex-direction:column;gap:12px">
         <div style="font-size:13px;color:#aaa;text-align:center;line-height:1.6">
@@ -2868,6 +2884,7 @@
       document.getElementById('form-register').style.display    = tab === 'register' ? 'flex' : 'none';
       document.getElementById('form-reset').style.display       = tab === 'reset'    ? 'flex' : 'none';
       document.getElementById('form-verify-email').style.display = 'none';
+      document.getElementById('form-login-2fa').style.display    = 'none';
       if (tab === 'reset') {
         // Reset back to step 1 each time
         document.getElementById('reset-step1').classList.add('active');
@@ -2946,31 +2963,50 @@
     });
 
     // ── Login ─────────────────────────────────────────────────
+    let _pending2faUsername = '';
+    let _pending2faPassword = '';
+
+    function _completeLogin(data) {
+      localStorage.setItem('ah_token',    data.token);
+      localStorage.setItem('ah_username', data.username);
+      localStorage.setItem('isAdmin',     data.isAdmin ? 'true' : 'false');
+      localStorage.setItem('ah_terms',    data.termsAccepted ? TERMS_VERSION : '0');
+      _bucks = data.bucks || 0;
+      _ownedItems    = new Set(data.ownedItems    || []);
+      _equippedItems = new Set(data.equippedItems || []);
+      _saveBucksLocal();
+      updateBucksDisplay();
+      if (!data.termsAccepted) {
+        window.location.href = '/terms.html';
+        return;
+      }
+      setLoggedIn(data.username);
+      closeModal();
+      loadBadges();
+      if (!data.hasEmail) showForceEmailModal();
+    }
+
     document.getElementById('form-login').addEventListener('submit', async e => {
       e.preventDefault();
-      console.log('[LOGIN] Form submitted');
       const username = document.getElementById('login-username').value.trim();
       const password = document.getElementById('login-password').value;
       const btn = e.target.querySelector('.auth-submit');
-      console.log('[LOGIN] Username:', username, '| API:', API);
 
       clearMsg('login-msg');
       btn.disabled = true;
 
       try {
-        console.log('[LOGIN] Sending POST to', `${API}/login`);
         const res  = await fetch(`${API}/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password }),
         });
         const data = await res.json();
-        console.log('[LOGIN] Response status:', res.status, '| data:', data);
 
         if (!res.ok) {
           if (data.emailNotVerified) {
             _pendingVerifUsername = data.username || '';
-            _pendingVerifPassword = document.getElementById('login-password').value;
+            _pendingVerifPassword = password;
             document.getElementById('form-login').style.display      = 'none';
             document.getElementById('form-verify-email').style.display = 'flex';
             clearMsg('verify-msg');
@@ -2978,37 +3014,78 @@
           } else {
             showMsg('login-msg', data.error, 'error');
           }
+        } else if (data.twoFaRequired) {
+          _pending2faUsername = data.username || username;
+          _pending2faPassword = password;
+          document.getElementById('form-login').style.display    = 'none';
+          document.getElementById('form-login-2fa').style.display = 'flex';
+          clearMsg('login-2fa-msg');
+          document.getElementById('login-2fa-code').value = '';
+          document.getElementById('login-2fa-code').focus();
         } else {
-          console.log('[LOGIN] Saving token & username to localStorage');
-          localStorage.setItem('ah_token',    data.token);
-          localStorage.setItem('ah_username', data.username);
-          localStorage.setItem('isAdmin',     data.isAdmin ? 'true' : 'false');
-          localStorage.setItem('ah_terms',    data.termsAccepted ? TERMS_VERSION : '0');
-          console.log('[LOGIN] Token saved:', !!localStorage.getItem('ah_token'));
-          _bucks = data.bucks || 0;
-          _ownedItems    = new Set(data.ownedItems    || []);
-          _equippedItems = new Set(data.equippedItems || []);
-          _saveBucksLocal();
-          updateBucksDisplay();
-          if (!data.termsAccepted) {
-            console.log('[LOGIN] Terms not accepted — redirecting to /terms.html');
-            window.location.href = '/terms.html';
-            return;
-          }
-          console.log('[LOGIN] Closing modal and setting logged-in state');
-          setLoggedIn(data.username);
-          closeModal();
-          loadBadges();
-          if (!data.hasEmail) showForceEmailModal();
-          console.log('[LOGIN] Done');
+          _completeLogin(data);
         }
       } catch(err) {
-        console.error('[LOGIN] Network error:', err);
         showMsg('login-msg', 'Server is starting up — please wait a moment and try again.', 'error');
       } finally {
         btn.disabled = false;
       }
     });
+
+    async function verify2FA() {
+      const code = document.getElementById('login-2fa-code').value.trim();
+      const btn  = document.querySelector('#form-login-2fa .auth-submit');
+      if (!code) { showMsg('login-2fa-msg', 'Please enter the code.', 'error'); return; }
+      clearMsg('login-2fa-msg');
+      btn.disabled = true;
+      try {
+        const res  = await fetch(`${API}/auth/verify-2fa`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: _pending2faUsername, code }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showMsg('login-2fa-msg', data.error, 'error');
+          if (data.expired) {
+            setTimeout(() => switchTab('login'), 1800);
+          }
+        } else {
+          _completeLogin(data);
+        }
+      } catch(err) {
+        showMsg('login-2fa-msg', 'Server is starting up — please wait a moment and try again.', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function resend2FACode() {
+      const link = document.getElementById('resend-2fa-link');
+      link.style.pointerEvents = 'none';
+      link.textContent = 'Sending…';
+      try {
+        const res  = await fetch(`${API}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: _pending2faUsername, password: _pending2faPassword }),
+        });
+        const data = await res.json();
+        if (res.ok && data.twoFaRequired) {
+          clearMsg('login-2fa-msg');
+          showMsg('login-2fa-msg', 'A new code has been sent!', 'success');
+          document.getElementById('login-2fa-code').value = '';
+          document.getElementById('login-2fa-code').focus();
+        } else {
+          showMsg('login-2fa-msg', data.error || 'Could not resend. Please try again.', 'error');
+        }
+      } catch(err) {
+        showMsg('login-2fa-msg', 'Server error — please try again.', 'error');
+      } finally {
+        link.textContent = 'Resend code';
+        link.style.pointerEvents = '';
+      }
+    }
 
     // ── Logout ────────────────────────────────────────────────
     document.getElementById('btn-logout').addEventListener('click', () => {

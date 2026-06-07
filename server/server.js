@@ -46,6 +46,10 @@ async function validateEmailDomain(email) {
   }
 }
 
+// ── In-memory store for login 2FA codes ──────────────────────
+// Map<username, { code: string, expires: number }>
+const loginCodes = new Map();
+
 // ── Email transporter (set GMAIL_USER + GMAIL_PASS env vars) ──
 const _mailTransport = nodemailer.createTransport({
   service: 'gmail',
@@ -982,6 +986,51 @@ async function start() {
     }
   });
 
+  // ── POST /api/auth/verify-2fa ────────────────────────────────
+  app.post('/api/auth/verify-2fa', async (req, res) => {
+    try {
+      const { username, code } = req.body;
+      if (!username || !code)
+        return res.status(400).json({ error: 'Username and code are required.' });
+
+      const stored = loginCodes.get(username);
+      if (!stored)
+        return res.status(400).json({ error: 'No login code found. Please log in again.' });
+      if (Date.now() > stored.expires) {
+        loginCodes.delete(username);
+        return res.status(400).json({ error: 'Code expired. Please log in again.', expired: true });
+      }
+      if (stored.code !== String(code).trim())
+        return res.status(400).json({ error: 'Incorrect code. Please try again.' });
+
+      loginCodes.delete(username);
+
+      const user = await usersCol.findOne({ username });
+      if (!user) return res.status(400).json({ error: 'User not found.' });
+
+      const token = jwt.sign(
+        { userId: user._id.toString(), username: user.username, isAdmin: !!user.isAdmin },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      const termsAccepted = user.termsAccepted && user.termsVersion === TERMS_VERSION;
+      res.json({
+        success: true, token, username: user.username,
+        isAdmin: !!user.isAdmin, termsAccepted: !!termsAccepted,
+        bucks: user.bucks || 0,
+        ownedItems: user.ownedItems || [],
+        equippedItems: user.equippedItems || [],
+        kills:  user.kills  || 0,
+        deaths: user.deaths || 0,
+        bio:    user.bio    || '',
+        hasEmail: !!user.email,
+      });
+    } catch (err) {
+      console.error('/api/auth/verify-2fa error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
   // ── POST /api/login ─────────────────────────────────────────
   app.post('/api/login', async (req, res) => {
     try {
@@ -1004,6 +1053,29 @@ async function start() {
       if (user.emailVerified === false)
         return res.status(403).json({ error: 'Please verify your email before logging in. Check your inbox for the 6-digit code.', emailNotVerified: true, username: user.username });
 
+      // ── 2FA: send login code if user has a verified email ────
+      if (user.email && process.env.GMAIL_USER) {
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        loginCodes.set(user.username, { code, expires: Date.now() + 10 * 60 * 1000 });
+        try {
+          await _sendMail(user.email, 'ArcadeHub — Your Login Code', `
+            <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0d0d1a;color:#fff;padding:32px;border-radius:12px;border:1px solid #1a1a2e">
+              <div style="font-size:22px;font-weight:900;letter-spacing:3px;color:#a855f7;margin-bottom:8px">ARCADEHUB</div>
+              <div style="font-size:14px;color:#aaa;margin-bottom:24px">Login Verification</div>
+              <p style="font-size:14px;color:#ccc">Hi <strong style="color:#fff">${user.username}</strong>,<br><br>Your one-time login code is:</p>
+              <div style="font-size:40px;font-weight:900;letter-spacing:14px;text-align:center;padding:24px 16px;background:#1a1a2e;border-radius:10px;color:#a855f7;margin:20px 0">${code}</div>
+              <p style="color:#666;font-size:12px">This code expires in <strong style="color:#888">10 minutes</strong>. If you didn't try to log in, you can safely ignore this email.</p>
+            </div>
+          `);
+          return res.json({ twoFaRequired: true, username: user.username });
+        } catch (mailErr) {
+          console.error('[2FA] Mail failed:', mailErr);
+          loginCodes.delete(user.username);
+          return res.status(500).json({ error: 'Failed to send login code. Please try again.' });
+        }
+      }
+
+      // No email (legacy account) — direct login without 2FA
       const token = jwt.sign(
         { userId: user._id.toString(), username: user.username, isAdmin: !!user.isAdmin },
         JWT_SECRET,
