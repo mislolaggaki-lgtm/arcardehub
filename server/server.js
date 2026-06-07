@@ -51,25 +51,37 @@ async function validateEmailDomain(email) {
 const loginCodes = new Map();
 
 // ── Email transporter (set GMAIL_USER + GMAIL_PASS env vars) ──
-const _mailTransport = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER || '',
-    pass: process.env.GMAIL_PASS || '',
-  },
-  connectionTimeout: 8000,
-  greetingTimeout:   8000,
-  socketTimeout:    10000,
-});
+function _makeMailTransport() {
+  return nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: {
+      user: process.env.GMAIL_USER || '',
+      pass: (process.env.GMAIL_PASS || '').replace(/\s+/g, ''), // strip accidental spaces
+    },
+    connectionTimeout: 8000,
+    greetingTimeout:   8000,
+    socketTimeout:    10000,
+    logger: false,
+    debug:  false,
+  });
+}
 
 async function _sendMail(to, subject, html) {
   if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
-    console.log(`[MAIL] GMAIL_USER or GMAIL_PASS not set — skipping email to ${to}`);
+    console.error('[MAIL] GMAIL_USER or GMAIL_PASS not set — cannot send email');
     throw new Error('Email not configured on server.');
   }
-  const send    = _mailTransport.sendMail({ from: `"ArcadeHub" <${process.env.GMAIL_USER}>`, to, subject, html });
-  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Mail timeout after 12s')), 12000));
-  await Promise.race([send, timeout]);
+  const transport = _makeMailTransport();
+  const send      = transport.sendMail({ from: `"ArcadeHub" <${process.env.GMAIL_USER}>`, to, subject, html });
+  const timeout   = new Promise((_, rej) => setTimeout(() => rej(new Error('Mail timeout after 12s')), 12000));
+  try {
+    await Promise.race([send, timeout]);
+  } catch (err) {
+    console.error('[MAIL] Send failed:', err.message);
+    throw err;
+  }
 }
 
 // ── Express + HTTP server ─────────────────────────────────────
@@ -1077,9 +1089,9 @@ async function start() {
           `);
           return res.json({ twoFaRequired: true, username: user.username });
         } catch (mailErr) {
-          console.error('[2FA] Mail failed:', mailErr);
+          console.error('[2FA] Mail failed for', user.username, '→', mailErr.message);
           loginCodes.delete(user.username);
-          return res.status(500).json({ error: 'Failed to send login code. Please try again.' });
+          return res.status(500).json({ error: `Failed to send login code: ${mailErr.message}. Please try again.` });
         }
       }
 
