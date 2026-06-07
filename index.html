@@ -1399,129 +1399,133 @@
 
     /* ── Notification bell button ────────────────────────────── */
     /* ── AI Chat modal (Apple Intelligence style) ───────────── */
+    @keyframes siri-bg {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    @keyframes thinking-pulse {
+      0%, 100% { filter: brightness(1) saturate(1); }
+      50%       { filter: brightness(1.45) saturate(1.5); }
+    }
+    @keyframes ai-logo-spin {
+      to { transform: rotate(360deg); }
+    }
     @keyframes ai-bubble-in {
       from { opacity: 0; transform: translateY(8px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    @keyframes ai-orb-spin {
-      to { transform: rotate(360deg); }
-    }
-    @keyframes ai-orb-pulse {
-      0%,100% { transform: scale(1);   opacity: 0.9; }
-      50%      { transform: scale(1.06); opacity: 1; }
-    }
     .ai-overlay {
       position: fixed; inset: 0; z-index: 900;
-      background: rgba(0,0,0,0.8); backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      background: rgba(0,0,0,0.55);
       display: none; align-items: center; justify-content: center;
     }
     .ai-overlay.open { display: flex; }
     .ai-modal {
-      background: #080814; border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 20px; width: 700px; max-width: 97vw;
+      border-radius: 22px; width: 700px; max-width: 97vw;
       height: 82vh; max-height: 720px;
       display: flex; flex-direction: column; overflow: hidden;
-      box-shadow: 0 32px 100px rgba(0,0,0,0.9);
-      position: relative;
+      box-shadow: 0 32px 100px rgba(0,0,0,0.85);
+      background: linear-gradient(-45deg, #FFD60A, #FF9F0A, #FF453A, #BF5AF2, #0A84FF, #FFD60A);
+      background-size: 400% 400%;
+      animation: siri-bg 6s ease infinite;
     }
-    /* Subtle siri-color border glow on modal */
-    .ai-modal::before {
-      content: ''; position: absolute; inset: -1px; border-radius: 21px; z-index: -1;
-      background: conic-gradient(from 0deg, #FFD60A, #FF9F0A, #FF453A, #BF5AF2, #0A84FF, #FFD60A);
-      opacity: 0; transition: opacity 0.5s ease;
-      filter: blur(8px);
+    .ai-modal.thinking-active {
+      animation: siri-bg 6s ease infinite, thinking-pulse 1.3s ease-in-out infinite;
     }
-    .ai-modal.thinking-active::before { opacity: 0.5; animation: ai-orb-spin 4s linear infinite; }
-
     .ai-modal-header {
       display: flex; align-items: center; gap: 12px;
-      padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06);
-      background: rgba(255,255,255,0.02); flex-shrink: 0;
+      padding: 14px 18px; flex-shrink: 0;
+      background: rgba(0,0,0,0.38);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255,255,255,0.12);
     }
-    .ai-logo-img { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
     .ai-header-text { flex: 1; }
-    .ai-header-title { font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #e0e0ff; }
-    .ai-header-sub   { font-size: 10px; color: #444; margin-top: 2px; letter-spacing: 1.5px; text-transform: uppercase; }
+    .ai-header-title { font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #fff; }
+    .ai-header-sub   { font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 2px; letter-spacing: 1.5px; text-transform: uppercase; }
     .ai-header-actions { display: flex; align-items: center; gap: 8px; }
     .ai-clear-btn {
-      background: none; border: 1px solid rgba(255,255,255,0.08); color: #555;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.22); color: #fff;
       border-radius: 6px; padding: 5px 11px; font-size: 10px; font-family: inherit;
-      letter-spacing: 1px; cursor: pointer; transition: color .15s, border-color .15s;
+      letter-spacing: 1px; cursor: pointer; transition: background .15s;
     }
-    .ai-clear-btn:hover { color: #aaa; border-color: rgba(255,255,255,0.2); }
-    .ai-close-btn {
-      background: none; border: none; color: #444; font-size: 18px;
-      cursor: pointer; padding: 4px 8px; line-height: 1; transition: color .15s;
+    .ai-clear-btn:hover { background: rgba(255,255,255,0.24); }
+    .ai-close {
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+      color: #fff; border-radius: 6px; font-size: 15px; font-weight: 700;
+      width: 30px; height: 30px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: background .15s;
     }
-    .ai-close-btn:hover { color: #aaa; }
+    .ai-close:hover { background: rgba(231,76,60,0.5); }
 
-    /* Siri wave canvas */
-    .ai-wave-wrap {
-      height: 0; overflow: hidden; flex-shrink: 0;
-      transition: height 0.4s cubic-bezier(0.4,0,0.2,1);
-      position: relative;
+    /* Large centred logo — empty state */
+    .ai-logo-center {
+      flex: 1; display: flex; align-items: center; justify-content: center;
     }
-    .ai-wave-wrap.active { height: 72px; }
-    #ai-wave-canvas { display: block; width: 100%; height: 72px; }
+    .ai-logo-center img {
+      width: 120px; height: 120px; border-radius: 24px; object-fit: contain;
+      filter: drop-shadow(0 6px 36px rgba(0,0,0,0.55));
+    }
+    .ai-logo-center.hidden { display: none; }
 
+    /* Messages — shown once conversation starts */
     .ai-messages {
-      flex: 1; overflow-y: auto; padding: 22px 22px 10px;
-      display: flex; flex-direction: column; gap: 16px;
-      scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent;
+      flex: 1; overflow-y: auto; padding: 16px 18px 10px;
+      display: none; flex-direction: column; gap: 12px;
+      scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent;
     }
+    .ai-messages.visible { display: flex; }
+
+    /* Gradient-border chat bubbles */
     .ai-bubble {
-      max-width: 80%; padding: 12px 16px; border-radius: 14px;
-      font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; word-break: break-word;
+      position: relative; z-index: 1;
+      max-width: 78%; padding: 11px 15px; border-radius: 16px;
+      font-size: 14px; line-height: 1.65; white-space: pre-wrap; word-break: break-word;
       animation: ai-bubble-in 0.3s ease forwards;
     }
-    .ai-bubble.user {
-      align-self: flex-end;
-      background: linear-gradient(135deg, rgba(191,90,242,0.18), rgba(10,132,255,0.18));
-      border: 1px solid rgba(191,90,242,0.25); color: #dde;
+    .ai-bubble::before {
+      content: ''; position: absolute; inset: -2px; border-radius: 18px; z-index: -1;
+      background: linear-gradient(135deg, #FFD60A, #FF9F0A, #FF453A, #BF5AF2, #0A84FF);
     }
-    .ai-bubble.assistant {
-      align-self: flex-start;
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #ccc;
+    .ai-bubble.user      { background: #000; color: #fff; align-self: flex-end;  margin-left: auto; }
+    .ai-bubble.assistant { background: #fff; color: #000; align-self: flex-start; margin-right: auto; }
+    .ai-bubble.thinking  {
+      background: rgba(0,0,0,0.55); color: rgba(255,255,255,0.75);
+      align-self: flex-start; font-size: 13px;
     }
-    .ai-bubble.error-msg {
-      align-self: flex-start; color: #e74c3c; font-size: 12px;
-      background: rgba(231,76,60,0.07); border: 1px solid rgba(231,76,60,0.2);
+
+    /* Spinning logo — while AI is loading */
+    .ai-thinking-row {
+      display: flex; align-items: center; padding: 4px 0; align-self: flex-start;
     }
-    .ai-empty {
-      color: #2a2a44; font-size: 14px; text-align: center;
-      margin: auto; line-height: 2.2; user-select: none;
+    .ai-thinking-logo {
+      width: 42px; height: 42px; border-radius: 10px; object-fit: contain;
+      animation: ai-logo-spin 2s linear infinite;
+      filter: drop-shadow(0 2px 12px rgba(0,0,0,0.5));
     }
-    .ai-empty span {
-      display: block; font-size: 38px; margin-bottom: 10px; opacity: 0.5;
-    }
+
+    /* Input row */
     .ai-input-row {
-      display: flex; gap: 10px; padding: 14px 20px;
-      border-top: 1px solid rgba(255,255,255,0.05);
-      background: rgba(0,0,0,0.25); flex-shrink: 0;
+      display: flex; gap: 10px; padding: 12px 16px; flex-shrink: 0;
+      background: rgba(0,0,0,0.4); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid rgba(255,255,255,0.12);
     }
     .ai-input-row textarea {
-      flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px; color: #ddd; font-family: inherit; font-size: 13px;
+      flex: 1; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 10px; color: #fff; font-family: inherit; font-size: 13px;
       padding: 10px 14px; outline: none; resize: none; height: 44px; max-height: 120px;
       overflow-y: auto; line-height: 1.55; transition: border-color .2s;
     }
-    .ai-input-row textarea:focus {
-      border-color: rgba(191,90,242,0.4);
-      box-shadow: 0 0 0 3px rgba(191,90,242,0.08);
-    }
+    .ai-input-row textarea::placeholder { color: rgba(255,255,255,0.45); }
+    .ai-input-row textarea:focus { border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.18); }
     .ai-send-btn {
-      background: linear-gradient(135deg, rgba(191,90,242,0.2), rgba(10,132,255,0.2));
-      border: 1px solid rgba(191,90,242,0.35);
-      color: #c090ff; border-radius: 10px; padding: 0 18px; font-family: inherit;
-      font-size: 10px; font-weight: 700; letter-spacing: 2px; cursor: pointer;
-      transition: all .2s; white-space: nowrap;
+      background: rgba(255,255,255,0.9); color: #111;
+      border: none; border-radius: 10px; padding: 0 18px; font-family: inherit;
+      font-size: 10px; font-weight: 800; letter-spacing: 2px; cursor: pointer;
+      transition: background .15s; white-space: nowrap;
     }
-    .ai-send-btn:hover:not(:disabled) {
-      background: linear-gradient(135deg, rgba(191,90,242,0.35), rgba(10,132,255,0.35));
-      border-color: rgba(191,90,242,0.6); color: #e0b0ff;
-    }
-    .ai-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .ai-send-btn:hover:not(:disabled) { background: #fff; }
+    .ai-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
     /* ── Update Log modal ──────────────────────────────────────── */
     .changelog-overlay {
@@ -5332,91 +5336,23 @@
     // ── AI Chat ──────────────────────────────────────────────────
     let _aiHistory = [];
 
-    // ── AI Wave Canvas Animation ──────────────────────────────
-    let _aiWaveRaf = null;
-    let _aiWaveStartTime = null;
-    const _AI_WAVE_COLORS = ['#FFD60A','#FF9F0A','#FF453A','#BF5AF2','#0A84FF'];
-
-    function _initAICanvas() {
-      const canvas = document.getElementById('ai-wave-canvas');
-      if (!canvas) return;
-      const wrap = canvas.parentElement;
-      canvas.width  = wrap.offsetWidth  || 500;
-      canvas.height = 72;
-    }
-
-    function startAIWave() {
-      const wrap = document.getElementById('ai-wave-wrap');
-      const modal = document.getElementById('ai-modal');
-      if (wrap)  wrap.classList.add('active');
-      if (modal) modal.classList.add('thinking-active');
-      _initAICanvas();
-      if (_aiWaveRaf) return;
-      _aiWaveStartTime = performance.now();
-      _animateAIWave();
-    }
-
-    function stopAIWave() {
-      const wrap = document.getElementById('ai-wave-wrap');
-      const modal = document.getElementById('ai-modal');
-      if (wrap)  wrap.classList.remove('active');
-      if (modal) modal.classList.remove('thinking-active');
-      if (_aiWaveRaf) { cancelAnimationFrame(_aiWaveRaf); _aiWaveRaf = null; }
-      const canvas = document.getElementById('ai-wave-canvas');
-      if (canvas) { const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); }
-    }
-
-    function _animateAIWave() {
-      const canvas = document.getElementById('ai-wave-canvas');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      const W = canvas.width, H = canvas.height;
-      const t = (performance.now() - _aiWaveStartTime) / 1000;
-
-      ctx.clearRect(0, 0, W, H);
-
-      _AI_WAVE_COLORS.forEach((color, i) => {
-        const phase    = (i / _AI_WAVE_COLORS.length) * Math.PI * 2;
-        const freq     = 1.6 + i * 0.18;
-        const amp      = 10 + i * 3;
-        const speed    = 1.4 + i * 0.25;
-        const yCenter  = H / 2;
-        const alpha    = 0.55 + (i % 2 === 0 ? 0.2 : 0);
-
-        ctx.beginPath();
-        ctx.strokeStyle = color;
-        ctx.lineWidth   = 2.2;
-        ctx.globalAlpha = alpha;
-        ctx.shadowColor = color;
-        ctx.shadowBlur  = 8;
-
-        for (let x = 0; x <= W; x++) {
-          const y = yCenter
-            + Math.sin((x / W) * Math.PI * 2 * freq + t * speed * Math.PI * 2 + phase) * amp
-            + Math.sin((x / W) * Math.PI * 2 * (freq * 0.5) + t * speed * 0.7 * Math.PI * 2 + phase + 1) * (amp * 0.4);
-          x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-      });
-
-      ctx.globalAlpha = 1;
-      ctx.shadowBlur  = 0;
-      _aiWaveRaf = requestAnimationFrame(_animateAIWave);
-    }
-
     function openAI() {
       document.getElementById('ai-overlay').classList.add('open');
-      _initAICanvas();
+      // Show large logo only if no conversation yet
+      const hasMessages = document.querySelector('#ai-messages .ai-bubble');
+      document.getElementById('ai-logo-center').classList.toggle('hidden', !!hasMessages);
       document.getElementById('ai-input').focus();
     }
     function closeAI() {
       document.getElementById('ai-overlay').classList.remove('open');
-      stopAIWave();
+      document.getElementById('ai-modal').classList.remove('thinking-active');
     }
     function clearAIChat() {
       _aiHistory = [];
-      const box = document.getElementById('ai-messages');
-      box.innerHTML = '<div class="ai-empty" id="ai-empty">Ask me anything — gaming tips, coding help,<br>general knowledge, creative writing, math…</div>';
+      document.getElementById('ai-messages').innerHTML = '';
+      document.getElementById('ai-messages').classList.remove('visible');
+      document.getElementById('ai-logo-center').classList.remove('hidden');
+      document.getElementById('ai-modal').classList.remove('thinking-active');
     }
 
     function aiInputResize(el) {
@@ -5427,9 +5363,29 @@
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAIMessage(); }
     }
 
+    function _aiShowMessages() {
+      document.getElementById('ai-logo-center').classList.add('hidden');
+      document.getElementById('ai-messages').classList.add('visible');
+    }
+
+    function _aiShowThinking() {
+      document.getElementById('ai-modal').classList.add('thinking-active');
+      const box = document.getElementById('ai-messages');
+      const row = document.createElement('div');
+      row.className = 'ai-thinking-row';
+      row.id = 'ai-thinking-row';
+      row.innerHTML = '<img class="ai-thinking-logo" src="/arcadehub-game-logo.png" alt="">';
+      box.appendChild(row);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function _aiHideThinking() {
+      document.getElementById('ai-modal').classList.remove('thinking-active');
+      const row = document.getElementById('ai-thinking-row');
+      if (row) row.remove();
+    }
+
     function _aiAppendBubble(role, text) {
-      const empty = document.getElementById('ai-empty');
-      if (empty) empty.remove();
       const box = document.getElementById('ai-messages');
       const div = document.createElement('div');
       div.className = `ai-bubble ${role}`;
@@ -5445,13 +5401,14 @@
       const msg   = input.value.trim();
       if (!msg || btn.disabled) return;
 
+      _aiShowMessages();
       _aiAppendBubble('user', msg);
       _aiHistory.push({ role: 'user', content: msg });
       input.value = '';
       aiInputResize(input);
       btn.disabled = true;
 
-      startAIWave();
+      _aiShowThinking();
 
       try {
         const token = localStorage.getItem('ah_token');
@@ -5461,7 +5418,7 @@
           body: JSON.stringify({ message: msg, history: _aiHistory.slice(-20) }),
         });
         const d = await r.json();
-        stopAIWave();
+        _aiHideThinking();
         if (!r.ok) {
           _aiAppendBubble('thinking', '⚠ ' + (d.error || 'Error — please try again.'));
         } else {
@@ -5469,7 +5426,7 @@
           _aiHistory.push({ role: 'assistant', content: d.reply });
         }
       } catch {
-        stopAIWave();
+        _aiHideThinking();
         _aiAppendBubble('thinking', '⚠ Could not reach server — please try again.');
       }
       btn.disabled = false;
@@ -6556,26 +6513,21 @@
   <div class="ai-overlay" id="ai-overlay" onclick="if(event.target===this)closeAI()">
     <div class="ai-modal" id="ai-modal">
       <div class="ai-modal-header">
-        <div style="display:flex;align-items:center;gap:12px">
-          <img src="/arcadehub-game-logo.png" alt="ArcadeHub" style="width:36px;height:36px;border-radius:8px;object-fit:contain">
-          <div class="ai-header-text">
-            <div class="ai-header-title">GAMING AI</div>
-            <div class="ai-header-sub">POWERED BY GROQ · ASK ANYTHING</div>
-          </div>
+        <div class="ai-header-text">
+          <div class="ai-header-title">GAMING AI</div>
+          <div class="ai-header-sub">POWERED BY GROQ · ASK ANYTHING</div>
         </div>
         <div class="ai-header-actions">
           <button class="ai-clear-btn" onclick="clearAIChat()">CLEAR</button>
           <button class="ai-close" onclick="closeAI()">✕</button>
         </div>
       </div>
-      <div class="ai-wave-wrap" id="ai-wave-wrap">
-        <canvas id="ai-wave-canvas"></canvas>
+      <!-- Empty state: large centred logo -->
+      <div class="ai-logo-center" id="ai-logo-center">
+        <img src="/arcadehub-game-logo.png" alt="ArcadeHub Gaming AI">
       </div>
-      <div class="ai-messages" id="ai-messages">
-        <div class="ai-empty" id="ai-empty">
-          Ask me anything — gaming tips, coding help,<br>general knowledge, creative writing, math…
-        </div>
-      </div>
+      <!-- Messages (hidden until first message) -->
+      <div class="ai-messages" id="ai-messages"></div>
       <div class="ai-input-row">
         <textarea id="ai-input" placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
           onkeydown="aiInputKeydown(event)" oninput="aiInputResize(this)" rows="1"></textarea>
