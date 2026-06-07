@@ -2913,6 +2913,7 @@
           setLoggedIn(data.username);
           closeModal();
           loadBadges();
+          if (!data.hasEmail) showForceEmailModal();
           console.log('[LOGIN] Done');
         }
       } catch(err) {
@@ -5236,6 +5237,40 @@
       setTimeout(() => { el.style.opacity='0'; setTimeout(()=>el.remove(), 300); }, 2500);
     }
 
+    // ── Force Email Link ─────────────────────────────────────────
+    function showForceEmailModal() {
+      document.getElementById('force-email-input').value = '';
+      document.getElementById('force-email-msg').textContent = '';
+      document.getElementById('force-email-overlay').style.display = 'flex';
+    }
+
+    async function forceLinkEmail() {
+      const email = document.getElementById('force-email-input').value.trim();
+      const msgEl = document.getElementById('force-email-msg');
+      const btn   = document.getElementById('force-email-btn');
+      if (!email) { msgEl.textContent = 'Please enter an email address.'; return; }
+      msgEl.textContent = '';
+      btn.disabled = true; btn.textContent = 'SAVING…';
+      const token = localStorage.getItem('ah_token');
+      try {
+        const r = await fetch(`${API}/profile/update`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ email }),
+        });
+        const d = await r.json();
+        if (!r.ok) {
+          msgEl.textContent = d.error || 'Could not save email.';
+          btn.disabled = false; btn.textContent = 'LINK EMAIL';
+        } else {
+          document.getElementById('force-email-overlay').style.display = 'none';
+        }
+      } catch {
+        msgEl.textContent = 'Could not reach server.';
+        btn.disabled = false; btn.textContent = 'LINK EMAIL';
+      }
+    }
+
     // ── Password Reset ───────────────────────────────────────────
     let _resetUsername = '';
     async function verifyEmail() {
@@ -6208,6 +6243,28 @@
         <button class="profile-save-btn" onclick="saveProfile()">SAVE CHANGES</button>
         <span id="profile-save-status" style="font-size:12px;color:#22dd64"></span>
       </div>
+    </div>
+  </div>
+
+  <!-- ── Force Email Link Modal (no dismiss) ──────────────── -->
+  <div id="force-email-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:99999;align-items:center;justify-content:center">
+    <div style="background:#12121e;border:1px solid #2a2a3e;border-radius:14px;padding:36px 32px;max-width:400px;width:90%;text-align:center">
+      <div style="font-size:28px;margin-bottom:8px">📧</div>
+      <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:8px;letter-spacing:1px">EMAIL REQUIRED</div>
+      <div style="font-size:13px;color:#aaa;line-height:1.7;margin-bottom:24px">
+        You need to link an email address to your account.<br>
+        It's used for password resets and security verification.
+      </div>
+      <div style="text-align:left;margin-bottom:8px">
+        <label style="font-size:11px;color:#888;letter-spacing:1px;text-transform:uppercase">Email address</label>
+        <input id="force-email-input" type="email" autocomplete="email" placeholder="your@email.com"
+          style="width:100%;box-sizing:border-box;margin-top:6px;padding:10px 14px;background:#1a1a2e;border:1px solid #333;border-radius:8px;color:#fff;font-size:14px;outline:none">
+      </div>
+      <div id="force-email-msg" style="font-size:12px;color:#e74c3c;min-height:18px;margin-bottom:12px;text-align:left"></div>
+      <button onclick="forceLinkEmail()" id="force-email-btn"
+        style="width:100%;padding:12px;background:#e74c3c;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer">
+        LINK EMAIL
+      </button>
     </div>
   </div>
 

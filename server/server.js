@@ -971,6 +971,7 @@ async function start() {
         kills:  user.kills  || 0,
         deaths: user.deaths || 0,
         bio:    user.bio    || '',
+        hasEmail: !!user.email,
       });
     } catch (err) {
       console.error('/api/login error:', err);
@@ -1564,19 +1565,23 @@ async function start() {
       const expiry = Date.now() + 15 * 60 * 1000;
       await usersCol.updateOne({ _id: user._id }, { $set: { resetCode: code, resetExpiry: expiry } });
       console.log(`[RESET] ${user.username} → ${code}`);
-      await _sendMail(user.email, 'ArcadeHub — Password Reset Code', `
-        <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
-          <h2 style="color:#4fc3f7;margin-top:0">Password Reset Request</h2>
-          <p style="color:#ccc">Hi <strong>${user.username}</strong>, use the code below to reset your ArcadeHub password.</p>
-          <div style="text-align:center;margin:24px 0">
-            <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${code}</span>
-          </div>
-          <p style="color:#888;font-size:12px">This code expires in 15 minutes. If you didn't request this, you can safely ignore it.</p>
-        </div>`
-      );
-      // Return username but NOT the code — it's only in the email now
+      try {
+        await _sendMail(user.email, 'ArcadeHub — Password Reset Code', `
+          <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
+            <h2 style="color:#4fc3f7;margin-top:0">Password Reset Request</h2>
+            <p style="color:#ccc">Hi <strong>${user.username}</strong>, use the code below to reset your ArcadeHub password.</p>
+            <div style="text-align:center;margin:24px 0">
+              <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${code}</span>
+            </div>
+            <p style="color:#888;font-size:12px">This code expires in 15 minutes. If you didn't request this, you can safely ignore it.</p>
+          </div>`
+        );
+      } catch (mailErr) {
+        console.error('[RESET] Mail send failed:', mailErr.message);
+        return res.status(500).json({ error: 'Could not send email. Check that your email address is correct, or try again later.' });
+      }
       res.json({ success: true, username: user.username });
-    } catch (err) { res.status(500).json({ error: 'Server error.' }); }
+    } catch (err) { console.error('[RESET]', err); res.status(500).json({ error: 'Server error.' }); }
   });
 
   // ── POST /api/auth/reset-confirm ────────────────────────────
