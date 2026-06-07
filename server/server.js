@@ -54,15 +54,16 @@ const loginCodes = new Map();
 function _makeMailTransport() {
   return nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
+    port: 587,
+    secure: false, // STARTTLS
     auth: {
       user: process.env.GMAIL_USER || '',
-      pass: (process.env.GMAIL_PASS || '').replace(/\s+/g, ''), // strip accidental spaces
+      pass: (process.env.GMAIL_PASS || '').replace(/\s+/g, ''),
     },
-    connectionTimeout: 8000,
-    greetingTimeout:   8000,
-    socketTimeout:    10000,
+    requireTLS: true,
+    connectionTimeout: 10000,
+    greetingTimeout:   10000,
+    socketTimeout:    12000,
     logger: false,
     debug:  false,
   });
