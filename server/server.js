@@ -1045,6 +1045,79 @@ async function start() {
     }
   });
 
+  // ── POST /api/auth/itutor-login ──────────────────────────────
+  app.post('/api/auth/itutor-login', async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      if (!username || !password)
+        return res.status(400).json({ error: 'Username and password are required.' });
+
+      // Verify against iTutor
+      let iTutorRes;
+      try {
+        iTutorRes = await fetch('https://itutor-xz9f.onrender.com/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+      } catch (e) {
+        return res.status(502).json({ error: 'Could not reach iTutor. Please try again.' });
+      }
+      const iTutorData = await iTutorRes.json();
+      if (!iTutorRes.ok)
+        return res.status(401).json({ error: iTutorData.error || 'Invalid iTutor credentials.' });
+
+      // Find or create ArcadeHub account
+      let user = await usersCol.findOne({ username: iTutorData.username });
+      if (!user) {
+        const hash = await bcrypt.hash(password, 10);
+        const now  = new Date();
+        await usersCol.insertOne({
+          username:      iTutorData.username,
+          password:      hash,
+          email:         null,
+          emailVerified: false,
+          bucks:         0,
+          ownedItems:    [],
+          equippedItems: [],
+          kills:         0,
+          deaths:        0,
+          bio:           '',
+          isAdmin:       false,
+          termsAccepted: false,
+          termsVersion:  '0',
+          createdViaItutor: true,
+          created_at:    now,
+        });
+        user = await usersCol.findOne({ username: iTutorData.username });
+      }
+
+      if (user.banned)
+        return res.status(403).json({ error: 'This account has been banned.' });
+
+      const token = jwt.sign(
+        { userId: user._id.toString(), username: user.username, isAdmin: !!user.isAdmin },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      const termsAccepted = user.termsAccepted && user.termsVersion === TERMS_VERSION;
+      res.json({
+        success: true, token, username: user.username,
+        isAdmin: !!user.isAdmin, termsAccepted: !!termsAccepted,
+        bucks: user.bucks || 0,
+        ownedItems:    user.ownedItems    || [],
+        equippedItems: user.equippedItems || [],
+        kills:  user.kills  || 0,
+        deaths: user.deaths || 0,
+        bio:    user.bio    || '',
+        hasEmail: !!user.email,
+      });
+    } catch (err) {
+      console.error('/api/auth/itutor-login error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
   // ── POST /api/login ─────────────────────────────────────────
   app.post('/api/login', async (req, res) => {
     try {

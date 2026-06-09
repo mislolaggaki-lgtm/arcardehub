@@ -644,6 +644,49 @@
     }
     .auth-submit:disabled { opacity: 0.35; cursor: not-allowed; }
 
+    /* ── iTutor sign-in ──────────────────────────────────── */
+    .itutor-divider { display:flex;align-items:center;gap:10px;margin:6px 0; }
+    .itutor-divider::before,.itutor-divider::after { content:'';flex:1;height:1px;background:rgba(255,255,255,0.1); }
+    .itutor-divider span { font-size:11px;color:#555;letter-spacing:1px; }
+    .itutor-btn {
+      width:100%;padding:11px;border-radius:10px;font-size:13px;font-weight:700;
+      letter-spacing:1px;cursor:pointer;transition:all .2s;
+      background:transparent;color:#a78bfa;
+      border:2px solid;
+      border-image:linear-gradient(135deg,#6366f1,#a855f7) 1;
+      border-radius:10px;outline:2px solid transparent;
+      box-shadow:0 0 0 2px rgba(168,85,247,0.25);
+    }
+    .itutor-btn:hover { background:rgba(168,85,247,0.1);box-shadow:0 0 0 2px rgba(168,85,247,0.45); }
+    .itutor-card {
+      background:#13132a;border-radius:18px;padding:28px 24px;
+      border:1px solid rgba(99,102,241,0.25);display:flex;flex-direction:column;gap:14px;
+    }
+    .itutor-logo-row { display:flex;align-items:center;gap:8px; }
+    .itutor-heading { font-size:22px;font-weight:800;color:#fff;margin-top:4px; }
+    .itutor-sub { font-size:13px;color:#888;margin-top:-8px; }
+    .itutor-field { display:flex;flex-direction:column;gap:6px; }
+    .itutor-label { font-size:10px;font-weight:700;letter-spacing:2px;color:#888; }
+    .itutor-input {
+      width:100%;padding:14px 16px;border-radius:12px;font-size:14px;color:#fff;
+      background:rgba(255,255,255,0.07);border:1.5px solid rgba(99,102,241,0.2);
+      outline:none;transition:border-color .2s;box-sizing:border-box;
+    }
+    .itutor-input:focus { border-color:rgba(168,85,247,0.6); }
+    .itutor-eye {
+      position:absolute;right:12px;top:50%;transform:translateY(-50%);
+      cursor:pointer;font-size:16px;opacity:0.5;user-select:none;
+    }
+    .itutor-eye:hover { opacity:0.9; }
+    .itutor-submit {
+      width:100%;padding:15px;border-radius:12px;font-size:15px;font-weight:800;
+      letter-spacing:1px;cursor:pointer;border:none;color:#fff;
+      background:linear-gradient(135deg,#6366f1,#a855f7);
+      transition:opacity .2s;margin-top:4px;
+    }
+    .itutor-submit:hover { opacity:0.88; }
+    .itutor-submit:disabled { opacity:0.35;cursor:not-allowed; }
+
     /* ── Bucks display (nav) ─────────────────────────────── */
     .bucks-display {
       display: flex; align-items: center; gap: 6px;
@@ -2228,6 +2271,8 @@
         <div class="auth-msg" id="login-msg"></div>
         <button type="submit" class="auth-submit">Sign In</button>
         <div class="reset-back-link" onclick="switchTab('reset')" style="margin-top:8px">Forgot password?</div>
+        <div class="itutor-divider"><span>or</span></div>
+        <button type="button" class="itutor-btn" onclick="openITutorForm()">Sign in with iTutor</button>
       </form>
 
       <!-- Password reset form -->
@@ -2279,7 +2324,32 @@
         </div>
         <div class="auth-msg" id="reg-msg"></div>
         <button type="submit" class="auth-submit">Create Account</button>
+        <div class="itutor-divider"><span>or</span></div>
+        <button type="button" class="itutor-btn" onclick="openITutorForm()">Sign in with iTutor</button>
       </form>
+
+      <!-- iTutor sign-in form -->
+      <div class="auth-form itutor-form" id="form-itutor" style="display:none;flex-direction:column;gap:0">
+        <div class="itutor-card">
+          <div class="itutor-logo-row"><img src="/arcadehub-game-logo.png" style="width:32px;height:32px;border-radius:8px;object-fit:contain"> <span style="font-size:11px;color:#a78bfa;letter-spacing:2px;font-weight:700">iTUTOR</span></div>
+          <div class="itutor-heading">Welcome back</div>
+          <div class="itutor-sub">Sign in with your iTutor account</div>
+          <div class="itutor-field">
+            <label class="itutor-label">USERNAME</label>
+            <input id="itutor-username" class="itutor-input" type="text" placeholder="Your username" autocomplete="username">
+          </div>
+          <div class="itutor-field">
+            <label class="itutor-label">PASSWORD</label>
+            <div style="position:relative">
+              <input id="itutor-password" class="itutor-input" type="password" placeholder="Your password" autocomplete="current-password" style="padding-right:44px">
+              <span class="itutor-eye" onclick="toggleITutorPw(this)">👁</span>
+            </div>
+          </div>
+          <div class="auth-msg" id="itutor-msg" style="margin-bottom:4px"></div>
+          <button class="itutor-submit" id="itutor-submit-btn" onclick="submitITutorLogin()">Log In</button>
+          <div class="reset-back-link" onclick="closeITutorForm()" style="margin-top:10px;text-align:center">← Back</div>
+        </div>
+      </div>
 
       <!-- Login 2FA step -->
       <div class="auth-form" id="form-login-2fa" style="display:none;flex-direction:column;gap:12px">
@@ -2887,6 +2957,7 @@
       document.getElementById('form-reset').style.display       = tab === 'reset'    ? 'flex' : 'none';
       document.getElementById('form-verify-email').style.display = 'none';
       document.getElementById('form-login-2fa').style.display    = 'none';
+      document.getElementById('form-itutor').style.display       = 'none';
       if (tab === 'reset') {
         // Reset back to step 1 each time
         document.getElementById('reset-step1').classList.add('active');
@@ -3096,6 +3167,58 @@
         link.style.pointerEvents = '';
       }
     }
+
+    // ── iTutor sign-in ────────────────────────────────────────
+    function openITutorForm() {
+      document.getElementById('form-login').style.display    = 'none';
+      document.getElementById('form-register').style.display = 'none';
+      document.getElementById('form-itutor').style.display   = 'flex';
+      clearMsg('itutor-msg');
+      document.getElementById('itutor-username').value = '';
+      document.getElementById('itutor-password').value = '';
+      document.getElementById('itutor-username').focus();
+    }
+    function closeITutorForm() {
+      document.getElementById('form-itutor').style.display = 'none';
+      // return to whichever tab was active
+      const activeTab = document.querySelector('.auth-tab.active');
+      const tab = activeTab ? activeTab.dataset.tab : 'login';
+      switchTab(tab);
+    }
+    function toggleITutorPw(eye) {
+      const inp = document.getElementById('itutor-password');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    }
+    async function submitITutorLogin() {
+      const username = document.getElementById('itutor-username').value.trim();
+      const password = document.getElementById('itutor-password').value;
+      const btn = document.getElementById('itutor-submit-btn');
+      if (!username || !password) { showMsg('itutor-msg', 'Please enter your iTutor username and password.', 'error'); return; }
+      clearMsg('itutor-msg');
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
+      try {
+        const res  = await fetchWithTimeout(`${API}/auth/itutor-login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showMsg('itutor-msg', data.error || 'Sign in failed.', 'error');
+        } else {
+          _completeLogin(data);
+        }
+      } catch(err) {
+        showMsg('itutor-msg', 'Could not connect — please try again.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Log In';
+      }
+    }
+    // allow Enter key in iTutor form
+    document.getElementById('itutor-username').addEventListener('keydown', e => { if (e.key === 'Enter') submitITutorLogin(); });
+    document.getElementById('itutor-password').addEventListener('keydown', e => { if (e.key === 'Enter') submitITutorLogin(); });
 
     // ── Logout ────────────────────────────────────────────────
     document.getElementById('btn-logout').addEventListener('click', () => {
