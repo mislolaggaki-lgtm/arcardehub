@@ -1959,6 +1959,30 @@ IMPORTANT RULES:
     }
   });
 
+  // ── POST /api/cross-auth/verify (iTutor integration) ────────
+  app.post('/api/cross-auth/verify', async (req, res) => {
+    try {
+      const { username, password, secret } = req.body;
+      const expectedSecret = process.env.ARCADE_CROSS_SECRET;
+      if (!expectedSecret || !secret || secret !== expectedSecret)
+        return res.status(403).json({ error: 'Unauthorized.' });
+      if (!username || !password)
+        return res.status(400).json({ error: 'Missing credentials.' });
+      const esc = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const user = await usersCol.findOne({ username: { $regex: new RegExp(`^${esc}$`, 'i') } });
+      if (!user) return res.status(401).json({ error: 'Invalid username or password.' });
+      if (user.banned) return res.status(403).json({ error: 'This ArcadeHub account has been banned.' });
+      if (user.emailVerified === false)
+        return res.status(403).json({ error: 'Please verify your ArcadeHub email before using this.' });
+      const match = await bcrypt.compare(password, user.password);
+      if (!match) return res.status(401).json({ error: 'Invalid username or password.' });
+      res.json({ ok: true, username: user.username });
+    } catch (err) {
+      console.error('/api/cross-auth/verify error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
   app.get('*', (_req, res) => {
     res.sendFile(path.join(__dirname, '..', 'index.html'));
   });
