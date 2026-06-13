@@ -2369,6 +2369,9 @@
             </div>
           </div>
           <div class="auth-msg" id="itutor-msg" style="margin-bottom:4px"></div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;color:rgba(255,255,255,0.4);cursor:pointer;user-select:none;margin-bottom:2px">
+            <input type="checkbox" id="itutor-remember-me" style="width:14px;height:14px;accent-color:#a78bfa;cursor:pointer"> Don't ask for password again
+          </label>
           <button class="itutor-submit" id="itutor-submit-btn" onclick="submitITutorLogin()">Log In</button>
           <div class="reset-back-link" onclick="closeITutorForm()" style="margin-top:10px;text-align:center">← Back</div>
         </div>
@@ -3216,6 +3219,18 @@
       accounts.unshift(username);
       localStorage.setItem('itutor_accounts', JSON.stringify(accounts.slice(0, 5)));
     }
+    function saveITutorCreds(username, password) {
+      localStorage.setItem('itutor_saved_' + username, btoa(unescape(encodeURIComponent(password))));
+    }
+    function getITutorCreds(username) {
+      try {
+        const enc = localStorage.getItem('itutor_saved_' + username);
+        return enc ? decodeURIComponent(escape(atob(enc))) : null;
+      } catch { return null; }
+    }
+    function clearITutorCreds(username) {
+      localStorage.removeItem('itutor_saved_' + username);
+    }
     function openITutorFlow() {
       const accounts = getITutorAccounts();
       const hint = localStorage.getItem('ah_last_username') || localStorage.getItem('ah_username');
@@ -3231,6 +3246,7 @@
         <button class="itutor-picker-account" onclick="selectITutorAccount('${u}')">
           <span class="itutor-picker-avatar">${u.charAt(0).toUpperCase()}</span>
           <span>${u}</span>
+          ${getITutorCreds(u) ? '<span style="font-size:0.7rem;color:rgba(167,139,250,0.7);margin-left:auto">auto</span>' : ''}
         </button>`).join('');
       document.getElementById('form-itutor-picker').style.display = 'flex';
     }
@@ -3239,9 +3255,33 @@
       const activeTab = document.querySelector('.auth-tab.active');
       switchTab(activeTab ? activeTab.dataset.tab : 'login');
     }
-    function selectITutorAccount(username) {
+    async function selectITutorAccount(username) {
       document.getElementById('form-itutor-picker').style.display = 'none';
-      openITutorForm(username);
+      const savedPw = getITutorCreds(username);
+      if (savedPw) {
+        await autoSignInITutor(username, savedPw);
+      } else {
+        openITutorForm(username);
+      }
+    }
+    async function autoSignInITutor(username, password) {
+      try {
+        const res = await fetchWithTimeout(`${API}/auth/itutor-login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          clearITutorCreds(username);
+          openITutorForm(username);
+        } else {
+          saveITutorAccount(data.username);
+          _completeLogin(data);
+        }
+      } catch {
+        openITutorForm(username);
+      }
     }
     document.getElementById('itutor-picker-other').addEventListener('click', () => {
       document.getElementById('form-itutor-picker').style.display = 'none';
@@ -3283,6 +3323,8 @@
         if (!res.ok) {
           showMsg('itutor-msg', data.error || 'Sign in failed.', 'error');
         } else {
+          const rememberMe = document.getElementById('itutor-remember-me');
+          if (rememberMe && rememberMe.checked) saveITutorCreds(data.username, password);
           saveITutorAccount(data.username);
           _completeLogin(data);
         }

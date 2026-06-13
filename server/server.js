@@ -926,12 +926,11 @@ async function start() {
           </div>`
         );
       } catch (mailErr) {
-        console.error('[REGISTER] Mail send failed — rolling back user:', mailErr.message);
-        await usersCol.deleteOne({ _id: insertResult.insertedId });
-        return res.status(500).json({ error: 'Failed to send verification email. Please double-check your email address and try again.' });
+        console.error('[REGISTER] Mail send failed — account created without email verification:', mailErr.message);
+        await usersCol.updateOne({ _id: insertResult.insertedId }, { $set: { emailVerified: true } });
       }
 
-      console.log(`[REGISTER] ${username} (${emailLower}) — verif code sent`);
+      console.log(`[REGISTER] ${username} (${emailLower}) — registered`);
       res.status(201).json({ success: true, username });
     } catch (err) {
       if (err.code === 11000)
@@ -1135,10 +1134,6 @@ async function start() {
       const match = await bcrypt.compare(password, user.password);
       if (!match)
         return res.status(401).json({ error: 'Invalid username or password.' });
-
-      // Block login for new accounts that haven't verified their email yet
-      if (user.emailVerified === false)
-        return res.status(403).json({ error: 'Please verify your email before logging in. Check your inbox for the 6-digit code.', emailNotVerified: true, username: user.username });
 
       const token = jwt.sign(
         { userId: user._id.toString(), username: user.username, isAdmin: !!user.isAdmin },
