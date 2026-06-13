@@ -3219,6 +3219,9 @@
     }
     function openITutorFlow() {
       const accounts = getITutorAccounts();
+      // Suggest the current ArcadeHub username — same origin, always readable
+      const current = localStorage.getItem('ah_username');
+      if (current && !accounts.includes(current)) accounts.push(current);
       if (accounts.length > 0) {
         openITutorPicker(accounts);
       } else {
