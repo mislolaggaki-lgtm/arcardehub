@@ -686,6 +686,31 @@
     }
     .itutor-submit:hover { opacity:0.88; }
     .itutor-submit:disabled { opacity:0.35;cursor:not-allowed; }
+    .itutor-picker-card {
+      background:#13132a;border-radius:18px;padding:28px 24px;
+      border:1px solid rgba(99,102,241,0.25);display:flex;flex-direction:column;gap:10px;
+    }
+    .itutor-picker-title { font-size:18px;font-weight:800;color:#fff;margin-bottom:4px; }
+    .itutor-picker-account {
+      display:flex;align-items:center;gap:14px;width:100%;padding:12px 14px;
+      border-radius:12px;background:rgba(255,255,255,0.04);border:1.5px solid rgba(99,102,241,0.15);
+      cursor:pointer;transition:background .15s,border-color .15s;color:#fff;font-size:14px;font-weight:600;text-align:left;
+    }
+    .itutor-picker-account:hover { background:rgba(168,85,247,0.12);border-color:rgba(168,85,247,0.4); }
+    .itutor-picker-avatar {
+      width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);
+      display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0;
+    }
+    .itutor-picker-other {
+      display:flex;align-items:center;gap:14px;width:100%;padding:12px 14px;
+      border-radius:12px;background:transparent;border:1.5px dashed rgba(99,102,241,0.3);
+      cursor:pointer;transition:background .15s,border-color .15s;color:#888;font-size:13px;font-weight:600;text-align:left;
+      margin-top:2px;
+    }
+    .itutor-picker-other:hover { background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.5);color:#bbb; }
+    .itutor-picker-plus {
+      background:rgba(255,255,255,0.08);font-size:20px;font-weight:400;color:#888;
+    }
 
     /* ── Bucks display (nav) ─────────────────────────────── */
     .bucks-display {
@@ -2272,7 +2297,7 @@
         <button type="submit" class="auth-submit">Sign In</button>
         <div class="reset-back-link" onclick="switchTab('reset')" style="margin-top:8px">Forgot password?</div>
         <div class="itutor-divider"><span>or</span></div>
-        <button type="button" class="itutor-btn" onclick="openITutorForm()">Sign in with iTutor</button>
+        <button type="button" class="itutor-btn" onclick="openITutorFlow()">Sign in with iTutor</button>
       </form>
 
       <!-- Password reset form -->
@@ -2325,7 +2350,7 @@
         <div class="auth-msg" id="reg-msg"></div>
         <button type="submit" class="auth-submit">Create Account</button>
         <div class="itutor-divider"><span>or</span></div>
-        <button type="button" class="itutor-btn" onclick="openITutorForm()">Sign in with iTutor</button>
+        <button type="button" class="itutor-btn" onclick="openITutorFlow()">Sign in with iTutor</button>
       </form>
 
       <!-- iTutor sign-in form -->
@@ -2348,6 +2373,20 @@
           <div class="auth-msg" id="itutor-msg" style="margin-bottom:4px"></div>
           <button class="itutor-submit" id="itutor-submit-btn" onclick="submitITutorLogin()">Log In</button>
           <div class="reset-back-link" onclick="closeITutorForm()" style="margin-top:10px;text-align:center">← Back</div>
+        </div>
+      </div>
+
+      <!-- iTutor account picker -->
+      <div class="auth-form itutor-form" id="form-itutor-picker" style="display:none;flex-direction:column;gap:0">
+        <div class="itutor-picker-card">
+          <div class="itutor-logo-row"><span style="font-size:11px;color:#a78bfa;letter-spacing:2px;font-weight:700">iTUTOR</span></div>
+          <div class="itutor-picker-title">Pick an account</div>
+          <div id="itutor-accounts-list"></div>
+          <button class="itutor-picker-other" id="itutor-picker-other">
+            <span class="itutor-picker-avatar itutor-picker-plus">+</span>
+            Use another account
+          </button>
+          <div class="reset-back-link" onclick="closeITutorPicker()" style="margin-top:6px;text-align:center">← Back</div>
         </div>
       </div>
 
@@ -2957,7 +2996,8 @@
       document.getElementById('form-reset').style.display       = tab === 'reset'    ? 'flex' : 'none';
       document.getElementById('form-verify-email').style.display = 'none';
       document.getElementById('form-login-2fa').style.display    = 'none';
-      document.getElementById('form-itutor').style.display       = 'none';
+      document.getElementById('form-itutor').style.display        = 'none';
+      document.getElementById('form-itutor-picker').style.display = 'none';
       if (tab === 'reset') {
         // Reset back to step 1 each time
         document.getElementById('reset-step1').classList.add('active');
@@ -3169,21 +3209,60 @@
     }
 
     // ── iTutor sign-in ────────────────────────────────────────
-    function openITutorForm() {
+    function getITutorAccounts() {
+      try { return JSON.parse(localStorage.getItem('itutor_accounts') || '[]'); } catch { return []; }
+    }
+    function saveITutorAccount(username) {
+      const accounts = getITutorAccounts().filter(a => a !== username);
+      accounts.unshift(username);
+      localStorage.setItem('itutor_accounts', JSON.stringify(accounts.slice(0, 5)));
+    }
+    function openITutorFlow() {
+      const accounts = getITutorAccounts();
+      if (accounts.length > 0) {
+        openITutorPicker(accounts);
+      } else {
+        openITutorForm('');
+      }
+    }
+    function openITutorPicker(accounts) {
+      document.getElementById('form-login').style.display         = 'none';
+      document.getElementById('form-register').style.display      = 'none';
+      document.getElementById('form-itutor').style.display        = 'none';
+      const list = document.getElementById('itutor-accounts-list');
+      list.innerHTML = accounts.map(u => `
+        <button class="itutor-picker-account" onclick="selectITutorAccount('${u}')">
+          <span class="itutor-picker-avatar">${u.charAt(0).toUpperCase()}</span>
+          <span>${u}</span>
+        </button>`).join('');
+      document.getElementById('form-itutor-picker').style.display = 'flex';
+    }
+    function closeITutorPicker() {
+      document.getElementById('form-itutor-picker').style.display = 'none';
+      const activeTab = document.querySelector('.auth-tab.active');
+      switchTab(activeTab ? activeTab.dataset.tab : 'login');
+    }
+    function selectITutorAccount(username) {
+      document.getElementById('form-itutor-picker').style.display = 'none';
+      openITutorForm(username);
+    }
+    document.getElementById('itutor-picker-other').addEventListener('click', () => {
+      document.getElementById('form-itutor-picker').style.display = 'none';
+      openITutorForm('');
+    });
+    function openITutorForm(prefill) {
       document.getElementById('form-login').style.display    = 'none';
       document.getElementById('form-register').style.display = 'none';
       document.getElementById('form-itutor').style.display   = 'flex';
       clearMsg('itutor-msg');
-      document.getElementById('itutor-username').value = '';
+      document.getElementById('itutor-username').value = prefill || '';
       document.getElementById('itutor-password').value = '';
-      document.getElementById('itutor-username').focus();
+      setTimeout(() => { prefill ? document.getElementById('itutor-password').focus() : document.getElementById('itutor-username').focus(); }, 40);
     }
     function closeITutorForm() {
       document.getElementById('form-itutor').style.display = 'none';
-      // return to whichever tab was active
       const activeTab = document.querySelector('.auth-tab.active');
-      const tab = activeTab ? activeTab.dataset.tab : 'login';
-      switchTab(tab);
+      switchTab(activeTab ? activeTab.dataset.tab : 'login');
     }
     function toggleITutorPw(eye) {
       const inp = document.getElementById('itutor-password');
@@ -3207,6 +3286,7 @@
         if (!res.ok) {
           showMsg('itutor-msg', data.error || 'Sign in failed.', 'error');
         } else {
+          saveITutorAccount(data.username);
           _completeLogin(data);
         }
       } catch(err) {
