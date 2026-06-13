@@ -2042,8 +2042,6 @@ IMPORTANT RULES:
       const user = await usersCol.findOne({ username: { $regex: new RegExp(`^${esc}$`, 'i') } });
       if (!user) return res.status(401).json({ error: 'Invalid username or password.' });
       if (user.banned) return res.status(403).json({ error: 'This ArcadeHub account has been banned.' });
-      if (user.emailVerified === false)
-        return res.status(403).json({ error: 'Please verify your ArcadeHub email before using this.' });
       const match = await bcrypt.compare(password, user.password);
       if (!match) return res.status(401).json({ error: 'Invalid username or password.' });
       res.json({ ok: true, username: user.username });
