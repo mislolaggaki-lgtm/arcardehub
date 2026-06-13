@@ -285,6 +285,11 @@ const accentLights = [
   mkPt(0xff9900, 1.8, 34, -15, 4,  15),
 ];
 
+// ─── Minimap state ───────────────────────────────────────────
+let minimapExpanded = false;
+const _mmCanvas = document.getElementById('minimap-canvas');
+const _mmCtx    = _mmCanvas ? _mmCanvas.getContext('2d') : null;
+
 // ─── Effect arrays (declared early so arena-build code can populate them) ──
 const bulletTracers    = [];  // { line, age, maxAge }
 const robotDebrisParts = [];  // flying robot parts after death explosion
@@ -2564,6 +2569,10 @@ document.addEventListener('keydown',e=>{
     e.preventDefault();
     _openChatTyping();
   }
+  if(e.code==='KeyM' && !isMobile && (pointerLocked() || mobileGameActive)){
+    minimapExpanded = !minimapExpanded;
+    if(_mmCanvas) _mmCanvas.classList.toggle('minimap-large', minimapExpanded);
+  }
 });
 document.addEventListener('keyup', e=>{ if(!_chatTyping) keys[e.code]=false; });
 
@@ -4602,6 +4611,93 @@ const clock=new THREE.Clock();
 let _lastFrameTs = 0;
 const _FRAME_MS  = 1000 / 60;  // ~16.67 ms — hard 60 fps cap
 
+// ── Minimap ──────────────────────────────────────────────────
+function drawMinimap() {
+  if (!_mmCanvas || !_mmCtx || !levelActive) return;
+
+  const size = minimapExpanded
+    ? Math.round(Math.min(window.innerWidth * 0.5, window.innerHeight))
+    : 160;
+
+  if (_mmCanvas.width !== size || _mmCanvas.height !== size) {
+    _mmCanvas.width  = size;
+    _mmCanvas.height = size;
+  }
+
+  const ctx   = _mmCtx;
+  const scale = size / (AW * 2);
+  const wx    = x => (x + AW) * scale;
+  const wz    = z => (z + AD) * scale;
+
+  // Background
+  ctx.clearRect(0, 0, size, size);
+  ctx.fillStyle = 'rgba(4, 5, 18, 0.88)';
+  ctx.fillRect(0, 0, size, size);
+
+  // Outer walls
+  ctx.strokeStyle = 'rgba(55, 80, 175, 0.9)';
+  ctx.lineWidth   = Math.max(1, WT * scale);
+  const wo = (WT * scale) * 0.5;
+  ctx.strokeRect(wo, wo, size - WT * scale, size - WT * scale);
+
+  // Cover boxes
+  ctx.fillStyle = 'rgba(50, 65, 135, 0.85)';
+  for (const b of coverBoxes) {
+    const bx = wx(b.cx - b.hw);
+    const bz = wz(b.cz - b.hd);
+    const bw = Math.max(1, b.hw * 2 * scale);
+    const bh = Math.max(1, b.hd * 2 * scale);
+    ctx.fillRect(bx, bz, bw, bh);
+  }
+
+  // Alive bots — red dots
+  const botR = Math.max(2, 3.5 * (size / 160));
+  ctx.shadowColor = 'rgba(255, 30, 30, 0.7)';
+  ctx.shadowBlur  = 3;
+  for (const bot of bots) {
+    if (!bot.alive) continue;
+    ctx.beginPath();
+    ctx.arc(wx(bot.group.position.x), wz(bot.group.position.z), botR, 0, Math.PI * 2);
+    ctx.fillStyle = '#ff2828';
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+
+  // Player — blue dot + narrow directional beam
+  const ppx  = wx(camera.position.x);
+  const ppz  = wz(camera.position.z);
+  const fdx  = -Math.sin(yaw);
+  const fdz  = -Math.cos(yaw);
+  const cAng = Math.atan2(fdz, fdx);
+  const bLen = size * 0.135;
+  const half = 0.18;   // ~10° half-cone — narrow beam
+
+  ctx.beginPath();
+  ctx.moveTo(ppx, ppz);
+  ctx.lineTo(ppx + Math.cos(cAng - half) * bLen, ppz + Math.sin(cAng - half) * bLen);
+  ctx.lineTo(ppx + Math.cos(cAng + half) * bLen, ppz + Math.sin(cAng + half) * bLen);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(70, 145, 255, 0.28)';
+  ctx.fill();
+
+  const pR = Math.max(3, 5 * (size / 160));
+  ctx.shadowColor = 'rgba(100, 180, 255, 0.8)';
+  ctx.shadowBlur  = 4;
+  ctx.beginPath();
+  ctx.arc(ppx, ppz, pR, 0, Math.PI * 2);
+  ctx.fillStyle = '#3a9eff';
+  ctx.fill();
+  ctx.shadowBlur  = 0;
+  ctx.strokeStyle = 'rgba(160, 210, 255, 0.7)';
+  ctx.lineWidth   = 1.2;
+  ctx.stroke();
+
+  // Minimap border
+  ctx.strokeStyle = 'rgba(35, 55, 130, 0.65)';
+  ctx.lineWidth   = 1;
+  ctx.strokeRect(0.5, 0.5, size - 1, size - 1);
+}
+
 function animate(ts = 0) {
   requestAnimationFrame(animate);
   if (ts - _lastFrameTs < _FRAME_MS) return;
@@ -4610,6 +4706,7 @@ function animate(ts = 0) {
   if (levelActive) renderer.shadowMap.needsUpdate = true;
   update(dt);
   composer.render();
+  drawMinimap();
 }
 
 // ============================================================

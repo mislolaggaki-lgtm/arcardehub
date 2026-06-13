@@ -313,6 +313,32 @@
     }
     #gb-status.error { color: #e74c3c; }
 
+    /* ── Minimap ─────────────────────────────────────────────── */
+    #minimap-canvas {
+      position: fixed;
+      bottom: 76px;
+      left: 12px;
+      width: 160px;
+      height: 160px;
+      border-radius: 8px;
+      border: 1px solid rgba(40, 65, 155, 0.55);
+      z-index: 200;
+      pointer-events: none;
+      opacity: 0.9;
+      transition: bottom 0.22s ease, left 0.22s ease, width 0.22s ease,
+                  height 0.22s ease, border-radius 0.22s ease, opacity 0.22s ease;
+    }
+    #minimap-canvas.minimap-large {
+      bottom: 0;
+      left: 0;
+      width: 50vw;
+      height: 100vh;
+      border-radius: 0;
+      border: none;
+      border-right: 1px solid rgba(40, 65, 155, 0.65);
+      opacity: 0.96;
+    }
+
     /* ── Mobile / touch-device responsive ─────────────────────── */
     @media (max-width: 768px) {
       /* Pause panels: scrollable, no overflow, fit half the screen width */
@@ -429,7 +455,9 @@
       <span><kbd>C</kbd> Slide (fwd)</span>
       <span><kbd>T</kbd> Pause</span>
       <span><kbd>B</kbd> Emotes</span>
+      <span><kbd>M</kbd> Map</span>
     </div>
+    <canvas id="minimap-canvas"></canvas>
     <div id="ffa-scoreboard" style="display:none"></div>
     <div id="tdm-scoreboard" style="display:none"></div>
     <div id="hud-bucks">
