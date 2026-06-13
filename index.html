@@ -3220,14 +3220,9 @@
     }
     function openITutorFlow() {
       const accounts = getITutorAccounts();
-      // ah_last_username persists forever — survives logout, always readable same-origin
       const hint = localStorage.getItem('ah_last_username') || localStorage.getItem('ah_username');
       if (hint && !accounts.includes(hint)) accounts.push(hint);
-      if (accounts.length > 0) {
-        openITutorPicker(accounts);
-      } else {
-        openITutorForm('');
-      }
+      openITutorPicker(accounts); // always show picker; empty case shows only "Use another account"
     }
     function openITutorPicker(accounts) {
       document.getElementById('form-login').style.display         = 'none';
