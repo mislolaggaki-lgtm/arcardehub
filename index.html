@@ -3219,6 +3219,9 @@
     }
     function openITutorFlow() {
       const accounts = getITutorAccounts();
+      // Also surface any iTutor account currently logged in on this device
+      const active = localStorage.getItem('itutor_username');
+      if (active && !accounts.includes(active)) accounts.unshift(active);
       if (accounts.length > 0) {
         openITutorPicker(accounts);
       } else {
