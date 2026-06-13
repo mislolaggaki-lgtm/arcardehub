@@ -2037,7 +2037,7 @@ IMPORTANT RULES:
     try {
       const { username, password, secret } = req.body;
       const expectedSecret = process.env.ARCADE_CROSS_SECRET;
-      if (!expectedSecret || !secret || secret !== expectedSecret)
+      if (expectedSecret && (!secret || secret !== expectedSecret))
         return res.status(403).json({ error: 'Unauthorized.' });
       if (!username || !password)
         return res.status(400).json({ error: 'Missing credentials.' });
