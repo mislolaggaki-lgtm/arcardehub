@@ -3088,8 +3088,9 @@
     let _pending2faPassword = '';
 
     function _completeLogin(data) {
-      localStorage.setItem('ah_token',    data.token);
-      localStorage.setItem('ah_username', data.username);
+      localStorage.setItem('ah_token',         data.token);
+      localStorage.setItem('ah_username',      data.username);
+      localStorage.setItem('ah_last_username', data.username); // persists forever for picker
       localStorage.setItem('isAdmin',     data.isAdmin ? 'true' : 'false');
       localStorage.setItem('ah_terms',    data.termsAccepted ? TERMS_VERSION : '0');
       _bucks = data.bucks || 0;
@@ -3219,9 +3220,9 @@
     }
     function openITutorFlow() {
       const accounts = getITutorAccounts();
-      // Suggest the current ArcadeHub username — same origin, always readable
-      const current = localStorage.getItem('ah_username');
-      if (current && !accounts.includes(current)) accounts.push(current);
+      // ah_last_username persists forever — survives logout, always readable same-origin
+      const hint = localStorage.getItem('ah_last_username') || localStorage.getItem('ah_username');
+      if (hint && !accounts.includes(hint)) accounts.push(hint);
       if (accounts.length > 0) {
         openITutorPicker(accounts);
       } else {

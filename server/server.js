@@ -2035,10 +2035,7 @@ IMPORTANT RULES:
   // ── POST /api/cross-auth/verify (iTutor integration) ────────
   app.post('/api/cross-auth/verify', async (req, res) => {
     try {
-      const { username, password, secret } = req.body;
-      const expectedSecret = process.env.ARCADE_CROSS_SECRET;
-      if (expectedSecret && (!secret || secret !== expectedSecret))
-        return res.status(403).json({ error: 'Unauthorized.' });
+      const { username, password } = req.body;
       if (!username || !password)
         return res.status(400).json({ error: 'Missing credentials.' });
       const esc = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
