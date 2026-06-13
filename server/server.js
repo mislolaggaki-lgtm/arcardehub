@@ -1055,7 +1055,7 @@ async function start() {
       // Verify against iTutor
       let iTutorRes;
       try {
-        iTutorRes = await fetch('https://itutor-xz9f.onrender.com/api/auth/login', {
+        iTutorRes = await fetch('https://itutor-production.up.railway.app/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password }),
