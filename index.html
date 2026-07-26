@@ -5549,11 +5549,64 @@
           btn.disabled = false; btn.textContent = 'LINK EMAIL';
         } else {
           document.getElementById('force-email-overlay').style.display = 'none';
+          btn.disabled = false; btn.textContent = 'LINK EMAIL';
+          if (d.emailVerificationRequired) showVerifyNewEmailModal();
         }
       } catch {
         msgEl.textContent = 'Could not reach server.';
         btn.disabled = false; btn.textContent = 'LINK EMAIL';
       }
+    }
+
+    // ── Verify New Email (profile / force-link email changes) ────
+    function showVerifyNewEmailModal() {
+      document.getElementById('verify-new-email-input').value = '';
+      document.getElementById('verify-new-email-msg').textContent = '';
+      document.getElementById('verify-new-email-overlay').style.display = 'flex';
+    }
+
+    async function verifyNewEmail() {
+      const code  = document.getElementById('verify-new-email-input').value.trim();
+      const msgEl = document.getElementById('verify-new-email-msg');
+      const btn   = document.getElementById('verify-new-email-btn');
+      if (!code) { msgEl.textContent = 'Please enter the code.'; return; }
+      msgEl.textContent = '';
+      btn.disabled = true; btn.textContent = 'VERIFYING…';
+      const username = localStorage.getItem('ah_username') || localStorage.getItem('ah_user');
+      try {
+        const r = await fetch(`${API}/auth/verify-email`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, code }),
+        });
+        const d = await r.json();
+        if (!r.ok) {
+          msgEl.textContent = d.error || 'Invalid code.';
+          btn.disabled = false; btn.textContent = 'VERIFY EMAIL';
+          return;
+        }
+        document.getElementById('verify-new-email-overlay').style.display = 'none';
+        btn.disabled = false; btn.textContent = 'VERIFY EMAIL';
+      } catch {
+        msgEl.textContent = 'Could not reach server.';
+        btn.disabled = false; btn.textContent = 'VERIFY EMAIL';
+      }
+    }
+
+    async function resendNewEmailVerifCode() {
+      const link     = document.getElementById('verify-new-email-resend');
+      const username = localStorage.getItem('ah_username') || localStorage.getItem('ah_user');
+      link.textContent = 'Sending…';
+      try {
+        const r = await fetch(`${API}/auth/resend-verif`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username }),
+        });
+        const d = await r.json();
+        document.getElementById('verify-new-email-msg').textContent = r.ok ? 'New code sent!' : (d.error || 'Error.');
+      } catch {
+        document.getElementById('verify-new-email-msg').textContent = 'Could not reach server.';
+      }
+      link.textContent = 'Resend code';
     }
 
     // ── Password Reset ───────────────────────────────────────────
@@ -6151,6 +6204,7 @@
         }
         statusEl.textContent = '✓ Saved!';
         setTimeout(() => { statusEl.textContent = ''; }, 2500);
+        if (d.emailVerificationRequired) showVerifyNewEmailModal();
       } catch { statusEl.textContent = 'Network error.'; }
     }
 
@@ -6661,6 +6715,29 @@
         style="width:100%;padding:12px;background:#e74c3c;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer">
         LINK EMAIL
       </button>
+    </div>
+  </div>
+
+  <!-- ── Verify New Email Modal (email added/changed via profile) ─ -->
+  <div id="verify-new-email-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:99999;align-items:center;justify-content:center">
+    <div style="background:#12121e;border:1px solid #2a2a3e;border-radius:14px;padding:36px 32px;max-width:400px;width:90%;text-align:center">
+      <div style="font-size:28px;margin-bottom:8px">📧</div>
+      <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:8px;letter-spacing:1px">VERIFY YOUR EMAIL</div>
+      <div style="font-size:13px;color:#aaa;line-height:1.7;margin-bottom:24px">
+        A verification code has been sent to your new email address.<br>
+        <span style="color:#f5a623">Can't find it? Check your spam/junk folder.</span>
+      </div>
+      <div style="text-align:left;margin-bottom:8px">
+        <label style="font-size:11px;color:#888;letter-spacing:1px;text-transform:uppercase">Verification code</label>
+        <input id="verify-new-email-input" type="text" maxlength="6" placeholder="6-digit code" autocomplete="one-time-code"
+          style="width:100%;box-sizing:border-box;margin-top:6px;padding:10px 14px;background:#1a1a2e;border:1px solid #333;border-radius:8px;color:#fff;font-size:20px;letter-spacing:4px;text-align:center;outline:none">
+      </div>
+      <div id="verify-new-email-msg" style="font-size:12px;color:#e74c3c;min-height:18px;margin-bottom:12px;text-align:left"></div>
+      <button onclick="verifyNewEmail()" id="verify-new-email-btn"
+        style="width:100%;padding:12px;background:#e74c3c;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;margin-bottom:10px">
+        VERIFY EMAIL
+      </button>
+      <div onclick="resendNewEmailVerifCode()" id="verify-new-email-resend" style="font-size:12px;color:#7ec8ff;cursor:pointer">Resend code</div>
     </div>
   </div>
 

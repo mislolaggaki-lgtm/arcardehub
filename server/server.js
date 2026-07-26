@@ -218,6 +218,12 @@ async function start() {
         { $set: { bucks: 2500 } }
       );
     }
+    // Admin's own linked email is implicitly trusted — heal any stuck unverified state
+    // (e.g. email linked via the force-link-email flow before verification was required there)
+    await usersCol.updateOne(
+      { username: 'Stotch', email: { $exists: true, $ne: null }, emailVerified: { $ne: true } },
+      { $set: { emailVerified: true }, $unset: { verifCode: '', verifExpiry: '' } }
+    );
   }
 
   // ── Trade execution helper (needs usersCol) ─────────────────
@@ -1560,15 +1566,45 @@ async function start() {
         $set.bio = String(bio || '').trim().slice(0, 200);
       }
 
+      let emailVerificationRequired = false;
       if (newEmail !== undefined) {
         const emailLower = String(newEmail).toLowerCase().trim();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLower))
           return res.status(400).json({ error: 'Please enter a valid email address.' });
         const domainErr2 = await validateEmailDomain(emailLower);
         if (domainErr2) return res.status(400).json({ error: domainErr2 });
-        const existing = await usersCol.findOne({ email: emailLower, _id: { $ne: new (require('mongodb').ObjectId)(payload.userId) } });
+        const existing = await usersCol.findOne({ email: emailLower, _id: { $ne: new ObjectId(payload.userId) } });
         if (existing) return res.status(409).json({ error: 'That email is already linked to another account.' });
-        $set.email = emailLower;
+
+        const current = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { email: 1 } });
+        if (!current) return res.status(404).json({ error: 'User not found.' });
+
+        if (current.email !== emailLower) {
+          $set.email         = emailLower;
+          $set.emailVerified = false;
+          const verifCode    = String(Math.floor(100000 + Math.random() * 900000));
+          const verifExpiry  = Date.now() + 24 * 60 * 60 * 1000;
+          $set.verifCode     = verifCode;
+          $set.verifExpiry   = verifExpiry;
+          try {
+            await _sendMail(emailLower, 'Verify your ArcadeHub email', `
+              <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
+                <h2 style="color:#4fc3f7;margin-top:0">Verify your email</h2>
+                <p style="color:#ccc">Enter the code below to verify <strong>${emailLower}</strong> on your ArcadeHub account.</p>
+                <div style="text-align:center;margin:24px 0">
+                  <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${verifCode}</span>
+                </div>
+                <p style="color:#888;font-size:12px">This code expires in 24 hours. If you didn't request this, you can ignore this email.</p>
+              </div>`
+            );
+            emailVerificationRequired = true;
+          } catch (mailErr) {
+            console.error('[PROFILE] Verification mail failed — marking verified:', mailErr.message);
+            $set.emailVerified = true;
+            delete $set.verifCode;
+            delete $set.verifExpiry;
+          }
+        }
       }
 
       if (avatar !== undefined) {
@@ -1610,6 +1646,7 @@ async function start() {
       const result = { success: true };
       if (newToken) result.token = newToken;
       if ($set.username) result.username = $set.username;
+      if (emailVerificationRequired) result.emailVerificationRequired = true;
       res.json(result);
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
