@@ -569,15 +569,6 @@
     }
     .auth-overlay.open .auth-modal { transform: scale(1) translateY(0); }
 
-    .auth-close {
-      position: absolute; top: 14px; right: 16px;
-      background: none; border: none;
-      color: #44445a; font-size: 18px; line-height: 1;
-      padding: 4px 6px; cursor: pointer;
-      transition: color .15s;
-    }
-    .auth-close:hover { color: #fff; }
-
     .auth-logo {
       font-family: 'Bebas Neue', sans-serif;
       font-size: 22px; letter-spacing: 4px;
@@ -2207,7 +2198,6 @@
 
   <div class="auth-overlay" id="auth-overlay" role="dialog" aria-modal="true">
     <div class="auth-modal">
-      <button class="auth-close" id="auth-close" aria-label="Close">✕</button>
       <div class="auth-logo">ARCADE<em>HUB</em></div>
 
       <div class="auth-tabs">
@@ -2873,6 +2863,7 @@
     }
 
     function closeModal() {
+      if (!localStorage.getItem('ah_token')) return; // must log in or register first — no guest access
       overlay.classList.remove('open');
       clearMsg('login-msg');
       clearMsg('reg-msg');
@@ -2912,7 +2903,6 @@
     overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-    document.getElementById('auth-close').addEventListener('click', closeModal);
     document.getElementById('btn-login').addEventListener('click', () => openModal('login'));
 
     document.querySelectorAll('.auth-tab').forEach(tab =>
