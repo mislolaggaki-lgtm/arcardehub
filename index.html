@@ -2483,6 +2483,7 @@
           <input id="ap-give-username" type="text" placeholder="Username…" maxlength="24" autocomplete="off">
           <input id="ap-give-amount" type="number" placeholder="Amount" min="1" max="100000">
           <button class="admin-btn admin-btn-gold" onclick="apGiveBucks()">GIVE</button>
+          <button class="admin-btn admin-btn-red" onclick="apTakeBucks()">TAKE</button>
         </div>
         <div class="admin-status" id="ap-give-status"></div>
       </div>
@@ -2513,6 +2514,7 @@
                 <th>Email</th>
                 <th>Verified</th>
                 <th>Role</th>
+                <th>Bucks</th>
                 <th>Created</th>
                 <th></th>
               </tr>
@@ -5383,6 +5385,30 @@
       } catch { _apStatus('ap-give-status','Network error.',true); }
     }
 
+    async function apTakeBucks() {
+      const token    = localStorage.getItem('ah_token');
+      const username = (document.getElementById('ap-give-username').value || '').trim();
+      const amount   = parseInt(document.getElementById('ap-give-amount').value);
+      if (!username) { _apStatus('ap-give-status','Enter a username.',true); return; }
+      if (username === 'Stotch') { _apStatus('ap-give-status','Cannot take bucks from yourself.',true); return; }
+      if (!Number.isFinite(amount) || amount < 1) { _apStatus('ap-give-status','Enter a valid amount.',true); return; }
+      _apStatus('ap-give-status','Sending…', false);
+      try {
+        const r = await fetch(`${API}/admin/take-bucks`, {
+          method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+          body: JSON.stringify({ targetUsername: username, amount }),
+        });
+        const d = await r.json();
+        if (r.ok) {
+          _apStatus('ap-give-status', `✓ Took ${amount} bucks from ${d.username}. Balance: ${d.bucks}`, false);
+          document.getElementById('ap-give-username').value = '';
+          document.getElementById('ap-give-amount').value   = '';
+        } else {
+          _apStatus('ap-give-status', d.error || 'Failed.', true);
+        }
+      } catch { _apStatus('ap-give-status','Network error.',true); }
+    }
+
     async function apGrantAdmin() {
       const token    = localStorage.getItem('ah_token');
       const username = (document.getElementById('ap-admin-username').value || '').trim();
@@ -6512,22 +6538,23 @@
       const token = localStorage.getItem('ah_token');
       const tbody = document.getElementById('ap-accounts-body');
       if (!tbody || !token) return;
-      tbody.innerHTML = '<tr><td colspan="6" style="color:#555;text-align:center;padding:20px">Loading…</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="color:#555;text-align:center;padding:20px">Loading…</td></tr>';
       try {
         const r = await fetch(`${API}/admin/accounts`, { headers: { Authorization: `Bearer ${token}` } });
         const d = await r.json();
-        if (!r.ok || !d.accounts) { tbody.innerHTML = '<tr><td colspan="6" style="color:#e74c3c;text-align:center">Failed to load.</td></tr>'; return; }
-        if (d.accounts.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="color:#555;text-align:center">No accounts found.</td></tr>'; return; }
+        if (!r.ok || !d.accounts) { tbody.innerHTML = '<tr><td colspan="7" style="color:#e74c3c;text-align:center">Failed to load.</td></tr>'; return; }
+        if (d.accounts.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="color:#555;text-align:center">No accounts found.</td></tr>'; return; }
         tbody.innerHTML = d.accounts.map(a => `
           <tr>
             <td><strong style="color:#ddd">${a.username}</strong>${a.isAdmin ? ' <span class="admin-player-badge badge-admin">ADMIN</span>' : ''}</td>
             <td class="acc-email">${a.email || '<span style="color:#444">—</span>'}</td>
             <td>${a.email && a.emailVerified ? '<span class="acc-verified-yes">✓ YES</span>' : a.email ? '<span class="acc-verified-no">✗ NO</span>' : '<span style="color:#666">—</span>'}</td>
             <td><span class="admin-player-badge ${a.isAdmin ? 'badge-admin' : 'badge-user'}">${a.isAdmin ? 'ADMIN' : 'USER'}</span></td>
+            <td style="color:#fdcb3c">${a.bucks.toLocaleString()}</td>
             <td style="color:#555;font-size:11px">${a.created ? a.created.slice(0,10) : '—'}</td>
             <td>${a.username === 'Stotch' ? '' : `<button class="admin-btn admin-btn-red" style="font-size:9px;padding:3px 10px" onclick="apDeleteAccount('${a.username}')">DELETE</button>`}</td>
           </tr>`).join('');
-      } catch { tbody.innerHTML = '<tr><td colspan="6" style="color:#e74c3c;text-align:center">Could not reach server.</td></tr>'; }
+      } catch { tbody.innerHTML = '<tr><td colspan="7" style="color:#e74c3c;text-align:center">Could not reach server.</td></tr>'; }
     }
 
     async function apDeleteAccount(username) {

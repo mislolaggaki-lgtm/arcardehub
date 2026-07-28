@@ -1283,6 +1283,40 @@ async function start() {
     }
   });
 
+  // ── POST /api/admin/take-bucks ──────────────────────────────
+  app.post('/api/admin/take-bucks', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      // Only the Stotch admin account can use this
+      if (!payload.isAdmin || payload.username !== 'Stotch')
+        return res.status(403).json({ error: 'Forbidden.' });
+
+      const { targetUsername, amount } = req.body;
+      if (!targetUsername || typeof targetUsername !== 'string')
+        return res.status(400).json({ error: 'targetUsername required.' });
+      if (targetUsername === payload.username)
+        return res.status(400).json({ error: 'Cannot take bucks from yourself.' });
+      const n = parseInt(amount);
+      if (!Number.isFinite(n) || n < 1 || n > 100000)
+        return res.status(400).json({ error: 'Amount must be 1–100 000.' });
+
+      const target = await usersCol.findOne({ username: targetUsername });
+      if (!target) return res.status(404).json({ error: `User "${targetUsername}" not found.` });
+
+      const { ObjectId } = require('mongodb');
+      const newBucks = Math.max(0, (target.bucks || 0) - n);
+      const result = await usersCol.findOneAndUpdate(
+        { _id: new ObjectId(target._id) },
+        { $set: { bucks: newBucks } },
+        { returnDocument: 'after', projection: { username: 1, bucks: 1 } }
+      );
+      res.json({ success: true, username: result.username, bucks: result.bucks });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
   // ── POST /api/admin/grant-admin ────────────────────────────
   app.post('/api/admin/grant-admin', async (req, res) => {
     try {
@@ -1351,7 +1385,7 @@ async function start() {
       if (!payload.isAdmin || payload.username !== 'Stotch')
         return res.status(403).json({ error: 'Forbidden.' });
       const all = await usersCol
-        .find({}, { projection: { username: 1, email: 1, emailVerified: 1, created_at: 1, banned: 1, isAdmin: 1 } })
+        .find({}, { projection: { username: 1, email: 1, emailVerified: 1, created_at: 1, banned: 1, isAdmin: 1, bucks: 1 } })
         .sort({ created_at: 1 })
         .toArray();
       res.json({ accounts: all.map(u => ({
@@ -1361,6 +1395,7 @@ async function start() {
         isAdmin:       !!u.isAdmin,
         banned:        !!u.banned,
         created:       u.created_at || null,
+        bucks:         u.bucks || 0,
       }))});
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
