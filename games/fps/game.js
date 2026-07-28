@@ -66,6 +66,61 @@ let totalKills  = 0;
 let totalDeaths = 0;
 let playerBio   = '';
 
+// ── Badge-tracking lifetime stats (localStorage-persisted, per-account) ──
+let totalHeadshots    = parseInt(localStorage.getItem('ah_headshots')     || '0', 10);
+let totalDamageTaken  = parseInt(localStorage.getItem('ah_damage_taken')  || '0', 10);
+let totalHealed       = parseInt(localStorage.getItem('ah_healed')       || '0', 10);
+let totalBossesKilled = parseInt(localStorage.getItem('ah_bosses')       || '0', 10);
+let totalVictories    = parseInt(localStorage.getItem('ah_victories')    || '0', 10);
+let totalCoopGames    = parseInt(localStorage.getItem('ah_coop_games')   || '0', 10);
+let lifetimePlaySecs  = parseInt(localStorage.getItem('ah_playtime_sec') || '0', 10);
+const _weaponKillCounts = JSON.parse(localStorage.getItem('ah_weapon_kills') || '{}');
+const _weaponsEverUsed  = new Set(JSON.parse(localStorage.getItem('ah_weapons_used') || '[]'));
+const _biomesSeen       = new Set(JSON.parse(localStorage.getItem('ah_biomes_seen')  || '[]'));
+
+// ── Per-level tracking (reset in startLevel) ──────────────────
+let _levelDamageTaken = 0;
+let _levelDeaths      = 0;
+let _levelShotsFired  = 0;
+let _levelShotsHit    = 0;
+let _levelStartTime   = 0;
+let _levelWeaponsUsed = new Set();
+
+// ── Per-session tracking (reset on page load) ─────────────────
+let _currentKillStreak    = 0;
+let _consecutiveHitStreak = 0;
+let _recentKillTimes      = [];
+let _lastRespawnTime      = 0;
+let _lastInputTime        = Date.now();
+const _sessionStartTime   = Date.now();
+
+// ── Badge display names (for the achievement popup + kill feed) ──
+const _BADGE_NAMES2 = {
+  first_step:'FIRST STEP', rookie:'ROOKIE', getting_warmed:'GETTING WARMED', double_digits:'DOUBLE DIGITS',
+  lvl20:'LEVEL 20', lvl30:'LEVEL 30', lvl40:'LEVEL 40', lvl60:'LEVEL 60', lvl75:'LEVEL 75', lvl150:'LEVEL 150', max_rank:'MAX RANK',
+  first_blood:'FIRST BLOOD', serial_killer:'SERIAL KILLER', centurion:'CENTURION', bloodbath:'BLOODBATH',
+  kill_machine:'KILL MACHINE', reaper:'THE REAPER', death_dealer:'DEATH DEALER', world_ender:'WORLD ENDER',
+  headhunter:'HEADHUNTER', eagle_eye:'EAGLE EYE', sniper_elite:'SNIPER ELITE', one_shot_kill:'ONE SHOT KILL',
+  quickdraw:'QUICKDRAW', blitz:'BLITZ', rampage:'RAMPAGE', untouchable:'UNTOUCHABLE', close_call:'CLOSE CALL',
+  bullet_storm:'BULLET STORM', no_scope:'NO SCOPE', backstabber:'BACKSTABBER', iron_will:'IRON WILL',
+  hard_boiled:'HARD BOILED', last_stand:'LAST STAND', survivor_pro:'SURVIVOR', field_medic:'FIELD MEDIC',
+  marathon_man:'MARATHON MAN', pistol_pro:'PISTOL PRO', rifle_ace:'RIFLE ACE', one_gun_army:'ONE GUN ARMY',
+  weapon_smith:'WEAPONSMITH', team_player:'TEAM PLAYER', lone_wolf:'LONE WOLF', early_bird:'EARLY BIRD',
+  night_owl:'NIGHT OWL', dedicated:'DEDICATED', speed_runner:'SPEED RUNNER', marathon_session:'MARATHON',
+  weekend_warrior:'WEEKEND WARRIOR', winter_warrior:'WINTER WARRIOR', summer_slayer:'SUMMER SLAYER',
+  pumpkin_hunter:'PUMPKIN HUNTER', christmas_commando:'XMAS COMMANDO', new_year_hero:'NEW YEAR HERO',
+  pacifist_run:'PACIFIST', drama_queen:'DRAMA QUEEN', rubber_duck:'RUBBER DUCK', perfect_level:'PERFECT RUN',
+  speed_demon:'SPEED DEMON', completionist:'COMPLETIONIST', boss_hunter:'BOSS SLAYER', hall_of_fame:'HALL OF FAME',
+  immortal_player:'IMMORTAL', origin_story:'ORIGIN STORY', kill_streak_3:'TRIPLE KILL', kill_streak_5:'PENTA KILL',
+  kill_streak_10:'KILLING SPREE', win_streak_5:'WIN STREAK', win_streak_10:'DOMINANT', sharpshooter:'SHARPSHOOTER',
+  laser_focus:'LASER FOCUS', long_shot:'LONG SHOT', map_master:'MAP MASTER', comeback_kid:'COMEBACK KID',
+  daily_grinder:'DAILY GRINDER', legend_of_hub:'LEGEND', cosmic_warrior:'COSMIC WARRIOR', deity_mode:'DEITY', omniscient:'OMNISCIENT',
+};
+
+// Every badge id this build can actually award (used for the LEGEND/OMNISCIENT "all other badges" check)
+const _ALL_TRACKABLE_BADGES = ['besto_frendo','pro_gamer','unstoppable','veteran','code_breaker',
+  ...Object.keys(_BADGE_NAMES2)].filter(id => id !== 'legend_of_hub' && id !== 'omniscient');
+
 // Initialise HUD bucks + player stats — show cached value immediately, then sync from server
 (function() {
   const el = document.getElementById('hud-bucks-val');
@@ -100,12 +155,17 @@ let playerBio   = '';
       localStorage.setItem('ah_deaths', String(totalDeaths));
       localStorage.setItem('ah_bio',    playerBio);
       updateRankHUD();
+      if (p.memberSince) {
+        const created = new Date(p.memberSince);
+        const today   = new Date();
+        if (created.toDateString() === today.toDateString()) unlockBadge('origin_story');
+      }
     }).catch(() => {});
 })();
 
 // ── Badge unlock helper ──────────────────────────────────────
 const _earnedBadges = new Set(JSON.parse(localStorage.getItem('ah_badges') || '[]'));
-const _BADGE_NAMES  = { besto_frendo:'MY BESTO FRENDO', pro_gamer:'PRO GAMER', unstoppable:'UNSTOPPABLE', veteran:'VETERAN', code_breaker:'CODE BREAKER' };
+const _BADGE_NAMES  = { besto_frendo:'MY BESTO FRENDO', pro_gamer:'PRO GAMER', unstoppable:'UNSTOPPABLE', veteran:'VETERAN', code_breaker:'CODE BREAKER', ..._BADGE_NAMES2 };
 
 // Queued so two badges unlocking at once don't stomp on each other's popup
 let _achievementQueue   = [];
@@ -146,7 +206,63 @@ function unlockBadge(badgeId) {
   const name = _BADGE_NAMES[badgeId] || badgeId;
   pushKillFeed(`🏅 Badge unlocked: ${name}`);
   showAchievementPopup(name);
+
+  // LEGEND / OMNISCIENT — awarded once every other trackable badge is earned
+  if (badgeId !== 'legend_of_hub' && badgeId !== 'omniscient' &&
+      _ALL_TRACKABLE_BADGES.every(id => _earnedBadges.has(id))) {
+    unlockBadge('legend_of_hub');
+    unlockBadge('omniscient');
+  }
 }
+
+// ── Calendar / seasonal / daily-streak badges — checked once per page load ──
+(function _checkCalendarBadges() {
+  const now   = new Date();
+  const hour  = now.getHours();
+  const day   = now.getDay();    // 0 = Sunday, 6 = Saturday
+  const month = now.getMonth();  // 0-11
+  const date  = now.getDate();
+
+  if (hour < 5)                      unlockBadge('night_owl');
+  else if (hour < 8)                 unlockBadge('early_bird');
+  if (day === 0 || day === 6)        unlockBadge('weekend_warrior');
+  if (month === 11)                  unlockBadge('winter_warrior');
+  if (month >= 5 && month <= 7)      unlockBadge('summer_slayer');
+  if (month === 9  && date === 31)   unlockBadge('pumpkin_hunter');
+  if (month === 11 && date === 25)   unlockBadge('christmas_commando');
+  if (month === 0  && date === 1)    unlockBadge('new_year_hero');
+
+  // Consecutive-day play streak
+  const todayKey    = now.toISOString().slice(0, 10);
+  const daysPlayed  = JSON.parse(localStorage.getItem('ah_days_played') || '[]');
+  if (!daysPlayed.includes(todayKey)) {
+    daysPlayed.push(todayKey);
+    localStorage.setItem('ah_days_played', JSON.stringify(daysPlayed));
+  }
+  const daySet = new Set(daysPlayed);
+  let streak = 0;
+  const cursor = new Date(now);
+  while (daySet.has(cursor.toISOString().slice(0, 10))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  if (streak >= 7)  unlockBadge('dedicated');
+  if (streak >= 30) unlockBadge('daily_grinder');
+})();
+
+// ── Playtime / survival-duration badges — polled every 30s ─────────────────
+setInterval(() => {
+  const sessionSec = (Date.now() - _sessionStartTime) / 1000;
+  if (sessionSec >= 1800)  unlockBadge('marathon_man');
+  if (sessionSec >= 18000) unlockBadge('marathon_session');
+
+  lifetimePlaySecs += 30;
+  localStorage.setItem('ah_playtime_sec', String(lifetimePlaySecs));
+  if (lifetimePlaySecs >= 1000 * 3600) unlockBadge('immortal_player');
+
+  if (levelActive && !player.dead && (Date.now() - _levelStartTime) >= 300000) unlockBadge('iron_will');
+  if (levelActive && (Date.now() - _lastInputTime) >= 600000) unlockBadge('rubber_duck');
+}, 30000);
 
 // ─── Mobile state ────────────────────────────────────────────
 const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 ||
@@ -1848,6 +1964,17 @@ function shoot(){
   if(def.spinUp && mgSpinSpeed < MG_MAX_SPIN*.38) return;  // minigun needs to spin up
 
   gun.ammo--; updateAmmoHUD();
+  _lastInputTime = Date.now();
+
+  // ── Badge tracking: shots fired / weapons used ──────────────
+  _levelShotsFired++;
+  _levelWeaponsUsed.add(def.id);
+  if (_levelShotsFired === 100) unlockBadge('bullet_storm');
+  if (!_weaponsEverUsed.has(def.id)) {
+    _weaponsEverUsed.add(def.id);
+    localStorage.setItem('ah_weapons_used', JSON.stringify([..._weaponsEverUsed]));
+    if (_weaponsEverUsed.size >= Object.keys(GUN_DEFS).length) unlockBadge('weapon_smith');
+  }
 
   // Weapon sound
   playWeaponSound(def.id);
@@ -1874,7 +2001,20 @@ function shoot(){
     const bot = findBot(h0.object);
     if(bot){
       const isHeadshot = (h0.point.y - bot.group.position.y) > HEAD_THRESHOLD;
+      const distToBot   = camera.position.distanceTo(bot.group.position);
       damageBot(bot, isHeadshot);
+      _levelShotsHit++;
+      _consecutiveHitStreak++;
+      if (_consecutiveHitStreak >= 10) unlockBadge('laser_focus');
+      if (!bot.alive) { // this shot was the killing blow
+        if (def.oneShot) unlockBadge('one_shot_kill');
+        if (distToBot >= 50) unlockBadge('long_shot');
+        if (def.id === 'sniper' && !scopeActive) unlockBadge('no_scope');
+        const toPlayerDir = new THREE.Vector3().subVectors(camera.position, bot.group.position);
+        toPlayerDir.y = 0; toPlayerDir.normalize();
+        const botForward = new THREE.Vector3(Math.sin(bot.group.rotation.y), 0, Math.cos(bot.group.rotation.y));
+        if (botForward.dot(toPlayerDir) < -0.3) unlockBadge('backstabber');
+      }
     } else {
       const hit = findRemotePlayer(h0.object);
       if(hit && socket){
@@ -1882,12 +2022,22 @@ function shoot(){
         const isHeadshot = rp ? (h0.point.y - rp.group.position.y) > HEAD_THRESHOLD : false;
         if (isHeadshot) pushKillFeed('🎯 HEADSHOT!');
         socket.emit('shoot', { targetId: hit[0], isHeadshot });
+        _levelShotsHit++;
+        _consecutiveHitStreak++;
+        if (_consecutiveHitStreak >= 10) unlockBadge('laser_focus');
       } else {
         const ghostIdx = findGhostBot(h0.object);
-        if(ghostIdx !== null && socket) socket.emit('coopBotHit', { botIndex: ghostIdx });
+        if(ghostIdx !== null && socket) {
+          socket.emit('coopBotHit', { botIndex: ghostIdx });
+          _levelShotsHit++;
+          _consecutiveHitStreak++;
+        } else {
+          _consecutiveHitStreak = 0;
+        }
       }
     }
   } else {
+    _consecutiveHitStreak = 0;
     // Hit environment — cast against scene for wall impact
     const envHits = raycaster.intersectObjects(scene.children, false);
     if (envHits.length > 0 && envHits[0].face) {
@@ -1919,6 +2069,13 @@ function damageBot(bot, isHeadshot = false){
     bot.hp = 0;
   } else {
     bot.hp -= isHeadshot ? 2 : 1; // headshot: ~50% more (integer ceiling)
+  }
+  if (isHeadshot) {
+    totalHeadshots++;
+    localStorage.setItem('ah_headshots', String(totalHeadshots));
+    if (totalHeadshots === 1)  unlockBadge('headhunter');
+    if (totalHeadshots >= 10)  unlockBadge('eagle_eye');
+    if (totalHeadshots >= 50)  unlockBadge('sniper_elite');
   }
   const flashCol = isHeadshot ? 0xffdd00 : 0xff5500;
   bot.allMats.forEach(mat=>{ mat.emissive.setHex(flashCol); mat.emissiveIntensity=4.0; });
@@ -1956,8 +2113,40 @@ function killBot(bot){
 
 function trackKill() {
   totalKills++;
+  localStorage.setItem('ah_kills', String(totalKills));
   const token = localStorage.getItem('ah_token');
   if (socket && token) socket.emit('statsKill', { token });
+
+  if (totalKills === 1)   unlockBadge('first_blood');
+  if (totalKills >= 25)   unlockBadge('serial_killer');
+  if (totalKills >= 100)  unlockBadge('centurion');
+  if (totalKills >= 250)  unlockBadge('bloodbath');
+  if (totalKills >= 500)  unlockBadge('kill_machine');
+  if (totalKills >= 1000) unlockBadge('reaper');
+  if (totalKills >= 2500) unlockBadge('death_dealer');
+  if (totalKills >= 5000) unlockBadge('world_ender');
+
+  // Per-weapon lifetime kills — "rifle" maps to the SMG, the closest automatic-rifle analogue in this game
+  const gid = gun.def && gun.def.id;
+  if (gid) {
+    _weaponKillCounts[gid] = (_weaponKillCounts[gid] || 0) + 1;
+    localStorage.setItem('ah_weapon_kills', JSON.stringify(_weaponKillCounts));
+    if (gid === 'pistol' && _weaponKillCounts.pistol >= 100) unlockBadge('pistol_pro');
+    if (gid === 'smg'    && _weaponKillCounts.smg    >= 100) unlockBadge('rifle_ace');
+  }
+
+  if (Date.now() - _lastRespawnTime <= 2000) unlockBadge('quickdraw');
+
+  _currentKillStreak++;
+  if (_currentKillStreak >= 3)  unlockBadge('kill_streak_3');
+  if (_currentKillStreak >= 5)  unlockBadge('kill_streak_5');
+  if (_currentKillStreak >= 10) unlockBadge('kill_streak_10');
+
+  const now = Date.now();
+  _recentKillTimes.push(now);
+  _recentKillTimes = _recentKillTimes.filter(t => now - t <= 30000);
+  if (_recentKillTimes.filter(t => now - t <= 10000).length >= 3) unlockBadge('blitz');
+  if (_recentKillTimes.length >= 5) unlockBadge('rampage');
 }
 
 function trackDeath() {
@@ -1965,6 +2154,20 @@ function trackDeath() {
   player.deaths++;
   const token = localStorage.getItem('ah_token');
   if (socket && token) socket.emit('statsDeath', { token });
+}
+
+function _trackDamageTaken(amount) {
+  if (amount <= 0) return;
+  totalDamageTaken += amount;
+  _levelDamageTaken += amount;
+  localStorage.setItem('ah_damage_taken', String(totalDamageTaken));
+  if (totalDamageTaken >= 500) unlockBadge('hard_boiled');
+}
+
+function _trackCoopGameStarted() {
+  totalCoopGames++;
+  localStorage.setItem('ah_coop_games', String(totalCoopGames));
+  if (totalCoopGames >= 5) unlockBadge('team_player');
 }
 
 function spawnSparks(pos){
@@ -2579,6 +2782,7 @@ if (pvpBtnEl) pvpBtnEl.addEventListener('click', togglePvp);
 const keys={};
 let _chatTyping = false;
 document.addEventListener('keydown',e=>{
+  _lastInputTime = Date.now();
   // While typing in chat: block all game keys; Escape cancels chat
   if(_chatTyping){
     if(e.key==='Escape'){ e.preventDefault(); _closeChatTyping(); }
@@ -2646,6 +2850,7 @@ function deactivateScope(){
 const SENS_BASE = 0.0055;  // base sensitivity
 document.addEventListener('mousemove',e=>{
   if(!pointerLocked() || _chatTyping) return;
+  _lastInputTime = Date.now();
   const sens = SENS_BASE * (_settings.sensitivity || 1.0);
   const invertY = _settings.invertY ? -1 : 1;
   yaw   -= e.movementX * sens;
@@ -3528,12 +3733,16 @@ function killPlayer(killerRef) {
   deactivateScope();
   player.dead=true; player.health=0; updateHealthHUD();
   trackDeath();
+  _currentKillStreak = 0;
+  _levelDeaths++;
+  if (_levelDeaths >= 5) unlockBadge('drama_queen');
   _decrementAttachDurability();
   hudEl.style.display='none';
   enterKillcam(killerRef || null);
 }
 function respawnPlayer(){
   player.health=player.maxHealth; player.dead=false;
+  _lastRespawnTime = Date.now();
   camera.position.copy(SPAWN); yaw=0; pitch=0; velY=0; grounded=true;
   deathScreen.style.display='none';
   if(pointerLocked() || mobileGameActive) hudEl.style.display='block';
@@ -4191,6 +4400,7 @@ function update(dt){
       const meleeDmg = bot.mode === 'phantom' ? Math.round(dmg * 1.3) : dmg;
       if(!diffFloor && distToPlayer<BOT_MELEE && player.hurtTimer<=0){
         player.health -= meleeDmg; player.hurtTimer = BOT_DMG_INT;
+        _trackDamageTaken(meleeDmg);
         updateHealthHUD(); flashDmg();
         if(player.health<=0) killPlayer(bot);
       }
@@ -4372,6 +4582,7 @@ function update(dt){
       if(Math.sqrt(dx*dx+dy*dy+dz*dz)<0.65 && player.hurtTimer<=0){
         player.health -= BOT_BULLET_DMG;
         player.hurtTimer = 0.18;
+        _trackDamageTaken(BOT_BULLET_DMG);
         updateHealthHUD(); flashDmg();
         spawnBlood(b.pos.clone(), 6);
         if(player.health<=0) killPlayer(b.sourceBot || null);
@@ -5196,6 +5407,13 @@ function applyBiome(level) {
   const biome = _biomeForBlock(Math.floor((level - 1) / 5));
   currentBiome = biome;
 
+  const _biomeIdx = BIOMES.indexOf(biome);
+  if (_biomeIdx >= 0 && !_biomesSeen.has(_biomeIdx)) {
+    _biomesSeen.add(_biomeIdx);
+    localStorage.setItem('ah_biomes_seen', JSON.stringify([..._biomesSeen]));
+    if (_biomesSeen.size >= BIOMES.length) unlockBadge('map_master');
+  }
+
   // Scene fog + background
   scene.background.setHex(biome.bg);
   scene.fog.color.setHex(biome.bg);
@@ -5512,6 +5730,16 @@ function transShow(html, dur, then) {
 function startLevel(n) {
   currentLevel = n;
   levelActive  = false;
+
+  // Per-level badge tracking reset
+  _levelDamageTaken = 0;
+  _levelDeaths      = 0;
+  _levelShotsFired  = 0;
+  _levelShotsHit    = 0;
+  _levelWeaponsUsed = new Set();
+  _levelStartTime   = Date.now();
+  if (n === 1) _lastRespawnTime = Date.now();
+
   if (coopMode && !coopIsHost) clearGhostBots();
   clearBots();
 
@@ -5534,9 +5762,20 @@ function startLevel(n) {
   updateLevelHUD();
   updateEnemyCountHUD();
   if (coopIsHost && socket) socket.emit('coopLevelUp', { level: n });
+  if (n === 1)  unlockBadge('first_step');
+  if (n >= 5)   unlockBadge('rookie');
+  if (n >= 10)  unlockBadge('getting_warmed');
+  if (n >= 15)  unlockBadge('double_digits');
+  if (n >= 20)  unlockBadge('lvl20');
   if (n >= 25)  unlockBadge('pro_gamer');
+  if (n >= 30)  unlockBadge('lvl30');
+  if (n >= 40)  unlockBadge('lvl40');
   if (n >= 50)  unlockBadge('unstoppable');
+  if (n >= 60)  unlockBadge('lvl60');
+  if (n >= 75)  unlockBadge('lvl75');
   if (n >= 100) { unlockBadge('veteran'); awardBucks(100); }
+  if (n >= 150) unlockBadge('lvl150');
+  if (n >= 200) unlockBadge('max_rank');
 }
 
 function _showNextLevelIntro(next, then) {
@@ -5591,8 +5830,33 @@ function checkLevelComplete() {
 
   const bossJustDefeated = isBossLevel(currentLevel);
   const hpReward = bossJustDefeated ? 75 : 25;
+  const _healedNow = Math.min(hpReward, player.maxHealth - player.health);
   player.health = Math.min(player.maxHealth, player.health + hpReward);
   updateHealthHUD();
+
+  totalHealed += _healedNow;
+  localStorage.setItem('ah_healed', String(totalHealed));
+  if (totalHealed >= 500) unlockBadge('field_medic');
+
+  // ── Per-level completion badges ─────────────────────────────
+  if (_levelDamageTaken === 0) unlockBadge('untouchable');
+  if (_levelDeaths === 0)      unlockBadge('survivor_pro');
+  if (_levelDamageTaken === 0 && _levelDeaths === 0) unlockBadge('perfect_level');
+  if (player.health === 1) unlockBadge('close_call');
+  if (player.health === 5) unlockBadge('last_stand');
+  if (_levelShotsFired === 0) unlockBadge('pacifist_run');
+  if (_levelShotsFired > 0 && (_levelShotsHit / _levelShotsFired) >= 0.8) unlockBadge('sharpshooter');
+  if (_levelDeaths >= 3) unlockBadge('comeback_kid');
+  if (_levelWeaponsUsed.size === 1) unlockBadge('one_gun_army');
+  if (!coopMode) unlockBadge('lone_wolf');
+  unlockBadge('completionist'); // this level's only objective (clear all enemies) is done
+  if (Date.now() - _levelStartTime <= 60000) unlockBadge('speed_runner');
+  if (Date.now() - _levelStartTime <= 30000) unlockBadge('speed_demon');
+  if (bossJustDefeated) {
+    totalBossesKilled++;
+    localStorage.setItem('ah_bosses', String(totalBossesKilled));
+    unlockBadge('boss_hunter');
+  }
 
   const proceed = () => {
     if (currentLevel >= 1000) {
@@ -5629,6 +5893,15 @@ function checkLevelComplete() {
 }
 
 function showVictory() {
+  // "Games won" / "win streak" have no discrete match concept in Solo mode (it's one
+  // continuous 1000-level run) — approximated here as full-run completions.
+  totalVictories++;
+  localStorage.setItem('ah_victories', String(totalVictories));
+  if (totalVictories >= 3)    unlockBadge('deity_mode');
+  if (totalVictories >= 5)    unlockBadge('win_streak_5');
+  if (totalVictories >= 10)   unlockBadge('win_streak_10');
+  if (totalVictories >= 1000) unlockBadge('cosmic_warrior');
+
   transScreen.innerHTML = `
     <div style="font-size:56px;color:#f1c40f;letter-spacing:6px;text-shadow:0 0 24px #f1c40f">
       YOU WIN
@@ -5853,11 +6126,13 @@ function initSocket() {
     const useForcedHealth = data.forcedHealth !== undefined && data.forcedHealth !== null;
     if (data.targetId === socket.id) {
       if (!pvpMode) return;
+      const _beforeHP = player.health;
       if (useForcedHealth) {
         player.health = Math.max(0, data.forcedHealth);
       } else {
         player.health -= data.damage;
       }
+      _trackDamageTaken(Math.max(0, _beforeHP - player.health));
       updateHealthHUD();
       flashDmg();
       if (player.health <= 0) killPlayer();
@@ -5890,6 +6165,7 @@ function initSocket() {
     if (rp) { rp.inCoop = true; refreshPlayerLabel(rp); }
     pushKillFeed(`${guestUsername} accepted the request`);
     unlockBadge('besto_frendo');
+    _trackCoopGameStarted();
     // Send current level immediately
     if (socket) socket.emit('coopLevelUp', { level: currentLevel });
   });
@@ -5906,6 +6182,7 @@ function initSocket() {
     if (rp) { rp.inCoop = true; refreshPlayerLabel(rp); }
     startLevel(level);
     pushKillFeed(`Now co-oping with ${hostUsername}`);
+    _trackCoopGameStarted();
   });
 
   socket.on('coopBots', ({ bots: bd }) => {
@@ -6050,7 +6327,10 @@ async function fetchLeaderboard() {
   try {
     const res = await fetch('/api/leaderboard');
     const data = await res.json();
-    renderLeaderboard(data.leaderboard || []);
+    const rows = data.leaderboard || [];
+    renderLeaderboard(rows);
+    const myUsername = localStorage.getItem('ah_username');
+    if (rows.length && myUsername && rows[0].username === myUsername) unlockBadge('hall_of_fame');
   } catch { console.warn('Leaderboard fetch failed'); }
 }
 

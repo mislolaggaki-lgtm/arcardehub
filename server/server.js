@@ -1198,7 +1198,22 @@ async function start() {
     try {
       const payload = verifyToken(req.headers.authorization);
       const { badgeId } = req.body;
-      const VALID = ['besto_frendo', 'pro_gamer', 'unstoppable', 'veteran'];
+      const VALID = [
+        'besto_frendo', 'pro_gamer', 'unstoppable', 'veteran', 'code_breaker',
+        'first_step', 'rookie', 'getting_warmed', 'double_digits', 'lvl20', 'lvl30', 'lvl40', 'lvl60', 'lvl75', 'lvl150', 'max_rank',
+        'first_blood', 'serial_killer', 'centurion', 'bloodbath', 'kill_machine', 'reaper', 'death_dealer', 'world_ender',
+        'headhunter', 'eagle_eye', 'sniper_elite', 'one_shot_kill', 'quickdraw', 'blitz', 'rampage',
+        'untouchable', 'close_call', 'bullet_storm', 'no_scope', 'backstabber', 'iron_will', 'hard_boiled', 'last_stand', 'survivor_pro', 'field_medic', 'marathon_man',
+        'pistol_pro', 'rifle_ace', 'one_gun_army', 'weapon_smith',
+        'team_player', 'lone_wolf',
+        'early_bird', 'night_owl', 'dedicated', 'speed_runner', 'marathon_session', 'weekend_warrior',
+        'winter_warrior', 'summer_slayer', 'pumpkin_hunter', 'christmas_commando', 'new_year_hero',
+        'pacifist_run', 'drama_queen', 'rubber_duck', 'perfect_level', 'speed_demon', 'completionist',
+        'boss_hunter', 'hall_of_fame', 'immortal_player', 'origin_story',
+        'kill_streak_3', 'kill_streak_5', 'kill_streak_10', 'win_streak_5', 'win_streak_10',
+        'sharpshooter', 'laser_focus', 'long_shot', 'map_master', 'comeback_kid', 'daily_grinder',
+        'legend_of_hub', 'cosmic_warrior', 'deity_mode', 'omniscient',
+      ];
       if (!VALID.includes(badgeId))
         return res.status(400).json({ error: 'Invalid badge.' });
       const { ObjectId } = require('mongodb');
