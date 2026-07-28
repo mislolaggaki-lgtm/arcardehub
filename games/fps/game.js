@@ -105,7 +105,32 @@ let playerBio   = '';
 
 // ── Badge unlock helper ──────────────────────────────────────
 const _earnedBadges = new Set(JSON.parse(localStorage.getItem('ah_badges') || '[]'));
-const _BADGE_NAMES  = { besto_frendo:'MY BESTO FRENDO', pro_gamer:'PRO GAMER', unstoppable:'UNSTOPPABLE', veteran:'VETERAN' };
+const _BADGE_NAMES  = { besto_frendo:'MY BESTO FRENDO', pro_gamer:'PRO GAMER', unstoppable:'UNSTOPPABLE', veteran:'VETERAN', code_breaker:'CODE BREAKER' };
+
+// Queued so two badges unlocking at once don't stomp on each other's popup
+let _achievementQueue   = [];
+let _achievementShowing = false;
+function _showNextAchievement() {
+  if (_achievementShowing || _achievementQueue.length === 0) return;
+  const popup  = document.getElementById('achievement-popup');
+  const nameEl = document.getElementById('achievement-name');
+  if (!popup || !nameEl) { _achievementQueue = []; return; }
+  _achievementShowing = true;
+  nameEl.textContent = _achievementQueue.shift();
+  popup.classList.remove('show');
+  void popup.offsetWidth;
+  popup.classList.add('show');
+  setTimeout(() => {
+    popup.classList.remove('show');
+    _achievementShowing = false;
+    _showNextAchievement();
+  }, 4000);
+}
+function showAchievementPopup(name) {
+  _achievementQueue.push(name);
+  _showNextAchievement();
+}
+
 function unlockBadge(badgeId) {
   if (_earnedBadges.has(badgeId)) return;
   _earnedBadges.add(badgeId);
@@ -118,7 +143,9 @@ function unlockBadge(badgeId) {
       body: JSON.stringify({ badgeId }),
     }).catch(() => {});
   }
-  pushKillFeed(`🏅 Badge unlocked: ${_BADGE_NAMES[badgeId] || badgeId}`);
+  const name = _BADGE_NAMES[badgeId] || badgeId;
+  pushKillFeed(`🏅 Badge unlocked: ${name}`);
+  showAchievementPopup(name);
 }
 
 // ─── Mobile state ────────────────────────────────────────────

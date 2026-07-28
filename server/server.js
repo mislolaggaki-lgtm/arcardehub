@@ -1214,6 +1214,39 @@ async function start() {
     }
   });
 
+  // ── POST /api/codes/redeem ──────────────────────────────────
+  const REDEEM_CODES = {
+    '100011011110001011001010010': { badge: 'code_breaker', bucks: 10000 },
+  };
+  app.post('/api/codes/redeem', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const code = String(req.body.code || '').trim();
+      const entry = REDEEM_CODES[code];
+      if (!entry) return res.status(400).json({ error: 'Invalid code.' });
+
+      const { ObjectId } = require('mongodb');
+      const user = await usersCol.findOne(
+        { _id: new ObjectId(payload.userId) },
+        { projection: { badges: 1, bucks: 1 } }
+      );
+      if (!user) return res.status(404).json({ error: 'User not found.' });
+      if ((user.badges || []).includes(entry.badge))
+        return res.status(409).json({ error: "You've already redeemed this code." });
+
+      const result = await usersCol.findOneAndUpdate(
+        { _id: new ObjectId(payload.userId) },
+        { $inc: { bucks: entry.bucks }, $addToSet: { badges: entry.badge } },
+        { returnDocument: 'after', projection: { bucks: 1 } }
+      );
+      res.json({ success: true, badge: entry.badge, bucksAwarded: entry.bucks, bucks: result.bucks });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      console.error('/api/codes/redeem error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
   // ── GET /api/shop/profile ───────────────────────────────────
   app.get('/api/shop/profile', async (req, res) => {
     try {

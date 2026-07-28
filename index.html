@@ -2343,6 +2343,7 @@
             <button class="dd-item" onclick="toggleNavDD();openProfile()"><span class="dd-icon">⚙️</span>Profile Settings</button>
             <button class="dd-item" onclick="toggleNavDD();openShop()"><span class="dd-icon">🛍️</span>Avatar Shop</button>
             <button class="dd-item" onclick="toggleNavDD();openTrade()"><span class="dd-icon">⇄</span>Trade</button>
+            <button class="dd-item" onclick="toggleNavDD();openCodes()"><span class="dd-icon">🔑</span>Codes</button>
             <div class="dd-sep"></div>
             <button class="dd-item" onclick="toggleNavDD();openAI()"><img class="dd-icon-img" src="/dropdown-gameai-logo.png" alt="AI">Gaming AI</button>
             <div class="dd-sep"></div>
@@ -6501,6 +6502,54 @@
     }
 
     // ══════════════════════════════════════════════════════════
+    //  CODES
+    // ══════════════════════════════════════════════════════════
+    function openCodes() {
+      const token = localStorage.getItem('ah_token');
+      if (!token) { alert('Please log in to redeem a code.'); return; }
+      document.getElementById('codes-input').value = '';
+      document.getElementById('codes-msg').textContent = '';
+      document.getElementById('codes-msg').className = 'feedback-msg';
+      document.getElementById('codes-send-btn').disabled = false;
+      document.getElementById('codes-overlay').style.display = 'flex';
+    }
+    function closeCodes() {
+      document.getElementById('codes-overlay').style.display = 'none';
+    }
+    async function submitCode() {
+      const token = localStorage.getItem('ah_token');
+      const code = document.getElementById('codes-input').value.trim();
+      const statusEl = document.getElementById('codes-msg');
+      const btn = document.getElementById('codes-send-btn');
+      if (!code) {
+        statusEl.textContent = 'Please enter a code.';
+        statusEl.className = 'feedback-msg err'; return;
+      }
+      btn.disabled = true;
+      statusEl.textContent = 'Checking…';
+      statusEl.className = 'feedback-msg';
+      try {
+        const r = await fetch(`${API}/codes/redeem`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ code }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'Redemption failed.');
+        _bucks = d.bucks;
+        _saveBucksLocal();
+        updateBucksDisplay();
+        statusEl.textContent = `✓ Code redeemed! +${d.bucksAwarded.toLocaleString()} Bucks awarded.`;
+        statusEl.className = 'feedback-msg ok';
+        setTimeout(closeCodes, 2200);
+      } catch (e) {
+        statusEl.textContent = e.message;
+        statusEl.className = 'feedback-msg err';
+        btn.disabled = false;
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════
     //  Wire up socket listeners for notifs + friends
     // ══════════════════════════════════════════════════════════
     function _wireNotifFriendSockets() {
@@ -6675,6 +6724,26 @@
         <button class="feedback-send" id="feedback-send-btn" onclick="submitFeedback()">SEND →</button>
       </div>
       <div class="feedback-msg" id="feedback-msg"></div>
+    </div>
+  </div>
+
+  <!-- ── Codes Modal ──────────────────────────────────────── -->
+  <div class="feedback-overlay" id="codes-overlay" style="display:none" onclick="if(event.target===this)closeCodes()">
+    <div class="feedback-modal">
+      <div class="feedback-head">
+        <span class="feedback-head-icon">🔑</span>
+        <span class="feedback-head-title">REDEEM CODE</span>
+        <button class="feedback-head-close" onclick="closeCodes()">✕</button>
+      </div>
+      <div class="feedback-body">
+        <div class="feedback-hint">Enter a code to redeem it for Bucks and exclusive badges. Each code can only be redeemed once.</div>
+        <input type="text" id="codes-input" class="feedback-textarea" style="min-height:unset;height:44px" placeholder="Enter code here…" autocomplete="off">
+      </div>
+      <div class="feedback-footer">
+        <span></span>
+        <button class="feedback-send" id="codes-send-btn" onclick="submitCode()">REDEEM →</button>
+      </div>
+      <div class="feedback-msg" id="codes-msg"></div>
     </div>
   </div>
 
