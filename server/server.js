@@ -1068,6 +1068,28 @@ async function start() {
       if (!match)
         return res.status(401).json({ error: 'Invalid username or password.' });
 
+      if (user.email && !user.emailVerified) {
+        const verifCode   = String(Math.floor(100000 + Math.random() * 900000));
+        const verifExpiry = Date.now() + 24 * 60 * 60 * 1000;
+        await usersCol.updateOne({ _id: user._id }, { $set: { verifCode, verifExpiry } });
+        try {
+          await _sendMail(user.email, 'Verify your ArcadeHub account', `
+            <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
+              <h2 style="color:#4fc3f7;margin-top:0">Verify your email</h2>
+              <p style="color:#ccc">Hi <strong>${user.username}</strong>, enter the code below to verify your email and finish logging in.</p>
+              <div style="text-align:center;margin:24px 0">
+                <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${verifCode}</span>
+              </div>
+              <p style="color:#888;font-size:12px">This code expires in 24 hours. If you didn't request this, you can ignore this email.</p>
+            </div>`
+          );
+          return res.status(403).json({ error: 'Please verify your email to continue.', emailNotVerified: true, username: user.username });
+        } catch (mailErr) {
+          console.error('[LOGIN] Verification mail failed — letting user through:', mailErr.message);
+          await usersCol.updateOne({ _id: user._id }, { $set: { emailVerified: true }, $unset: { verifCode: '', verifExpiry: '' } });
+        }
+      }
+
       const token = jwt.sign(
         { userId: user._id.toString(), username: user.username, isAdmin: !!user.isAdmin },
         JWT_SECRET,
