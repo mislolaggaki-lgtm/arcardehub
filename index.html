@@ -4952,7 +4952,7 @@
     const SOCKET_URL = isLocal ? 'http://localhost:3001' : window.location.origin;
 
     // ── Restore session on page load ──────────────────────────
-    (function restoreSession() {
+    (async function restoreSession() {
       const token    = localStorage.getItem('ah_token');
       const username = localStorage.getItem('ah_username');
 
@@ -4967,6 +4967,26 @@
         window.location.href = '/terms.html';
         return;
       }
+
+      // A locally-stored token proves nothing about current email-verification status —
+      // re-check with the server on every load so reloading can't bypass it.
+      try {
+        const r = await fetch(`${API}/shop/profile`, { headers: { Authorization: `Bearer ${token}` } });
+        if (r.status === 403) {
+          const d = await r.json().catch(() => ({}));
+          if (d.needsEmail) { showForceEmailModal(); return; }
+          if (d.emailNotVerified) {
+            _pendingVerifUsername = d.username || username;
+            fetch(`${API}/auth/resend-verif`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: _pendingVerifUsername }),
+            }).catch(() => {});
+            showVerifyNewEmailModal();
+            return;
+          }
+        }
+      } catch { /* network hiccup — fall through, don't lock the user out over a blip */ }
+
       setLoggedIn(username);
       loadBadges();
       loadShopProfile();
@@ -5540,7 +5560,15 @@
         } else {
           document.getElementById('force-email-overlay').style.display = 'none';
           btn.disabled = false; btn.textContent = 'LINK EMAIL';
-          if (d.emailVerificationRequired) showVerifyNewEmailModal();
+          if (d.emailVerificationRequired) {
+            showVerifyNewEmailModal();
+          } else {
+            // Mail sending failed server-side and the account was auto-verified — safe to continue
+            const uname = localStorage.getItem('ah_username');
+            setLoggedIn(uname);
+            loadBadges();
+            loadShopProfile();
+          }
         }
       } catch {
         msgEl.textContent = 'Could not reach server.';
@@ -5576,6 +5604,10 @@
         }
         document.getElementById('verify-new-email-overlay').style.display = 'none';
         btn.disabled = false; btn.textContent = 'VERIFY EMAIL';
+        // Covers the page-load recheck path, where the app shell hasn't been shown yet
+        setLoggedIn(username);
+        loadBadges();
+        loadShopProfile();
       } catch {
         msgEl.textContent = 'Could not reach server.';
         btn.disabled = false; btn.textContent = 'VERIFY EMAIL';

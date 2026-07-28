@@ -226,6 +226,33 @@ async function start() {
     );
   }
 
+  // ── Email verification gate ─────────────────────────────────
+  // A JWT, once issued, is never otherwise re-checked against the account's current
+  // emailVerified status — so without this, reloading the page (or just calling the
+  // API directly) with an old-but-valid token bypasses the "add email" / "verify email"
+  // requirement entirely. This re-checks on every authenticated request, not just login.
+  const EMAIL_GATE_ALLOWED_PATHS = new Set(['/profile/update', '/terms/accept']);
+  async function emailVerifiedGate(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return next();
+    if (EMAIL_GATE_ALLOWED_PATHS.has(req.path)) return next();
+    let payload;
+    try { payload = jwt.verify(authHeader.slice(7), JWT_SECRET); }
+    catch { return next(); } // invalid/expired — let the route's own verifyToken() produce the real error
+    try {
+      const { ObjectId } = require('mongodb');
+      const user = await usersCol.findOne(
+        { _id: new ObjectId(payload.userId) },
+        { projection: { email: 1, emailVerified: 1 } }
+      );
+      if (!user) return next();
+      if (!user.email) return res.status(403).json({ error: 'Please add an email address to continue.', needsEmail: true });
+      if (!user.emailVerified) return res.status(403).json({ error: 'Please verify your email to continue.', emailNotVerified: true, username: payload.username });
+      next();
+    } catch { next(); }
+  }
+  app.use('/api', emailVerifiedGate);
+
   // ── Trade execution helper (needs usersCol) ─────────────────
   async function _executeTrade(session) {
     tradeSessions.delete(session.id);
