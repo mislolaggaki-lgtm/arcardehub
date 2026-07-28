@@ -1213,6 +1213,7 @@ async function start() {
         'kill_streak_3', 'kill_streak_5', 'kill_streak_10', 'win_streak_5', 'win_streak_10',
         'sharpshooter', 'laser_focus', 'long_shot', 'map_master', 'comeback_kid', 'daily_grinder',
         'legend_of_hub', 'cosmic_warrior', 'deity_mode', 'omniscient',
+        'fashionista', 'trendsetter', 'big_spender', 'legendary_drip', 'full_drip', 'rare_taste',
       ];
       if (!VALID.includes(badgeId))
         return res.status(400).json({ error: 'Invalid badge.' });

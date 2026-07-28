@@ -4778,6 +4778,25 @@
       localStorage.setItem('ah_attach_uses', JSON.stringify(map));
     }
 
+    // ── Hub-side badge unlock helper (index.html has no equivalent of game.js's unlockBadge) ──
+    async function unlockBadgeHub(badgeId) {
+      const unlocked = JSON.parse(localStorage.getItem('ah_badges') || '[]');
+      if (unlocked.includes(badgeId)) return;
+      unlocked.push(badgeId);
+      localStorage.setItem('ah_badges', JSON.stringify(unlocked));
+      const token = localStorage.getItem('ah_token');
+      if (token) {
+        fetch(`${API}/badges/unlock`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ badgeId }),
+        }).catch(() => {});
+      }
+      renderBadges(unlocked);
+    }
+
+    const COSMETIC_SLOTS = ['hats', 'eyewear', 'neck', 'wrist', 'back', 'shoulders', 'face', 'feet'];
+
     async function buyItem(id) {
       const it = SHOP_ITEMS.find(x => x.id === id);
       if (!it || _bucks < it.price) return;
@@ -4795,6 +4814,20 @@
       } else { _bucks -= it.price; }
       _ownedItems.add(id);
       if (it.cat === 'attachments') _setAttachUses(id, 2);
+
+      // ── Badge tracking: shop purchases ──────────────────────
+      const purchaseCount = parseInt(localStorage.getItem('ah_purchase_count') || '0', 10) + 1;
+      localStorage.setItem('ah_purchase_count', String(purchaseCount));
+      if (purchaseCount >= 10) unlockBadgeHub('fashionista');
+      if (purchaseCount >= 50) unlockBadgeHub('trendsetter');
+
+      const bucksSpent = parseInt(localStorage.getItem('ah_bucks_spent') || '0', 10) + it.price;
+      localStorage.setItem('ah_bucks_spent', String(bucksSpent));
+      if (bucksSpent >= 1000) unlockBadgeHub('big_spender');
+
+      if (it.rarity === 'rare')      unlockBadgeHub('rare_taste');
+      if (it.rarity === 'legendary') unlockBadgeHub('legendary_drip');
+
       _saveBucksLocal(); updateBucksDisplay(); _renderShopGrid(); _renderShopAvatar();
     }
 
@@ -4840,6 +4873,9 @@
           });
         } catch {}
       }
+      // Badge tracking: full drip — an item equipped in every cosmetic slot
+      const equippedCats = new Set(SHOP_ITEMS.filter(x => _equippedItems.has(x.id)).map(x => x.cat));
+      if (COSMETIC_SLOTS.every(slot => equippedCats.has(slot))) unlockBadgeHub('full_drip');
       _saveBucksLocal(); _renderShopGrid(); _renderShopAvatar();
     }
 
