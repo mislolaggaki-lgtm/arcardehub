@@ -612,6 +612,19 @@
     }
     .auth-field input::placeholder { color: #2a2a3a; }
 
+    .pw-field-wrap { position: relative; display: flex; }
+    .pw-field-wrap input { flex: 1; padding-right: 42px; }
+    .pw-toggle-btn {
+      position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+      width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      background: none; border: none; cursor: pointer;
+      color: #555577; border-radius: 5px; padding: 0;
+      transition: color .15s, background .15s;
+    }
+    .pw-toggle-btn:hover { color: #ccc; background: rgba(255,255,255,0.06); }
+    .pw-toggle-btn svg { width: 18px; height: 18px; }
+
     .auth-msg {
       font-size: 13px; line-height: 1.45;
       min-height: 18px; margin-top: -4px;
@@ -2213,7 +2226,13 @@
         </div>
         <div class="auth-field">
           <label for="login-password">Password</label>
-          <input id="login-password" type="password" placeholder="Your password" autocomplete="current-password">
+          <div class="pw-field-wrap">
+            <input id="login-password" type="password" placeholder="Your password" autocomplete="current-password">
+            <button type="button" class="pw-toggle-btn" onclick="togglePwVisibility('login-password', this)" aria-label="Show password">
+              <svg class="pw-icon-eye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="pw-icon-eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
         </div>
         <div class="auth-msg" id="login-msg"></div>
         <button type="submit" class="auth-submit">Sign In</button>
@@ -2245,7 +2264,13 @@
           </div>
           <div class="auth-field">
             <label for="reset-new-pw">New password</label>
-            <input id="reset-new-pw" type="password" placeholder="New password (min 6 chars)" autocomplete="new-password">
+            <div class="pw-field-wrap">
+              <input id="reset-new-pw" type="password" placeholder="New password (min 6 chars)" autocomplete="new-password">
+              <button type="button" class="pw-toggle-btn" onclick="togglePwVisibility('reset-new-pw', this)" aria-label="Show password">
+                <svg class="pw-icon-eye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="pw-icon-eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
           </div>
           <div class="auth-msg" id="reset-msg2"></div>
           <button class="auth-submit" onclick="resetConfirm()">SET NEW PASSWORD</button>
@@ -2265,7 +2290,13 @@
         </div>
         <div class="auth-field">
           <label for="reg-password">Password</label>
-          <input id="reg-password" type="password" placeholder="Choose a password (min 6 chars)" autocomplete="new-password">
+          <div class="pw-field-wrap">
+            <input id="reg-password" type="password" placeholder="Choose a password (min 6 chars)" autocomplete="new-password">
+            <button type="button" class="pw-toggle-btn" onclick="togglePwVisibility('reg-password', this)" aria-label="Show password">
+              <svg class="pw-icon-eye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="pw-icon-eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
         </div>
         <div class="auth-msg" id="reg-msg"></div>
         <button type="submit" class="auth-submit">Create Account</button>
@@ -2870,6 +2901,15 @@
       overlay.classList.remove('open');
       clearMsg('login-msg');
       clearMsg('reg-msg');
+    }
+
+    function togglePwVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      const showing = input.type === 'password';
+      input.type = showing ? 'text' : 'password';
+      btn.querySelector('.pw-icon-eye').style.display     = showing ? 'none' : '';
+      btn.querySelector('.pw-icon-eye-off').style.display = showing ? '' : 'none';
+      btn.setAttribute('aria-label', showing ? 'Hide password' : 'Show password');
     }
 
     function switchTab(tab) {
