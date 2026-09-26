@@ -920,7 +920,7 @@ ARENA_M.floor.normalMap = ARENA_M.floor.map.normalMapTex || null;
 ARENA_M.clight.color.multiplyScalar(2.6); ARENA_M.clight.toneMapped = false;   // fixtures bloom
 
 function addBox(w,h,d,x,y,z,mat,cast=true,recv=true){
-  const geo = GFXH.worldUV(new THREE.BoxGeometry(w,h,d), x, y, z);
+  const geo = (mat.userData && mat.userData.faceUV) ? new THREE.BoxGeometry(w,h,d) : GFXH.worldUV(new THREE.BoxGeometry(w,h,d), x, y, z);
   if (mat.userData && mat.userData.xzLightmap) GFXH.xzUV2(geo, x, z, -AW, -AD, AW*2);
   const m=new THREE.Mesh(geo,mat);
   m.position.set(x,y,z); m.castShadow=cast; m.receiveShadow=recv; scene.add(m); return m;
@@ -1149,6 +1149,17 @@ const CRATE_MAT  = new THREE.MeshStandardMaterial({ color:0x4a3010, roughness:0.
 const CRATE_TRIM = new THREE.MeshStandardMaterial({ color:0x7a5020, emissive:new THREE.Color(0x2a1a08), emissiveIntensity:0.3, roughness:0.5, metalness:0.4 });
 const BARREL_MAT = new THREE.MeshStandardMaterial({ color:0x222244, roughness:0.55, metalness:0.7 });
 const BARREL_RNG = new THREE.MeshStandardMaterial({ color:0xff6600, emissive:new THREE.Color(0xff3300), emissiveIntensity:0.6, roughness:0.3, metalness:0.6 });
+{
+  const crate = GFXH.makeCrateCanvases(Math.min(1024, GFX.tex));
+  CRATE_MAT.map = GFXH.texture(crate.color, { srgb: true, aniso: MAX_ANISO });
+  CRATE_MAT.color.setHex(0xa07850); CRATE_MAT.roughness = 0.78;
+  if (GFX.normalMaps) CRATE_MAT.normalMap = GFXH.texture(GFXH.normalMapFromCanvas(crate.height, 2.6), { aniso: MAX_ANISO });
+  CRATE_MAT.userData.faceUV = true;
+  const drum = GFXH.makeBarrelCanvases(Math.min(1024, GFX.tex));
+  const drumMap = GFXH.texture(drum.color, { srgb: true, aniso: MAX_ANISO });
+  const drumNrm = GFX.normalMaps ? GFXH.texture(GFXH.normalMapFromCanvas(drum.height, 2.2), { aniso: MAX_ANISO }) : null;
+  [BARREL_MAT, BARREL_RNG].forEach(m => { m.map = drumMap; m.normalMap = drumNrm; });
+}
 
 function addCrateStack(x, z, count) {
   for (let i = 0; i < count; i++) {
@@ -1163,12 +1174,24 @@ function addCrateStack(x, z, count) {
 
 function addBarrel(x, z, glowing) {
   const mat = glowing ? BARREL_RNG : BARREL_MAT;
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.26, 0.9, 12), mat);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.26, 0.9, 28), mat);
   body.position.set(x, 0.45, z); body.castShadow = true; scene.add(body);
-  const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.05, 12), BARREL_MAT);
+  const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.05, 28), BARREL_MAT);
   lid.position.set(x, 0.92, z); scene.add(lid);
   if (glowing) {
     _bakeLight(0xff3300, 1.2, 4, x, 1.2, z);
+    // Visible glow pool on the floor (the dark floor absorbs most of the baked light)
+    if (!addBarrel._poolTex) {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const g2 = c.getContext('2d'), gr = g2.createRadialGradient(64, 64, 0, 64, 64, 64);
+      gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.25, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g2.fillStyle = gr; g2.fillRect(0, 0, 128, 128);
+      addBarrel._poolTex = new THREE.CanvasTexture(c);
+    }
+    const poolMat = new THREE.MeshBasicMaterial({ map: addBarrel._poolTex, color: 0xff4a10, transparent: true, opacity: 0.55,
+                                                  blending: THREE.AdditiveBlending, depthWrite: false });
+    const pool = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.2), poolMat);
+    pool.rotation.x = -Math.PI / 2; pool.position.set(x, 0.015, z); scene.add(pool);
   }
 }
 
@@ -2325,6 +2348,17 @@ function _trackCoopGameStarted() {
   if (totalCoopGames >= 5) unlockBadge('team_player');
 }
 
+// Glowing effect materials: brighter than white (HDR) and additive, so the
+// bloom pass turns tiny sparks and 1px lines into glowing streaks.
+function _glowFX(color, boost = 3, opacity = 1) {
+  const m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, toneMapped: false, blending: THREE.AdditiveBlending, depthWrite: false });
+  m.color.multiplyScalar(boost); return m;
+}
+function _glowLine(color, boost = 3, opacity = 1) {
+  const m = new THREE.LineBasicMaterial({ color, transparent: true, opacity, toneMapped: false, blending: THREE.AdditiveBlending, depthWrite: false });
+  m.color.multiplyScalar(boost); return m;
+}
+
 function spawnSparks(pos){
   // kept for compatibility — redirects to static death effect
   spawnStaticDeath(pos);
@@ -2334,7 +2368,7 @@ function spawnHitSparks(pos) {
   for (let i = 0; i < 16; i++) {
     const isWhite = i < 6;
     const size = 0.012 + Math.random() * 0.022;
-    const mat = new THREE.MeshBasicMaterial({ color: isWhite ? 0xffffff : 0x00aaff, transparent: true, opacity: 1 });
+    const mat = _glowFX(isWhite ? 0xffffff : 0x00aaff, isWhite ? 3 : 4);
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(size, 4, 4), mat);
     mesh.position.copy(pos);
     const sp = 3.5 + Math.random() * 6.5;
@@ -2366,6 +2400,18 @@ function spawnBlood(pos, count = 14) {
   }
 }
 
+// Soft shockwave ring: bright thin rim fading inward and outward
+let _shockRingTexCache = null;
+function _shockRingTex() {
+  if (_shockRingTexCache) return _shockRingTexCache;
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const x = c.getContext('2d'), g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+  g.addColorStop(0.0, 'rgba(255,255,255,0)'); g.addColorStop(0.55, 'rgba(255,255,255,0.08)');
+  g.addColorStop(0.82, 'rgba(255,255,255,0.9)'); g.addColorStop(0.9, 'rgba(255,255,255,0.35)'); g.addColorStop(1.0, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+  return (_shockRingTexCache = new THREE.CanvasTexture(c));
+}
+
 function spawnStaticDeath(pos) {
   // Arc bolts — jagged line segments
   for (let bolt = 0; bolt < 8; bolt++) {
@@ -2378,10 +2424,7 @@ function spawnStaticDeath(pos) {
       points.push(new THREE.Vector3(cx, cy, cz));
     }
     const geo = new THREE.BufferGeometry().setFromPoints(points);
-    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({
-      color: STATIC_COLORS[bolt % STATIC_COLORS.length],
-      transparent: true, opacity: 1.0
-    }));
+    const line = new THREE.Line(geo, _glowLine(STATIC_COLORS[bolt % STATIC_COLORS.length], 3.5));
     scene.add(line);
     const delay = Math.random() * 300;
     setTimeout(() => { if (line.material) line.material.opacity = 0.3; }, delay + 80);
@@ -2392,7 +2435,7 @@ function spawnStaticDeath(pos) {
   for (let i = 0; i < 35; i++) {
     const mesh = new THREE.Mesh(
       new THREE.SphereGeometry(0.025 + Math.random() * 0.025, 4, 4),
-      new THREE.MeshBasicMaterial({ color: STATIC_COLORS[Math.floor(Math.random() * STATIC_COLORS.length)], transparent: true })
+      _glowFX(STATIC_COLORS[Math.floor(Math.random() * STATIC_COLORS.length)], 3)
     );
     mesh.position.copy(pos).setY(pos.y + 0.5 + Math.random() * 1.0);
     const spd = 3 + Math.random() * 5;
@@ -2404,10 +2447,12 @@ function spawnStaticDeath(pos) {
   }
 
   // Blue flash ring
-  const ringGeo = new THREE.RingGeometry(0.1, 0.4, 16);
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0x44aaff, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
+  const ringGeo = new THREE.PlaneGeometry(0.9, 0.9);
+  const ringMat = new THREE.MeshBasicMaterial({ map: _shockRingTex(), color: 0x44aaff, transparent: true, opacity: 0.9, side: THREE.DoubleSide,
+                                                blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  ringMat.color.multiplyScalar(2.5);
   const ring = new THREE.Mesh(ringGeo, ringMat);
-  ring.position.copy(pos); ring.rotation.x = -Math.PI / 2;
+  ring.position.copy(pos); ring.position.y += 0.03; ring.rotation.x = -Math.PI / 2;
   scene.add(ring);
   let ringAge = 0;
   const ringInterval = setInterval(() => {
@@ -2469,7 +2514,7 @@ function spawnImpactDust(pos, normal) {
 function spawnBulletTracer(fromPos, toPos) {
   const pts = [fromPos.clone(), toPos.clone()];
   const geo = new THREE.BufferGeometry().setFromPoints(pts);
-  const mat = new THREE.LineBasicMaterial({ color: 0xffee88, transparent: true, opacity: 0.82 });
+  const mat = _glowLine(0xffee88, 3, 0.82);
   const line = new THREE.Line(geo, mat);
   scene.add(line);
   bulletTracers.push({ line, geo, mat, age: 0, maxAge: 0.065 });
@@ -2494,8 +2539,8 @@ function spawnRobotDebris(pos) {
     const geo = i < 4
       ? new THREE.BoxGeometry(sz, sz * (0.5 + Math.random()), sz * 0.55)
       : new THREE.SphereGeometry(sz * 0.6, 5, 4);
-    const mat = new THREE.MeshLambertMaterial({
-      color: cols[i % cols.length], emissive: 0x0033aa, emissiveIntensity: 0.35, transparent: true
+    const mat = new THREE.MeshStandardMaterial({
+      color: cols[i % cols.length], emissive: 0x0033aa, emissiveIntensity: 0.6, transparent: true, roughness: 0.35, metalness: 0.75
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.copy(pos).setY(pos.y + 0.5 + Math.random() * 0.9);
@@ -2512,8 +2557,8 @@ function spawnRobotDebris(pos) {
 
 function spawnBotEnergyPulse(fromPos) {
   const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(0.072, 6, 6),
-    new THREE.MeshBasicMaterial({ color: 0xffdd00, transparent: true, opacity: 0.92 })
+    new THREE.SphereGeometry(0.072, 12, 10),
+    _glowFX(0xffdd00, 3.5, 0.92)
   );
   mesh.position.copy(fromPos);
   const dir = new THREE.Vector3(

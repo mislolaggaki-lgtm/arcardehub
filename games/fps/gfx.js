@@ -142,6 +142,76 @@ const GFXH = (() => {
     return { color: c, height: hc };
   }
 
+  // Braced cargo crate face (light; CRATE_MAT's colour tints it). Mapped once per face.
+  function makeCrateCanvases(size = 512) {
+    const c = document.createElement('canvas'); c.width = c.height = size;
+    const x = c.getContext('2d');
+    const hc = document.createElement('canvas'); hc.width = hc.height = size;
+    const h = hc.getContext('2d');
+    const rnd = mulberry(4242), S = size / 512, B = 44 * S;
+    x.fillStyle = '#d8c3a0'; x.fillRect(0, 0, size, size);
+    h.fillStyle = '#707070'; h.fillRect(0, 0, size, size);
+    // planks
+    for (let i = 0; i < 5; i++) {
+      const y0 = B + i * (size - 2 * B) / 5, ph = (size - 2 * B) / 5;
+      const v = 196 + Math.floor(rnd() * 30);
+      x.fillStyle = `rgb(${v},${v - 20},${v - 52})`; x.fillRect(B, y0, size - 2 * B, ph);
+      x.fillStyle = 'rgba(60,40,20,0.55)'; x.fillRect(B, y0, size - 2 * B, 3 * S);
+      h.fillStyle = '#404040'; h.fillRect(B, y0, size - 2 * B, 3 * S);
+      for (let k = 0; k < 40; k++) {   // grain
+        x.strokeStyle = `rgba(90,60,30,${0.08 + rnd() * 0.12})`; x.lineWidth = (1 + rnd()) * S;
+        const gy = y0 + rnd() * ph; x.beginPath(); x.moveTo(B, gy); x.bezierCurveTo(size * 0.3, gy + (rnd() - 0.5) * 8 * S, size * 0.7, gy + (rnd() - 0.5) * 8 * S, size - B, gy); x.stroke();
+      }
+    }
+    // X brace + frame (raised)
+    const brace = (ctx, col, w) => {
+      ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'square';
+      ctx.beginPath(); ctx.moveTo(B, B); ctx.lineTo(size - B, size - B); ctx.moveTo(size - B, B); ctx.lineTo(B, size - B); ctx.stroke();
+      ctx.lineWidth = B; ctx.strokeRect(B / 2, B / 2, size - B, size - B);
+    };
+    brace(x, '#b99a6c', 34 * S); brace(h, '#c8c8c8', 34 * S);
+    x.strokeStyle = 'rgba(60,40,20,0.6)'; x.lineWidth = 2 * S; x.strokeRect(B, B, size - 2 * B, size - 2 * B); x.strokeRect(2 * S, 2 * S, size - 4 * S, size - 4 * S);
+    // metal corner plates with bolts
+    [[0, 0], [size - 70 * S, 0], [0, size - 70 * S], [size - 70 * S, size - 70 * S]].forEach(([cx, cy]) => {
+      x.fillStyle = '#8f949c'; x.fillRect(cx, cy, 70 * S, 70 * S);
+      h.fillStyle = '#e0e0e0'; h.fillRect(cx, cy, 70 * S, 70 * S);
+      [[18, 18], [52, 18], [18, 52], [52, 52]].forEach(([bx, by]) => {
+        x.fillStyle = '#5c6068'; x.beginPath(); x.arc(cx + bx * S, cy + by * S, 5 * S, 0, 7); x.fill();
+        h.fillStyle = '#ffffff'; h.beginPath(); h.arc(cx + bx * S, cy + by * S, 5 * S, 0, 7); h.fill();
+      });
+    });
+    for (let k = 0; k < 400; k++) { x.fillStyle = `rgba(40,30,20,${rnd() * 0.12})`; x.fillRect(rnd() * size, rnd() * size, 2 * S, 2 * S); }
+    return { color: c, height: hc };
+  }
+
+  // Ribbed steel drum wrap (u wraps around the barrel, v runs bottom→top)
+  function makeBarrelCanvases(size = 512) {
+    const c = document.createElement('canvas'); c.width = c.height = size;
+    const x = c.getContext('2d');
+    const hc = document.createElement('canvas'); hc.width = hc.height = size;
+    const h = hc.getContext('2d');
+    const rnd = mulberry(99), S = size / 512;
+    x.fillStyle = '#c8ccd2'; x.fillRect(0, 0, size, size);
+    h.fillStyle = '#808080'; h.fillRect(0, 0, size, size);
+    [0.2, 0.5, 0.8].forEach(t => {   // rolling hoops
+      const y = size * t;
+      const g = x.createLinearGradient(0, y - 14 * S, 0, y + 14 * S);
+      g.addColorStop(0, '#8d9299'); g.addColorStop(0.5, '#eef0f3'); g.addColorStop(1, '#7c8188');
+      x.fillStyle = g; x.fillRect(0, y - 14 * S, size, 28 * S);
+      const hg = h.createLinearGradient(0, y - 14 * S, 0, y + 14 * S);
+      hg.addColorStop(0, '#808080'); hg.addColorStop(0.5, '#f0f0f0'); hg.addColorStop(1, '#808080');
+      h.fillStyle = hg; h.fillRect(0, y - 14 * S, size, 28 * S);
+    });
+    for (let k = 0; k < 120; k++) {   // scratches and chips
+      x.strokeStyle = `rgba(${rnd() > 0.5 ? '255,255,255' : '30,30,30'},${0.08 + rnd() * 0.18})`; x.lineWidth = S;
+      const sx = rnd() * size, sy = rnd() * size; x.beginPath(); x.moveTo(sx, sy); x.lineTo(sx + (rnd() - 0.5) * 50 * S, sy + (rnd() - 0.5) * 12 * S); x.stroke();
+    }
+    const grime = x.createLinearGradient(0, size, 0, size * 0.7);
+    grime.addColorStop(0, 'rgba(25,20,15,0.45)'); grime.addColorStop(1, 'rgba(25,20,15,0)');
+    x.fillStyle = grime; x.fillRect(0, 0, size, size);
+    return { color: c, height: hc };
+  }
+
   function mulberry(a) {
     return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   }
@@ -307,5 +377,5 @@ const GFXH = (() => {
     set(v) { this.cur = Math.round(v * 100) / 100; this.cooldown = 2; this.apply(this.cur); }
   }
 
-  return { worldUV, xzUV2, normalMapFromCanvas, makePanelCanvases, texture, bakeLightmap, buildEnvironment, buildStudioEnvironment, GradeShader, AdaptiveResolution };
+  return { worldUV, xzUV2, normalMapFromCanvas, makePanelCanvases, makeCrateCanvases, makeBarrelCanvases, texture, bakeLightmap, buildEnvironment, buildStudioEnvironment, GradeShader, AdaptiveResolution };
 })();
