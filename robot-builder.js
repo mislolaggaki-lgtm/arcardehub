@@ -1,47 +1,151 @@
 // Shared robot builder — loaded by both the FPS game and the hub shop preview
 // Requires THREE.js to be loaded first.
 
+// Box with 45-degree chamfered edges and corners: edges catch the light the way
+// machined parts do, instead of reading as flat blocks. Flat-shaded, outward winding.
+function _rbChamferBox(w, h, d, c) {
+  const hx = w / 2, hy = h / 2, hz = d / 2;
+  c = Math.min(c, hx * 0.45, hy * 0.45, hz * 0.45);
+  const P = (sx, sy, sz, a) => a === 0 ? [sx * hx, sy * (hy - c), sz * (hz - c)]
+                            : a === 1 ? [sx * (hx - c), sy * hy, sz * (hz - c)]
+                                      : [sx * (hx - c), sy * (hy - c), sz * hz];
+  const tris = [], S = [-1, 1];
+  const quad = (a, b, cc, dd) => tris.push(a, b, cc, a, cc, dd);
+  for (const s of S) {
+    quad(P(s, -1, -1, 0), P(s, 1, -1, 0), P(s, 1, 1, 0), P(s, -1, 1, 0));
+    quad(P(-1, s, -1, 1), P(1, s, -1, 1), P(1, s, 1, 1), P(-1, s, 1, 1));
+    quad(P(-1, -1, s, 2), P(1, -1, s, 2), P(1, 1, s, 2), P(-1, 1, s, 2));
+  }
+  for (const s1 of S) for (const s2 of S) {
+    quad(P(s1, s2, -1, 0), P(s1, s2, 1, 0), P(s1, s2, 1, 1), P(s1, s2, -1, 1));
+    quad(P(s1, -1, s2, 0), P(s1, 1, s2, 0), P(s1, 1, s2, 2), P(s1, -1, s2, 2));
+    quad(P(-1, s1, s2, 1), P(1, s1, s2, 1), P(1, s1, s2, 2), P(-1, s1, s2, 2));
+  }
+  for (const sx of S) for (const sy of S) for (const sz of S) tris.push(P(sx, sy, sz, 0), P(sx, sy, sz, 1), P(sx, sy, sz, 2));
+  const pos = new Float32Array(tris.length * 3);
+  for (let i = 0; i < tris.length; i += 3) {
+    let a = tris[i], b = tris[i + 1], cc = tris[i + 2];
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = cc[0] - a[0], vy = cc[1] - a[1], vz = cc[2] - a[2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    if (nx * (a[0] + b[0] + cc[0]) + ny * (a[1] + b[1] + cc[1]) + nz * (a[2] + b[2] + cc[2]) < 0) { const t = b; b = cc; cc = t; }
+    pos.set(a, i * 3); pos.set(b, i * 3 + 3); pos.set(cc, i * 3 + 6);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(pos.length / 3 * 2), 2));
+  return g;
+}
+
+// Merge a group's direct child meshes that share a material into one mesh each.
+function _rbMergeChildMeshes(container, castShadow) {
+  const byMat = new Map();
+  for (const child of container.children) {
+    if (!child.isMesh) continue;
+    let list = byMat.get(child.material);
+    if (!list) byMat.set(child.material, list = []);
+    list.push(child);
+  }
+  for (const [mat, meshes] of byMat) {
+    let mesh = meshes[0];
+    if (meshes.length > 1) {
+      const geos = meshes.map(m => { m.updateMatrix(); const gg = m.geometry.clone(); gg.applyMatrix4(m.matrix); return gg; });
+      mesh = new THREE.Mesh(_rbMergeGeometries(geos), mat);
+      geos.forEach(gg => gg.dispose());
+      meshes.forEach(m => { container.remove(m); m.geometry.dispose(); });
+      container.add(mesh);
+    }
+    if (mat.isMeshStandardMaterial) { mesh.castShadow = castShadow; mesh.receiveShadow = castShadow; }
+  }
+}
+
+// Concatenate indexed BufferGeometries that have position/normal/uv.
+function _rbMergeGeometries(geos) {
+  let vCount = 0, iCount = 0;
+  for (const g of geos) { vCount += g.attributes.position.count; iCount += g.index ? g.index.count : g.attributes.position.count; }
+  const pos = new Float32Array(vCount * 3), nor = new Float32Array(vCount * 3), uv = new Float32Array(vCount * 2);
+  const idx = vCount > 65535 ? new Uint32Array(iCount) : new Uint16Array(iCount);
+  let vo = 0, io = 0;
+  for (const g of geos) {
+    const n = g.attributes.position.count;
+    pos.set(g.attributes.position.array, vo * 3);
+    nor.set(g.attributes.normal.array, vo * 3);
+    if (g.attributes.uv) uv.set(g.attributes.uv.array, vo * 2);
+    if (g.index) { const a = g.index.array; for (let i = 0; i < a.length; i++) idx[io + i] = a[i] + vo; io += a.length; }
+    else { for (let i = 0; i < n; i++) idx[io + i] = vo + i; io += n; }
+    vo += n;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  out.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  out.setIndex(new THREE.BufferAttribute(idx, 1));
+  out.computeBoundingSphere();
+  return out;
+}
+
 function buildRobot() {
   const g = new THREE.Group();
 
   // ── Materials ─────────────────────────────────────────────
   // Organic white-plate armour (Garou-style)
-  const HULL   = new THREE.MeshStandardMaterial({color:0xa8c2d4, roughness:0.30, metalness:0.18});
-  const ARMOR  = new THREE.MeshStandardMaterial({color:0xc8dce8, roughness:0.24, metalness:0.12});
-  const PANEL  = new THREE.MeshStandardMaterial({color:0x7898b0, roughness:0.42, metalness:0.32});
+  // Armour plates get a clear-coat layer when the host enables it (FPS game on
+  // medium+): a glossy lacquer that catches the arena lights.
+  const _coat = (typeof window !== 'undefined' && window.ROBOT_PHYSICAL);
+  const COAT = p => _coat ? new THREE.MeshPhysicalMaterial({ ...p, clearcoat: 0.85, clearcoatRoughness: 0.12 }) : new THREE.MeshStandardMaterial(p);
+  const HULL   = COAT({color:0xa8c2d4, roughness:0.30, metalness:0.18});
+  const ARMOR  = COAT({color:0xc8dce8, roughness:0.24, metalness:0.12});
+  const PANEL  = COAT({color:0x7898b0, roughness:0.42, metalness:0.32});
   const DARK   = new THREE.MeshStandardMaterial({color:0x060a0e, roughness:0.96, metalness:0.08});
   const STEEL  = new THREE.MeshStandardMaterial({color:0x182838, roughness:0.82, metalness:0.35});
   const SERVO  = new THREE.MeshStandardMaterial({color:0x0c1a26, roughness:0.88, metalness:0.22});
   const PIPE   = new THREE.MeshStandardMaterial({color:0x283c4e, roughness:0.68, metalness:0.52});
-  const ACCENT = new THREE.MeshStandardMaterial({color:0xe0eef8, roughness:0.18, metalness:0.06});
+  const ACCENT = COAT({color:0xe0eef8, roughness:0.18, metalness:0.06});
   const WORN   = new THREE.MeshStandardMaterial({color:0x3c5268, roughness:0.60, metalness:0.40});
   const EYE_L  = new THREE.MeshBasicMaterial({color:0xffffff});
   const EYE_R  = new THREE.MeshBasicMaterial({color:0xffffff});
   // remap all legacy red/orange glows to icy blue-white
   const _GR = {0xff0800:0x88ccff,0xff2200:0x66aaee,0xff1800:0x77bbff,0xff3300:0x55aadd,
                0xff4400:0x4499cc,0xff0000:0xaaddff,0x0022cc:0x77bbff,0xff3300:0x55aadd};
+  // Quality knobs set by the host page (FPS game / hub preview); defaults keep the original look.
+  const _D    = (typeof window !== 'undefined' && window.ROBOT_DETAIL) || 1;
+  const _GLOW = (typeof window !== 'undefined' && window.ROBOT_GLOW)   || 1;
+  const _seg  = n => Math.max(3, Math.round(n * _D));
+  const BOX = (w, h, d) => _D >= 1.5 ? _rbChamferBox(w, h, d, Math.min(0.02, Math.min(w, h, d) * 0.22)) : new THREE.BoxGeometry(w, h, d);
+  // One material per glow colour (was one per glow part) so parts can be batched.
+  const _glowMats = new Map();
+  function GM(col) {
+    col = _GR[col] ?? col;
+    let m = _glowMats.get(col);
+    if (!m) {
+      m = new THREE.MeshBasicMaterial({ color: col });
+      if (_GLOW !== 1) { m.color.multiplyScalar(_GLOW); m.toneMapped = false; }
+      _glowMats.set(col, m);
+    }
+    return m;
+  }
 
   // ── Root-level helpers ─────────────────────────────────────
   function box(w,h,d,x,y,z,mat,rX=0,rZ=0){
-    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+    const m=new THREE.Mesh(BOX(w,h,d),mat);
     m.position.set(x,y,z); if(rX)m.rotation.x=rX; if(rZ)m.rotation.z=rZ;
     g.add(m); return m;
   }
   function cyl(rt,rb,h,segs,x,y,z,mat,rX=0,rZ=0){
-    const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,segs),mat);
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,_seg(segs)),mat);
     m.position.set(x,y,z); if(rX)m.rotation.x=rX; if(rZ)m.rotation.z=rZ;
     g.add(m); return m;
   }
   function sph(r,segs,x,y,z,mat){
-    const m=new THREE.Mesh(new THREE.SphereGeometry(r,segs,Math.ceil(segs*.72)),mat);
+    const m=new THREE.Mesh(new THREE.SphereGeometry(r,_seg(segs),Math.ceil(_seg(segs)*.72)),mat);
     m.position.set(x,y,z); g.add(m); return m;
   }
   function glow(w,h,d,x,y,z,col){
-    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:_GR[col]??col}));
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),GM(col));
     m.position.set(x,y,z); g.add(m); return m;
   }
   function glowCyl(rt,rb,h,segs,x,y,z,col,rX=0,rZ=0){
-    const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,segs),new THREE.MeshBasicMaterial({color:_GR[col]??col}));
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,_seg(segs)),GM(col));
     m.position.set(x,y,z); if(rX)m.rotation.x=rX; if(rZ)m.rotation.z=rZ;
     g.add(m); return m;
   }
@@ -52,10 +156,10 @@ function buildRobot() {
   function makeLeg(side) {
     const lg = new THREE.Group();
     lg.position.set(side*0.22, 0.74, 0);
-    function lbox(w,h,d,x,y,z,mat,rZ=0){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z); if(rZ)m.rotation.z=rZ; lg.add(m); }
-    function lcyl(rt,rb,h,n,x,y,z,mat,rX=0,rZ=0){ const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,n),mat); m.position.set(x,y,z); if(rX)m.rotation.x=rX; if(rZ)m.rotation.z=rZ; lg.add(m); }
-    function lsph(r,n,x,y,z,mat){ const m=new THREE.Mesh(new THREE.SphereGeometry(r,n,Math.ceil(n*.72)),mat); m.position.set(x,y,z); lg.add(m); }
-    function lglow(w,h,d,x,y,z,col){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:_GR[col]??col})); m.position.set(x,y,z); lg.add(m); }
+    function lbox(w,h,d,x,y,z,mat,rZ=0){ const m=new THREE.Mesh(BOX(w,h,d),mat); m.position.set(x,y,z); if(rZ)m.rotation.z=rZ; lg.add(m); }
+    function lcyl(rt,rb,h,n,x,y,z,mat,rX=0,rZ=0){ const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,_seg(n)),mat); m.position.set(x,y,z); if(rX)m.rotation.x=rX; if(rZ)m.rotation.z=rZ; lg.add(m); }
+    function lsph(r,n,x,y,z,mat){ const m=new THREE.Mesh(new THREE.SphereGeometry(r,_seg(n),Math.ceil(_seg(n)*.72)),mat); m.position.set(x,y,z); lg.add(m); }
+    function lglow(w,h,d,x,y,z,col){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),GM(col)); m.position.set(x,y,z); lg.add(m); }
 
     // ── Hip joint cluster ──
     lsph(0.148,13,  0,0,0, SERVO);      // outer housing sphere
@@ -236,8 +340,8 @@ function buildRobot() {
   for(let s=-1;s<=1;s+=2){
     cyl(0.052,0.052,0.018,10, s*0.098,1.985,-0.248, DARK, Math.PI/2);
   }
-  const eyeL=new THREE.Mesh(new THREE.SphereGeometry(0.038,11,8),EYE_L); eyeL.position.set( 0.098,1.985,-0.244); g.add(eyeL);
-  const eyeR=new THREE.Mesh(new THREE.SphereGeometry(0.038,11,8),EYE_R); eyeR.position.set(-0.098,1.985,-0.244); g.add(eyeR);
+  const eyeL=new THREE.Mesh(new THREE.SphereGeometry(0.038,_seg(11),_seg(8)),EYE_L); eyeL.position.set( 0.098,1.985,-0.244); g.add(eyeL);
+  const eyeR=new THREE.Mesh(new THREE.SphereGeometry(0.038,_seg(11),_seg(8)),EYE_R); eyeR.position.set(-0.098,1.985,-0.244); g.add(eyeR);
   glowCyl(0.042,0.042,0.010,10,  0.098,1.985,-0.248, 0xffffff, Math.PI/2);
   glowCyl(0.042,0.042,0.010,10, -0.098,1.985,-0.248, 0xffffff, Math.PI/2);
   // Cheeks — organic segmented plates
@@ -263,7 +367,7 @@ function buildRobot() {
     cyl(0.032,0.032,0.010,10, s*0.305,2.032,-0.048, DARK,  0,Math.PI/2);
     glowCyl(0.028,0.028,0.008,10, s*0.307,2.032,-0.048, 0xbbddff, 0,Math.PI/2);
     cyl(0.009,0.005,0.082,5, s*0.265,2.086,-0.038, STEEL);
-    sph(0.014,8, s*0.265,2.136,-0.038, new THREE.MeshBasicMaterial({color:0xbbddff}));
+    sph(0.014,8, s*0.265,2.136,-0.038, GM(0xbbddff));
   }
   // Back of head — plate lines
   box(0.372,0.242,0.030, 0,1.984,0.230, ARMOR);
@@ -283,7 +387,7 @@ function buildRobot() {
     box(0.030,0.138,0.194, s*0.622,1.700,-0.115, PANEL);
     box(0.026,0.105,0.042, s*0.624,1.700,-0.222, DARK);
     cyl(0.022,0.009,0.230,8, s*0.620,1.968,-0.036, STEEL);
-    sph(0.020,8, s*0.620,2.086,-0.036, new THREE.MeshBasicMaterial({color:0xaaddff}));
+    sph(0.020,8, s*0.620,2.086,-0.036, GM(0xaaddff));
     glow(0.010,0.148,0.358, s*0.518,1.700,0, 0xff0800);
     for(let i=-1;i<=1;i+=2)
       cyl(0.015,0.015,0.032,8, s*0.624,1.700+i*0.058,-0.254, STEEL, 0,Math.PI/2);
@@ -296,10 +400,10 @@ function buildRobot() {
     const ag = new THREE.Group();
     ag.position.set(side*0.46, 1.68, 0);
     const sx = side*0.090;
-    function abx(w,h,d,x,y,z,mat){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z); ag.add(m); }
-    function acy(rt,rb,h,n,x,y,z,mat,rX=0,rZ=0){ const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,n),mat); m.position.set(x,y,z); if(rX)m.rotation.x=rX; if(rZ)m.rotation.z=rZ; ag.add(m); }
-    function asp(r,n,x,y,z,mat){ const m=new THREE.Mesh(new THREE.SphereGeometry(r,n,Math.ceil(n*.72)),mat); m.position.set(x,y,z); ag.add(m); }
-    function agl(w,h,d,x,y,z,col){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:_GR[col]??col})); m.position.set(x,y,z); ag.add(m); }
+    function abx(w,h,d,x,y,z,mat){ const m=new THREE.Mesh(BOX(w,h,d),mat); m.position.set(x,y,z); ag.add(m); }
+    function acy(rt,rb,h,n,x,y,z,mat,rX=0,rZ=0){ const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,_seg(n)),mat); m.position.set(x,y,z); if(rX)m.rotation.x=rX; if(rZ)m.rotation.z=rZ; ag.add(m); }
+    function asp(r,n,x,y,z,mat){ const m=new THREE.Mesh(new THREE.SphereGeometry(r,_seg(n),Math.ceil(_seg(n)*.72)),mat); m.position.set(x,y,z); ag.add(m); }
+    function agl(w,h,d,x,y,z,col){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),GM(col)); m.position.set(x,y,z); ag.add(m); }
 
     // ── Upper arm ──
     acy(0.116,0.094,0.48,13, sx,-0.390,0, HULL);
@@ -331,9 +435,9 @@ function buildRobot() {
     abx(0.132,0.185,0.038, sx,-0.875,-0.116, PANEL);
     abx(0.110,0.148,0.022, sx,-0.880,-0.132, DARK);
     abx(0.058,0.208,0.195, sx+side*0.116,-0.875,0.008, ARMOR); // outer plate
-    acy(0.010,0.010,0.34,8, sx+side*0.086,-0.862,0.054, new THREE.MeshBasicMaterial({color:0x0055cc})); // cables
+    acy(0.010,0.010,0.34,8, sx+side*0.086,-0.862,0.054, GM(0x0055cc)); // cables
     acy(0.008,0.008,0.30,7, sx+side*0.075,-0.862,0.068, STEEL);
-    acy(0.009,0.009,0.26,6, sx+side*0.062,-0.862,0.058, new THREE.MeshBasicMaterial({color:0x55aadd}));
+    acy(0.009,0.009,0.26,6, sx+side*0.062,-0.862,0.058, GM(0x55aadd));
     acy(0.015,0.015,0.32,8, sx-side*0.085,-0.862,0.072, PIPE);
     agl(0.062,0.012,0.034, sx,-0.776,-0.125, 0xff0800);
     agl(0.046,0.008,0.030, sx,-0.934,-0.125, 0xff2200);
@@ -381,6 +485,13 @@ function buildRobot() {
   g.traverse(child=>{
     if(child.isMesh && child.material.isMeshStandardMaterial) allMats.push(child.material);
   });
+
+  // ── Batch parts ───────────────────────────────────────────
+  // ~440 separate meshes per robot made it the game's main CPU cost. Merge each
+  // animated section's parts by material; allMats above still lists one entry
+  // per original part, so biome tinting and hit flashes behave exactly as before.
+  const _shadows = !!(typeof window !== 'undefined' && window.ROBOT_SHADOWS);
+  [g, legL, legR, armGroupL, armGroupR].forEach(c => _rbMergeChildMeshes(c, _shadows));
 
   // ── Health bar ────────────────────────────────────────────
   const hpBarGroup=new THREE.Group();

@@ -334,16 +334,35 @@ function _loadSettings() {
 const _settings = _loadSettings();
 const _quality  = _settings.quality || 'medium';
 
+// ─── Graphics quality profiles ───────────────────────────────
+// pr = max render scale (capped by the screen's own pixel ratio); adaptive
+// resolution drops towards prMin when the frame rate can't hold ~60.
+const _GFX_PROFILES = {
+  low:    { pr: 1.0, prMin: 0.6,  msaa: 0, shadows: false, shadowMap: 1024, robotDetail: 1.0, robotShadows: false, tex: 512,  normalMaps: false, bloom: 0.55 },
+  medium: { pr: 1.5, prMin: 0.75, msaa: 4, shadows: true,  shadowMap: 2048, robotDetail: 1.6, robotShadows: true,  tex: 1024, normalMaps: true,  bloom: 0.75 },
+  high:   { pr: 2.0, prMin: 1.0,  msaa: 4, shadows: true,  shadowMap: 4096, robotDetail: 2.2, robotShadows: true,  tex: 1024, normalMaps: true,  bloom: 0.85 },
+  ultra:  { pr: 3.0, prMin: 1.25, msaa: 8, shadows: true,  shadowMap: 4096, robotDetail: 3.0, robotShadows: true,  tex: 2048, normalMaps: true,  bloom: 0.95 },
+};
+const GFX = Object.assign({}, _GFX_PROFILES[_quality] || _GFX_PROFILES.medium);
+if (isMobile) { GFX.pr = Math.min(GFX.pr, 1.5); GFX.msaa = 0; GFX.robotShadows = false; GFX.tex = Math.min(GFX.tex, 1024); }
+// Read by robot-builder.js at build time
+window.ROBOT_DETAIL  = GFX.robotDetail;
+window.ROBOT_SHADOWS = GFX.robotShadows;
+window.ROBOT_GLOW    = 2.4;   // HDR glow strips/visors so bloom picks them out
+window.ROBOT_PHYSICAL = _quality !== 'low' && !isMobile;   // clear-coated armour plates
+
 // ─── Renderer ────────────────────────────────────────────────
+const _PR_TARGET = Math.min(window.devicePixelRatio || 1, GFX.pr);
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:false, powerPreference:'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.setPixelRatio(_PR_TARGET);
 renderer.setSize(window.innerWidth, window.innerHeight, false);
-renderer.shadowMap.enabled    = true;
+renderer.shadowMap.enabled    = GFX.shadows;
 renderer.shadowMap.type       = THREE.PCFSoftShadowMap;
 renderer.shadowMap.autoUpdate = false;
 renderer.outputEncoding      = THREE.sRGBEncoding;
 renderer.toneMapping         = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.82;
+renderer.toneMappingExposure = 0.95;
+const MAX_ANISO = renderer.capabilities.getMaxAnisotropy();
 
 // ─── Scene ───────────────────────────────────────────────────
 const scene = new THREE.Scene();
@@ -358,33 +377,51 @@ camera.position.set(0, EYE_H, 2);
 scene.add(camera);  // must be in scene for camera-child weapon to render
 
 // ─── Post-processing ─────────────────────────────────────────
-const composer  = new THREE.EffectComposer(renderer);
+// HDR (half-float) buffers so emissive glows can exceed 1.0 and drive the bloom;
+// real multisample anti-aliasing on WebGL2, FXAA fallback otherwise.
+const _gl2 = renderer.capabilities.isWebGL2;
+const _hdrOK = _gl2 && !!renderer.extensions.get('EXT_color_buffer_float');
+const _useMSAA = GFX.msaa > 0 && _gl2;
+const _rtOpts = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, type: _hdrOK ? THREE.HalfFloatType : THREE.UnsignedByteType };
+const _sceneRT = _useMSAA
+  ? Object.assign(new THREE.WebGLMultisampleRenderTarget(window.innerWidth * _PR_TARGET, window.innerHeight * _PR_TARGET, _rtOpts), { samples: GFX.msaa })
+  : new THREE.WebGLRenderTarget(window.innerWidth * _PR_TARGET, window.innerHeight * _PR_TARGET, _rtOpts);
+const composer  = new THREE.EffectComposer(renderer, _sceneRT);
+composer.setPixelRatio(_PR_TARGET);
+composer.setSize(window.innerWidth, window.innerHeight);
 composer.addPass(new THREE.RenderPass(scene, camera));
 
 const bloomPass = new THREE.UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.30,   // strength
-  0.40,   // radius
-  0.80    // threshold
+  GFX.bloom,   // strength
+  0.55,        // radius
+  0.92         // threshold: lit surfaces are tone-mapped below this; HDR glows exceed it
 );
+if (_hdrOK) [bloomPass.renderTargetBright, ...bloomPass.renderTargetsHorizontal, ...bloomPass.renderTargetsVertical]
+  .forEach(rt => { rt.texture.type = THREE.HalfFloatType; });
 composer.addPass(bloomPass);
 
-const fxaaPass  = new THREE.ShaderPass(THREE.FXAAShader);
-const _PR = Math.min(window.devicePixelRatio, 1.5);
-fxaaPass.material.uniforms['resolution'].value.set(
-  1 / (window.innerWidth  * _PR),
-  1 / (window.innerHeight * _PR)
-);
-composer.addPass(fxaaPass);
+const gradePass = new THREE.ShaderPass(GFXH.GradeShader);
+composer.addPass(gradePass);
 
-// Apply quality settings to renderer + bloom (using the already-loaded _settings)
-if (_quality === 'low') {
-  renderer.shadowMap.enabled = false;
-  bloomPass.strength = 0.3;
-} else if (_quality === 'high') {
-  bloomPass.strength = 1.4;
-  renderer.shadowMap.enabled = true;
+const fxaaPass  = new THREE.ShaderPass(THREE.FXAAShader);
+fxaaPass.enabled = !_useMSAA;
+composer.addPass(fxaaPass);
+function _syncFxaa(pr) {
+  fxaaPass.material.uniforms['resolution'].value.set(1 / (window.innerWidth * pr), 1 / (window.innerHeight * pr));
 }
+_syncFxaa(_PR_TARGET);
+
+// Adaptive resolution: keep ~60 fps by trading render scale, never above the profile's cap
+const _adaptiveRes = new GFXH.AdaptiveResolution({
+  target: _PR_TARGET, min: GFX.prMin,
+  apply: pr => {
+    renderer.setPixelRatio(pr); composer.setPixelRatio(pr);
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    composer.setSize(window.innerWidth, window.innerHeight);
+    _syncFxaa(pr);
+  },
+});
 
 // ─── Audio system ────────────────────────────────────────────
 let _ac = null;
@@ -407,15 +444,43 @@ let targetFov    = NORMAL_FOV;
 let scopeActive  = false;
 
 // ─── Lights ──────────────────────────────────────────────────
-const ambientLight = new THREE.AmbientLight(0x1a2040, 0.28);
+const AMBIENT_K = 0.45;   // reflections (scene.environment) now supply most of the fill light
+const ambientLight = new THREE.AmbientLight(0x1a2040, 0.28 * AMBIENT_K);
 scene.add(ambientLight);
+const hemiLight = new THREE.HemisphereLight(0xcfe0ff, 0x0a0a12, 0.35);   // brighter from above: gives robots shape
+scene.add(hemiLight);
+const SUN_K = 1.25;
 
-const sun = new THREE.DirectionalLight(0xfff0dd, 0.80);
+const sun = new THREE.DirectionalLight(0xfff0dd, 0.80 * 1.25);
 sun.position.set(8, 20, 10);
-sun.castShadow = true;
-sun.shadow.mapSize.set(512, 512);
-Object.assign(sun.shadow.camera, { near:1, far:200, left:-90, right:90, top:90, bottom:-90 });
+sun.castShadow = GFX.shadows;
+// Shadow map covers the area around the player (see _updateSunShadow) instead of
+// the whole 156m arena at 512px, which blurred every shadow into a smear.
+const _SUN_DIR = new THREE.Vector3(8, 20, 10).normalize();
+const _SH_EXT  = 40;
+sun.shadow.mapSize.set(GFX.shadowMap, GFX.shadowMap);
+Object.assign(sun.shadow.camera, { near:1, far:160, left:-_SH_EXT, right:_SH_EXT, top:_SH_EXT, bottom:-_SH_EXT });
+sun.shadow.bias = -0.0003;
+sun.shadow.normalBias = 0.025;
 scene.add(sun);
+scene.add(sun.target);
+const _shRight = new THREE.Vector3(), _shUp = new THREE.Vector3(), _shTmp = new THREE.Vector3();
+_shRight.crossVectors(new THREE.Vector3(0, 1, 0), _SUN_DIR).normalize();
+_shUp.crossVectors(_SUN_DIR, _shRight).normalize();
+function _updateSunShadow() {
+  if (!sun.castShadow) return;
+  // Snap the shadow camera to whole shadow-map texels (in light space) so
+  // shadows don't shimmer as the player moves.
+  const texel = (_SH_EXT * 2) / sun.shadow.mapSize.x;
+  const p = camera.position;
+  const r = Math.round(p.dot(_shRight) / texel) * texel;
+  const u = Math.round(p.dot(_shUp) / texel) * texel;
+  const d = p.dot(_SUN_DIR);
+  _shTmp.copy(_shRight).multiplyScalar(r).addScaledVector(_shUp, u).addScaledVector(_SUN_DIR, d);
+  sun.target.position.copy(_shTmp);
+  sun.position.copy(_shTmp).addScaledVector(_SUN_DIR, 80);
+  sun.target.updateMatrixWorld();
+}
 
 function mkPt(col, i, r, x, y, z) {
   const l = new THREE.PointLight(col, i, r); l.position.set(x,y,z); scene.add(l); return l;
@@ -440,13 +505,58 @@ const botEnergyPulses  = [];  // energy projectiles from bot arms
 const jumpParticles    = [];  // jet-boost particles under player feet
 const _flickerLights   = [];  // ceiling lights that randomly flicker
 const _dustBeamParts   = [];  // floating dust motes near ceiling lights
+// Static point lights are baked into the floor lightmaps instead of being real
+// lights: 30+ real lights made every lit pixel loop over all of them each frame.
+const _bakedLights     = [];  // { x, y, z, color, intensity, distance }
+function _bakeLight(color, intensity, distance, x, y, z) { _bakedLights.push({ x, y, z, color, intensity, distance }); }
 
 // ─── Shared materials (PBR) ──────────────────────────────────
-const GLOVE  = new THREE.MeshStandardMaterial({ color:0x1e2814, roughness:0.88, metalness:0.05 });
-const M_DARK = new THREE.MeshStandardMaterial({ color:0x181818, roughness:0.38, metalness:0.80 });
-const M_MID  = new THREE.MeshStandardMaterial({ color:0x2e2e38, roughness:0.30, metalness:0.85 });
-const M_LITE = new THREE.MeshStandardMaterial({ color:0x686878, roughness:0.18, metalness:0.92 });
-const M_WOOD = new THREE.MeshStandardMaterial({ color:0x7a4020, roughness:0.94, metalness:0.00 });
+const GLOVE  = new THREE.MeshStandardMaterial({ color:0x3b4630, roughness:0.86, metalness:0.02 });
+const M_DARK = new THREE.MeshStandardMaterial({ color:0x4a4e57, roughness:0.32, metalness:0.90 });
+const M_MID  = new THREE.MeshStandardMaterial({ color:0x5b606b, roughness:0.28, metalness:0.92 });
+const M_LITE = new THREE.MeshStandardMaterial({ color:0x9ca2ad, roughness:0.20, metalness:0.95 });
+const M_WOOD = new THREE.MeshStandardMaterial({ color:0x6e3a1e, roughness:0.72, metalness:0.00 });
+// First-person weapon + hands use their own studio lighting (see GFXH.buildStudioEnvironment)
+{
+  const studio = GFXH.buildStudioEnvironment(renderer).texture;
+  [GLOVE, M_DARK, M_MID, M_LITE, M_WOOD].forEach(m => { m.envMap = studio; });
+}
+// Viewmodel geometry: bevelled boxes and smooth round parts on medium+
+function _vmBox(w, h, d) {
+  return GFX.robotDetail >= 1.5 ? _rbChamferBox(w, h, d, Math.min(0.0045, Math.min(w, h, d) * 0.2)) : new THREE.BoxGeometry(w, h, d);
+}
+function _vmCyl(rt, rb, h, seg = 8, ...rest) {
+  return new THREE.CylinderGeometry(rt, rb, h, GFX.robotDetail >= 1.5 ? Math.max(seg, 24) : seg, ...rest);
+}
+// Muzzle flash: additive star-burst sprites (HDR, so they bloom)
+let _flashTexCache = null;
+function _flashTex() {
+  if (_flashTexCache) return _flashTexCache;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d');
+  const core = x.createRadialGradient(64, 64, 0, 64, 64, 40);
+  core.addColorStop(0, 'rgba(255,255,255,1)'); core.addColorStop(0.3, 'rgba(255,255,255,0.7)'); core.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = core; x.fillRect(0, 0, 128, 128);
+  x.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 8; i++) {
+    const a = i / 8 * Math.PI * 2, len = i % 2 ? 40 : 62;
+    x.save(); x.translate(64, 64); x.rotate(a);
+    const g = x.createLinearGradient(0, 0, len, 0);
+    g.addColorStop(0, 'rgba(255,255,255,0.85)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = g; x.beginPath(); x.moveTo(0, -5); x.lineTo(len, 0); x.lineTo(0, 5); x.fill();
+    x.restore();
+  }
+  return (_flashTexCache = new THREE.CanvasTexture(c));
+}
+function _makeMuzzleFlash(color, size) {
+  const g = new THREE.Group();
+  [[3.4, 2.6], [1.6, 4.0]].forEach(([scale, boost]) => {
+    const m = new THREE.SpriteMaterial({ map: _flashTex(), color, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false });
+    m.color.multiplyScalar(boost);
+    const sp = new THREE.Sprite(m); sp.scale.setScalar(size * scale); g.add(sp);
+  });
+  return g;
+}
 const M_ORNG = new THREE.MeshStandardMaterial({ color:0xe06000, roughness:0.52, metalness:0.28, emissive:new THREE.Color(0x3a1800), emissiveIntensity:0.7 });
 const M_YELO = new THREE.MeshBasicMaterial  ({ color:0xffee44 });
 
@@ -474,8 +584,10 @@ function getGroundY(pos) {
 }
 
 function makeFloorTex(biomeId = 0) {
-  const c = document.createElement('canvas'); c.width = c.height = 512;
+  // Drawn in 512-unit coordinates, rendered at the profile's texture size
+  const c = document.createElement('canvas'); c.width = c.height = GFX.tex;
   const ctx = c.getContext('2d');
+  ctx.scale(GFX.tex / 512, GFX.tex / 512);
 
   if (biomeId === 0) {
     // Facility: dark concrete grid
@@ -771,7 +883,14 @@ function makeFloorTex(biomeId = 0) {
   }
 
   const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(36,36);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(36 / (AW * 2), 36 / (AD * 2));   // world-unit UVs: same ~4.3m tile as before
+  tex.anisotropy = MAX_ANISO;
+  if (GFX.normalMaps) {
+    // Grid lines, cracks and seams become real grooves
+    tex.normalMapTex = GFXH.texture(GFXH.normalMapFromCanvas(c, 2.4, true), { aniso: MAX_ANISO });
+    tex.normalMapTex.repeat.copy(tex.repeat);
+  }
   return tex;
 }
 
@@ -779,7 +898,7 @@ function makeFloorTex(biomeId = 0) {
 const _floorTexCache = {};
 
 const ARENA_M = {
-  floor  : new THREE.MeshStandardMaterial({ map:makeFloorTex(), roughness:0.88, metalness:0.08 }),
+  floor  : new THREE.MeshStandardMaterial({ map:makeFloorTex(), roughness:0.84, metalness:0.08 }),
   ceil   : new THREE.MeshStandardMaterial({ color:0x030306,  roughness:1.00, metalness:0.00 }),
   wall   : new THREE.MeshStandardMaterial({ color:0x10182a,  roughness:0.78, metalness:0.22 }),
   trim   : new THREE.MeshStandardMaterial({ color:0x1a3a70,  emissive:new THREE.Color(0x1a3a90), emissiveIntensity:1.0, roughness:0.18, metalness:0.88 }),
@@ -788,9 +907,22 @@ const ARENA_M = {
   ctrim  : new THREE.MeshStandardMaterial({ color:0x3e1010,  emissive:new THREE.Color(0x660e00), emissiveIntensity:0.8, roughness:0.20, metalness:0.78 }),
   clight : new THREE.MeshBasicMaterial  ({ color:0xccddff }),
 };
+ARENA_M.floor.userData.xzLightmap = true;
+ARENA_M.floor.normalMap = ARENA_M.floor.map.normalMapTex || null;
+{
+  const panel = GFXH.makePanelCanvases(GFX.tex);
+  const map = GFXH.texture(panel.color, { srgb: true, repeat: 1 / 4, aniso: MAX_ANISO });
+  const nrm = GFX.normalMaps ? GFXH.texture(GFXH.normalMapFromCanvas(panel.height, 3.2), { repeat: 1 / 4, aniso: MAX_ANISO }) : null;
+  [ARENA_M.wall, ARENA_M.pillar, ARENA_M.cover, ARENA_M.ceil].forEach(m => { m.map = map; m.normalMap = nrm; });
+  ARENA_M.cover.roughness = 0.55; ARENA_M.cover.metalness = 0.45;
+  ARENA_M.wall.roughness  = 0.62; ARENA_M.wall.metalness  = 0.35;
+}
+ARENA_M.clight.color.multiplyScalar(2.6); ARENA_M.clight.toneMapped = false;   // fixtures bloom
 
 function addBox(w,h,d,x,y,z,mat,cast=true,recv=true){
-  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  const geo = GFXH.worldUV(new THREE.BoxGeometry(w,h,d), x, y, z);
+  if (mat.userData && mat.userData.xzLightmap) GFXH.xzUV2(geo, x, z, -AW, -AD, AW*2);
+  const m=new THREE.Mesh(geo,mat);
   m.position.set(x,y,z); m.castShadow=cast; m.receiveShadow=recv; scene.add(m); return m;
 }
 
@@ -825,11 +957,15 @@ TRIM_H.forEach(ty => {
 [[-20,-20],[20,-20],[-20,20],[20,20],[0,0],
  [0,-30],[0,30],[-30,0],[30,0],
  [-10,-10],[10,-10],[-10,10],[10,10]].forEach(([lx,lz], idx)=>{
-  addBox(4,.09,.3, lx,WH-.04,lz, ARENA_M.clight,false,false);
-  const pl=new THREE.PointLight(0xaaccff,1.4,28); pl.position.set(lx,WH-.8,lz); scene.add(pl);
-  // Every 3rd light flickers
+  const fixture = addBox(4,.09,.3, lx,WH-.04,lz, ARENA_M.clight,false,false);
+  _bakeLight(0xaaccff, 1.4, 28, lx, WH-.8, lz);
+  // Every 3rd light flickers — drives the fixture's own glow (its light is baked)
   if(idx % 3 === 1){
-    _flickerLights.push({ light:pl, baseI:1.4, timer:Math.random()*4, interval:3+Math.random()*5, flickering:false, offDur:0 });
+    fixture.material = ARENA_M.clight.clone();
+    const baseCol = fixture.material.color.clone();
+    const proxy = { _i: 1.4, get intensity() { return this._i; },
+                    set intensity(v) { this._i = v; fixture.material.color.copy(baseCol).multiplyScalar(Math.max(0.08, v / 1.4)); } };
+    _flickerLights.push({ light:proxy, baseI:1.4, timer:Math.random()*4, interval:3+Math.random()*5, flickering:false, offDur:0 });
   }
   // 4 slow dust motes per fixture
   for(let d=0;d<4;d++){
@@ -879,7 +1015,7 @@ function _buildDynamicCovers(seed) {
   const rng = _seededRng(seed);
 
   function _addCover(w, h, d, cx, cz) {
-    const m1 = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), ARENA_M.cover);
+    const m1 = new THREE.Mesh(GFXH.worldUV(new THREE.BoxGeometry(w,h,d), cx, h/2, cz), ARENA_M.cover);
     m1.position.set(cx, h/2, cz); m1.castShadow = true; m1.receiveShadow = true;
     scene.add(m1);
     const m2 = new THREE.Mesh(new THREE.BoxGeometry(w+.04,.12,d+.04), ARENA_M.ctrim);
@@ -929,6 +1065,8 @@ addBox(9.1,.06,9.1, 0, .47, 0, ARENA_M.ctrim, false, false);
 // ── MEZZANINE (second floor) ─────────────────────────────────
 // AW=78, AD=78, MEZZ_INNER=71 → platforms are 7 units deep around the perimeter
 const mezzFloorMat = new THREE.MeshStandardMaterial({ map:makeFloorTex(), roughness:0.85, metalness:0.10 });
+mezzFloorMat.userData.xzLightmap = true;
+mezzFloorMat.normalMap = mezzFloorMat.map.normalMapTex || null;
 const mezzFT = 0.4;           // slab thickness
 const mezzCY = MEZZ_H - mezzFT/2;  // slab centre Y = 3.8
 
@@ -971,8 +1109,7 @@ addBox(.025, .025, 142,  71, MEZZ_H+.01,   0, mezzNeon, false, false);
 
 // Second-floor point lights
 [[0,-72],[0,72],[-72,0],[72,0],[-39,-39],[39,39],[-39,39],[39,-39]].forEach(([lx,lz])=>{
-  const pl2=new THREE.PointLight(0xbbccff, 1.2, 22);
-  pl2.position.set(lx, MEZZ_H+2.5, lz); scene.add(pl2);
+  _bakeLight(0xbbccff, 1.2, 22, lx, MEZZ_H+2.5, lz);
 });
 
 // ── STAIRCASES ───────────────────────────────────────────────
@@ -1031,8 +1168,7 @@ function addBarrel(x, z, glowing) {
   const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.05, 12), BARREL_MAT);
   lid.position.set(x, 0.92, z); scene.add(lid);
   if (glowing) {
-    const glow = new THREE.PointLight(0xff3300, 1.2, 4);
-    glow.position.set(x, 1.2, z); scene.add(glow);
+    _bakeLight(0xff3300, 1.2, 4, x, 1.2, z);
   }
 }
 
@@ -1051,9 +1187,15 @@ function addBarrel(x, z, glowing) {
   [0x00ff88,  23,-16], [0xff8800, -23, 16],
   [0xaa00ff,  43, 43], [0x00aaff, -43,-43],
 ].forEach(([col,x,z]) => {
-  const sl = new THREE.PointLight(col, 0.8, 18);
-  sl.position.set(x, WH-1, z); scene.add(sl);
+  _bakeLight(col, 0.8, 18, x, WH-1, z);
 });
+
+// ── Baked floor lighting (ground floor + mezzanine) ──────────
+const _LM_SCALE = 3;
+ARENA_M.floor.lightMap = GFXH.bakeLightmap(_bakedLights, { minX:-AW, minZ:-AD, size:AW*2, planeY:0, scale:_LM_SCALE });
+ARENA_M.floor.lightMapIntensity = _LM_SCALE;
+mezzFloorMat.lightMap = GFXH.bakeLightmap(_bakedLights, { minX:-AW, minZ:-AD, size:AW*2, planeY:MEZZ_H, scale:_LM_SCALE });
+mezzFloorMat.lightMapIntensity = _LM_SCALE;
 
 // ============================================================
 //  PLAYER STATE
@@ -1131,16 +1273,16 @@ function makeHand(isRight) {
   const g = new THREE.Group();
   const s = isRight ? 1 : -1;
   // Palm
-  const palm = new THREE.Mesh(new THREE.BoxGeometry(.10,.095,.13), GLOVE);
+  const palm = new THREE.Mesh(_vmBox(.10,.095,.13), GLOVE);
   g.add(palm);
   // Thumb nub
-  const thumb = new THREE.Mesh(new THREE.BoxGeometry(.04,.055,.04), GLOVE);
+  const thumb = new THREE.Mesh(_vmBox(.04,.055,.04), GLOVE);
   thumb.position.set(s*.072,.018,.028); g.add(thumb);
   // Finger row (implied as a flat box below palm)
-  const fingers = new THREE.Mesh(new THREE.BoxGeometry(.092,.065,.05), GLOVE);
+  const fingers = new THREE.Mesh(_vmBox(.092,.065,.05), GLOVE);
   fingers.position.set(0,-.075,-.058); g.add(fingers);
   // Forearm (disappears downward off screen)
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(.092,.32,.096), GLOVE);
+  const arm = new THREE.Mesh(_vmBox(.092,.32,.096), GLOVE);
   arm.position.y = -.215; g.add(arm);
   return g;
 }
@@ -1150,34 +1292,34 @@ function buildPistol(root) {
   root.position.set(.16,-.30,-.46);
 
   // Slide / receiver
-  const slide = new THREE.Mesh(new THREE.BoxGeometry(.064,.088,.28), M_DARK);
+  const slide = new THREE.Mesh(_vmBox(.064,.088,.28), M_DARK);
   slide.position.set(0,.012,-.04); root.add(slide);
   // Ejection port cutout (slightly lighter face)
-  const eject = new THREE.Mesh(new THREE.BoxGeometry(.012,.04,.08), M_MID);
+  const eject = new THREE.Mesh(_vmBox(.012,.04,.08), M_MID);
   eject.position.set(.034,.02,-.02); root.add(eject);
   // Barrel (round)
-  const brl = new THREE.Mesh(new THREE.CylinderGeometry(.013,.013,.16,10), M_MID);
+  const brl = new THREE.Mesh(_vmCyl(.013,.013,.16,10), M_MID);
   brl.rotation.x=Math.PI/2; brl.position.set(0,.02,-.22); root.add(brl);
   // Muzzle (slightly flared)
-  const muz = new THREE.Mesh(new THREE.CylinderGeometry(.016,.013,.022,10), M_LITE);
+  const muz = new THREE.Mesh(_vmCyl(.016,.013,.022,10), M_LITE);
   muz.rotation.x=Math.PI/2; muz.position.set(0,.02,-.30); root.add(muz);
   // Grip
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(.054,.13,.068), M_WOOD);
+  const grip = new THREE.Mesh(_vmBox(.054,.13,.068), M_WOOD);
   grip.position.set(0,-.068,.06); grip.rotation.x=.22; root.add(grip);
   // Trigger guard
-  const tg = new THREE.Mesh(new THREE.BoxGeometry(.005,.036,.078), M_DARK);
+  const tg = new THREE.Mesh(_vmBox(.005,.036,.078), M_DARK);
   tg.position.set(0,-.034,.002); root.add(tg);
   // Red-dot sight
-  const rdHousing = new THREE.Mesh(new THREE.BoxGeometry(.032,.022,.054), M_DARK);
+  const rdHousing = new THREE.Mesh(_vmBox(.032,.022,.054), M_DARK);
   rdHousing.position.set(0,.074,-.18); root.add(rdHousing);
-  const rdMount = new THREE.Mesh(new THREE.BoxGeometry(.030,.010,.028), M_MID);
+  const rdMount = new THREE.Mesh(_vmBox(.030,.010,.028), M_MID);
   rdMount.position.set(0,.063,-.18); root.add(rdMount);
   // Glowing red dot (blooms)
   const rdDot = new THREE.Mesh(new THREE.SphereGeometry(.006,6,5), new THREE.MeshBasicMaterial({color:0xff0000}));
   rdDot.position.set(0,.074,-.18); root.add(rdDot);
 
   // Muzzle flash — pistol: bright yellow
-  const flash = new THREE.Mesh(new THREE.SphereGeometry(.048,7,6), new THREE.MeshBasicMaterial({color:0xffee22}));
+  const flash = _makeMuzzleFlash(0xffee22, .048);
   flash.position.set(0,.02,-.32); flash.visible=false; root.add(flash);
   root.userData.flash = flash;
 
@@ -1194,45 +1336,45 @@ function buildSMG(root) {
   root.position.set(.10,-.28,-.52);
 
   // Receiver
-  const recv = new THREE.Mesh(new THREE.BoxGeometry(.076,.09,.42), M_DARK);
+  const recv = new THREE.Mesh(_vmBox(.076,.09,.42), M_DARK);
   recv.position.set(0,.038,-.02); root.add(recv);
   // Top rail
-  const rail = new THREE.Mesh(new THREE.BoxGeometry(.066,.018,.44), M_MID);
+  const rail = new THREE.Mesh(_vmBox(.066,.018,.44), M_MID);
   rail.position.set(0,.088,-.02); root.add(rail);
   // Barrel (round)
-  const brl = new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.22,10), M_MID);
+  const brl = new THREE.Mesh(_vmCyl(.014,.014,.22,10), M_MID);
   brl.rotation.x=Math.PI/2; brl.position.set(0,.062,-.28); root.add(brl);
   // Muzzle brake (hexagonal)
-  const brake = new THREE.Mesh(new THREE.CylinderGeometry(.022,.022,.04,6), M_LITE);
+  const brake = new THREE.Mesh(_vmCyl(.022,.022,.04,6), M_LITE);
   brake.rotation.x=Math.PI/2; brake.position.set(0,.062,-.40); root.add(brake);
   // Magazine (angled slightly)
-  const mag = new THREE.Mesh(new THREE.BoxGeometry(.052,.18,.054), M_MID);
+  const mag = new THREE.Mesh(_vmBox(.052,.18,.054), M_MID);
   mag.position.set(0,-.05,.04); mag.rotation.x=.08; root.add(mag);
   // Pistol grip
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(.054,.12,.060), M_WOOD);
+  const grip = new THREE.Mesh(_vmBox(.054,.12,.060), M_WOOD);
   grip.position.set(0,-.066,.13); grip.rotation.x=.18; root.add(grip);
   // Handguard
-  const hg = new THREE.Mesh(new THREE.BoxGeometry(.064,.068,.14), M_MID);
+  const hg = new THREE.Mesh(_vmBox(.064,.068,.14), M_MID);
   hg.position.set(0,.04,-.18); root.add(hg);
   // Stock (partially visible)
-  const stock = new THREE.Mesh(new THREE.BoxGeometry(.058,.058,.10), M_DARK);
+  const stock = new THREE.Mesh(_vmBox(.058,.058,.10), M_DARK);
   stock.position.set(0,.038,.22); root.add(stock);
   // Charging handle
-  const ch = new THREE.Mesh(new THREE.BoxGeometry(.006,.026,.028), M_LITE);
+  const ch = new THREE.Mesh(_vmBox(.006,.026,.028), M_LITE);
   ch.position.set(.042,.062,.04); root.add(ch);
   // Holographic sight
-  const holoFrame = new THREE.Mesh(new THREE.BoxGeometry(.044,.044,.010), M_DARK);
+  const holoFrame = new THREE.Mesh(_vmBox(.044,.044,.010), M_DARK);
   holoFrame.position.set(0,.104,-.24); root.add(holoFrame);
-  const holoInner = new THREE.Mesh(new THREE.BoxGeometry(.030,.030,.012), M_MID);
+  const holoInner = new THREE.Mesh(_vmBox(.030,.030,.012), M_MID);
   holoInner.position.set(0,.104,-.245); root.add(holoInner);
-  const holoMount = new THREE.Mesh(new THREE.BoxGeometry(.042,.008,.032), M_MID);
+  const holoMount = new THREE.Mesh(_vmBox(.042,.008,.032), M_MID);
   holoMount.position.set(0,.092,-.24); root.add(holoMount);
   // Glowing red targeting dot (blooms)
   const holoDot = new THREE.Mesh(new THREE.SphereGeometry(.005,6,5), new THREE.MeshBasicMaterial({color:0xff0000}));
   holoDot.position.set(0,.104,-.252); root.add(holoDot);
 
   // Muzzle flash — SMG: deep orange
-  const flash = new THREE.Mesh(new THREE.SphereGeometry(.052,7,6), new THREE.MeshBasicMaterial({color:0xff6600}));
+  const flash = _makeMuzzleFlash(0xff6600, .052);
   flash.position.set(0,.062,-.43); flash.visible=false; root.add(flash);
   root.userData.flash = flash;
 
@@ -1249,23 +1391,23 @@ function buildMinigun(root) {
   root.position.set(.04,-.28,-.56);
 
   // Central housing
-  const body = new THREE.Mesh(new THREE.BoxGeometry(.20,.20,.52), M_DARK);
+  const body = new THREE.Mesh(_vmBox(.20,.20,.52), M_DARK);
   body.position.set(0,.06,.02); root.add(body);
   // Side armour plates
-  const plL = new THREE.Mesh(new THREE.BoxGeometry(.04,.18,.48), M_MID);
+  const plL = new THREE.Mesh(_vmBox(.04,.18,.48), M_MID);
   plL.position.set(-.13,.06,.02); root.add(plL);
-  const plR = new THREE.Mesh(new THREE.BoxGeometry(.04,.18,.48), M_MID);
+  const plR = new THREE.Mesh(_vmBox(.04,.18,.48), M_MID);
   plR.position.set( .13,.06,.02); root.add(plR);
   // Ammo box (left side)
-  const abox = new THREE.Mesh(new THREE.BoxGeometry(.18,.18,.22), M_MID);
+  const abox = new THREE.Mesh(_vmBox(.18,.18,.22), M_MID);
   abox.position.set(-.22,.06,.08); root.add(abox);
-  const abelt = new THREE.Mesh(new THREE.BoxGeometry(.06,.06,.14), M_ORNG);
+  const abelt = new THREE.Mesh(_vmBox(.06,.06,.14), M_ORNG);
   abelt.position.set(-.16,.06,.00); root.add(abelt);
   // Right grip handle
-  const gh = new THREE.Mesh(new THREE.BoxGeometry(.06,.16,.058), M_DARK);
+  const gh = new THREE.Mesh(_vmBox(.06,.16,.058), M_DARK);
   gh.position.set(.18,-.04,.10); root.add(gh);
   // Left front handle bar
-  const lfh = new THREE.Mesh(new THREE.BoxGeometry(.048,.14,.048), M_DARK);
+  const lfh = new THREE.Mesh(_vmBox(.048,.14,.048), M_DARK);
   lfh.position.set(-.10,-.04,-.14); root.add(lfh);
 
   // Spinning barrel cluster
@@ -1279,30 +1421,30 @@ function buildMinigun(root) {
     const bx = Math.cos(ang)*brlRad;
     const by = Math.sin(ang)*brlRad;
     // Barrel tube (round cylinder)
-    const bt = new THREE.Mesh(new THREE.CylinderGeometry(.016,.016,.44,8), brlDark);
+    const bt = new THREE.Mesh(_vmCyl(.016,.016,.44,8), brlDark);
     bt.rotation.x=Math.PI/2; bt.position.set(bx,by,-.14); barrelCluster.add(bt);
     // Muzzle ring (slightly flared)
-    const mr = new THREE.Mesh(new THREE.CylinderGeometry(.022,.016,.018,8), brlMat);
+    const mr = new THREE.Mesh(_vmCyl(.022,.016,.018,8), brlMat);
     mr.rotation.x=Math.PI/2; mr.position.set(bx,by,-.36); barrelCluster.add(mr);
     // Barrel jacket rings (evenly spaced)
     [-0.06,0.06].forEach(rz=>{
-      const ring=new THREE.Mesh(new THREE.CylinderGeometry(.020,.020,.014,8),brlMat);
+      const ring=new THREE.Mesh(_vmCyl(.020,.020,.014,8),brlMat);
       ring.rotation.x=Math.PI/2; ring.position.set(bx,by,rz-.14); barrelCluster.add(ring);
     });
   }
   // Centre axle
-  const axle = new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.44,8), M_LITE);
+  const axle = new THREE.Mesh(_vmCyl(.03,.03,.44,8), M_LITE);
   axle.rotation.x = Math.PI/2; axle.position.z=-.14; barrelCluster.add(axle);
   root.add(barrelCluster);
 
   // Targeting laser sight (green — blooms)
-  const laserHousing = new THREE.Mesh(new THREE.BoxGeometry(.026,.020,.038), M_DARK);
+  const laserHousing = new THREE.Mesh(_vmBox(.026,.020,.038), M_DARK);
   laserHousing.position.set(.11,.09,-.06); root.add(laserHousing);
   const laserDot = new THREE.Mesh(new THREE.SphereGeometry(.010,6,5), new THREE.MeshBasicMaterial({color:0x00ff44}));
   laserDot.position.set(.11,.09,-.08); root.add(laserDot);
 
   // Muzzle flash — minigun: electric blue
-  const flash = new THREE.Mesh(new THREE.SphereGeometry(.08,7,6), new THREE.MeshBasicMaterial({color:0x44aaff}));
+  const flash = _makeMuzzleFlash(0x44aaff, .08);
   flash.position.set(0,.06,-.38); flash.visible=false; root.add(flash);
   root.userData.flash = flash;
 
@@ -1319,72 +1461,72 @@ function buildSniper(root) {
   root.position.set(.12, -.24, -.60);
 
   // Receiver / action body
-  const recv = new THREE.Mesh(new THREE.BoxGeometry(.066, .070, .36), M_DARK);
+  const recv = new THREE.Mesh(_vmBox(.066, .070, .36), M_DARK);
   recv.position.set(0, .030, -.06); root.add(recv);
   // Picatinny rail on top
-  const rail = new THREE.Mesh(new THREE.BoxGeometry(.054, .014, .38), M_MID);
+  const rail = new THREE.Mesh(_vmBox(.054, .014, .38), M_MID);
   rail.position.set(0, .068, -.06); root.add(rail);
 
   // Barrel — long round tube
-  const brl = new THREE.Mesh(new THREE.CylinderGeometry(.011,.011,.80,10), M_DARK);
+  const brl = new THREE.Mesh(_vmCyl(.011,.011,.80,10), M_DARK);
   brl.rotation.x=Math.PI/2; brl.position.set(0,.020,-.43); root.add(brl);
   // Muzzle brake (fluted, hexagonal)
-  const brake = new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.054,6), M_LITE);
+  const brake = new THREE.Mesh(_vmCyl(.018,.018,.054,6), M_LITE);
   brake.rotation.x=Math.PI/2; brake.position.set(0,.020,-.82); root.add(brake);
 
   // Scope body (round tube)
-  const scopeBody = new THREE.Mesh(new THREE.CylinderGeometry(.022,.022,.30,12), M_DARK);
+  const scopeBody = new THREE.Mesh(_vmCyl(.022,.022,.30,12), M_DARK);
   scopeBody.rotation.x=Math.PI/2; scopeBody.position.set(0,.114,-.08); root.add(scopeBody);
   // Front objective bell (flared)
-  const scopeObj = new THREE.Mesh(new THREE.CylinderGeometry(.026,.022,.016,12), M_MID);
+  const scopeObj = new THREE.Mesh(_vmCyl(.026,.022,.016,12), M_MID);
   scopeObj.rotation.x=Math.PI/2; scopeObj.position.set(0,.114,-.24); root.add(scopeObj);
   // Lens optical coating glow (cyan — blooms)
-  const lensGlow = new THREE.Mesh(new THREE.CylinderGeometry(.020,.020,.004,12), new THREE.MeshBasicMaterial({color:0x00eeff}));
+  const lensGlow = new THREE.Mesh(_vmCyl(.020,.020,.004,12), new THREE.MeshBasicMaterial({color:0x00eeff}));
   lensGlow.rotation.x=Math.PI/2; lensGlow.position.set(0,.114,-.249); root.add(lensGlow);
   // Rear eyepiece (flared)
-  const scopeEye = new THREE.Mesh(new THREE.CylinderGeometry(.022,.018,.014,12), M_LITE);
+  const scopeEye = new THREE.Mesh(_vmCyl(.022,.018,.014,12), M_LITE);
   scopeEye.rotation.x=Math.PI/2; scopeEye.position.set(0,.114,.08); root.add(scopeEye);
   // Elevation turret (top)
-  const elev = new THREE.Mesh(new THREE.BoxGeometry(.016, .036, .026), M_MID);
+  const elev = new THREE.Mesh(_vmBox(.016, .036, .026), M_MID);
   elev.position.set(0, .140, -.08); root.add(elev);
   // Windage turret (right)
-  const wind = new THREE.Mesh(new THREE.BoxGeometry(.038, .016, .026), M_MID);
+  const wind = new THREE.Mesh(_vmBox(.038, .016, .026), M_MID);
   wind.position.set(.034, .114, -.08); root.add(wind);
 
   // Pistol grip
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(.050, .116, .060), M_WOOD);
+  const grip = new THREE.Mesh(_vmBox(.050, .116, .060), M_WOOD);
   grip.position.set(0, -.060, .10); grip.rotation.x = .20; root.add(grip);
   // Trigger guard
-  const tg = new THREE.Mesh(new THREE.BoxGeometry(.005, .026, .066), M_DARK);
+  const tg = new THREE.Mesh(_vmBox(.005, .026, .066), M_DARK);
   tg.position.set(0, -.026, .06); root.add(tg);
   // Magazine
-  const mag = new THREE.Mesh(new THREE.BoxGeometry(.046, .110, .058), M_MID);
+  const mag = new THREE.Mesh(_vmBox(.046, .110, .058), M_MID);
   mag.position.set(0, -.038, -.014); root.add(mag);
 
   // Bolt handle
-  const boltShaft = new THREE.Mesh(new THREE.BoxGeometry(.050, .016, .016), M_MID);
+  const boltShaft = new THREE.Mesh(_vmBox(.050, .016, .016), M_MID);
   boltShaft.position.set(.058, .044, .038); root.add(boltShaft);
-  const boltKnob = new THREE.Mesh(new THREE.BoxGeometry(.020, .026, .020), M_LITE);
+  const boltKnob = new THREE.Mesh(_vmBox(.020, .026, .020), M_LITE);
   boltKnob.position.set(.072, .032, .038); root.add(boltKnob);
 
   // Stock
-  const stock = new THREE.Mesh(new THREE.BoxGeometry(.058, .058, .18), M_WOOD);
+  const stock = new THREE.Mesh(_vmBox(.058, .058, .18), M_WOOD);
   stock.position.set(0, .016, .24); root.add(stock);
   // Cheek rest
-  const cheek = new THREE.Mesh(new THREE.BoxGeometry(.056, .034, .12), M_WOOD);
+  const cheek = new THREE.Mesh(_vmBox(.056, .034, .12), M_WOOD);
   cheek.position.set(0, .052, .24); root.add(cheek);
   // Butt plate
-  const butt = new THREE.Mesh(new THREE.BoxGeometry(.050, .080, .016), M_MID);
+  const butt = new THREE.Mesh(_vmBox(.050, .080, .016), M_MID);
   butt.position.set(0, .026, .334); root.add(butt);
 
   // Bipod legs (folded along barrel)
-  const bipL = new THREE.Mesh(new THREE.BoxGeometry(.006, .006, .10), M_LITE);
+  const bipL = new THREE.Mesh(_vmBox(.006, .006, .10), M_LITE);
   bipL.position.set(-.020, -.002, -.60); root.add(bipL);
-  const bipR = new THREE.Mesh(new THREE.BoxGeometry(.006, .006, .10), M_LITE);
+  const bipR = new THREE.Mesh(_vmBox(.006, .006, .10), M_LITE);
   bipR.position.set( .020, -.002, -.60); root.add(bipR);
 
   // Muzzle flash — sniper: blinding white
-  const flash = new THREE.Mesh(new THREE.SphereGeometry(.058, 7, 6), new THREE.MeshBasicMaterial({color:0xffffff}));
+  const flash = _makeMuzzleFlash(0xffffff, .058);
   flash.position.set(0, .020, -.86); flash.visible = false; root.add(flash);
   root.userData.flash = flash;
 
@@ -1791,6 +1933,17 @@ function getAttachments(gunId) {
   return out;
 }
 
+// Radial falloff texture shared by soft glow sprites
+let _softGlowTexCache = null;
+function _softGlowTex() {
+  if (_softGlowTexCache) return _softGlowTexCache;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.35, 'rgba(255,255,255,0.45)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+  return (_softGlowTexCache = new THREE.CanvasTexture(c));
+}
+
 function setupWeapon(id) {
   while (weaponRoot.children.length>0) weaponRoot.remove(weaponRoot.children[0]);
   weaponRoot.add(muzzleLight);  // re-add persistent light
@@ -1840,10 +1993,11 @@ function setupWeapon(id) {
   // Ammo-glow mesh: subtle emissive aura when fully loaded
   const prevGlow = weaponRoot.getObjectByName('_ammoGlow');
   if(prevGlow) weaponRoot.remove(prevGlow);
-  const glowMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(0.09, 7, 5),
-    new THREE.MeshBasicMaterial({ color:_muzzleColors[id]||0xffee22, transparent:true, opacity:0.18 })
-  );
+  const glowMesh = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: _softGlowTex(), color: _muzzleColors[id] || 0xffee22, transparent: true, opacity: 0.18,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  glowMesh.scale.set(0.16, 0.16, 1);
   glowMesh.name = '_ammoGlow';
   glowMesh.position.set(0, 0, -0.35);
   weaponRoot.add(glowMesh);
@@ -1984,7 +2138,8 @@ function shoot(){
 
   // Muzzle effects
   const fl=weaponRoot.userData.flash;
-  if(fl){ fl.visible=true; muzzleTimer=.075; muzzleLight.intensity=3; }
+  if(fl){ fl.visible=true; muzzleTimer=.075; muzzleLight.intensity=3;
+    fl.children.forEach(sp => { if (sp.material && sp.material.isSpriteMaterial) sp.material.rotation = Math.random() * Math.PI * 2; }); }
 
   // Spread: offset ray from screen centre
   const sx=(Math.random()-.5)*2*def.spread;
@@ -2644,11 +2799,11 @@ function spawnPotionPickup(pos, type) {
   const bodyMat = new THREE.MeshLambertMaterial({
     color: cfg.color, emissive: new THREE.Color(cfg.emissive), transparent: true, opacity: 0.88
   });
-  g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.13, 0.28, 10), bodyMat));
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.13, 0.28, 20), bodyMat));
 
   // Bottle neck
   const neckMat = new THREE.MeshLambertMaterial({ color: cfg.color, emissive: new THREE.Color(cfg.emissive) });
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.10, 0.10, 8), neckMat);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.10, 0.10, 16), neckMat);
   neck.position.y = 0.19; g.add(neck);
 
   // Cork top
@@ -2656,9 +2811,12 @@ function spawnPotionPickup(pos, type) {
   const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.06, 8), corkMat);
   cork.position.y = 0.27; g.add(cork);
 
-  // Glow point light
-  const pl = new THREE.PointLight(cfg.color, 0.8, 2.5);
-  pl.position.y = 0.1; g.add(pl);
+  // Glowing liquid core (HDR, picked up by bloom). Replaces a per-potion point
+  // light, which cost every pixel on screen and forced a shader recompile.
+  const coreMat = new THREE.MeshBasicMaterial({ color: cfg.color, toneMapped: false });
+  coreMat.color.multiplyScalar(2.2);
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.10, 0.2, 16), coreMat);
+  core.position.y = -0.01; g.add(core);
 
   // Wings for fly potions
   if(type === 'fly_blue' || type === 'fly_red'){
@@ -4838,15 +4996,14 @@ window.addEventListener('resize',()=>{
   camera.updateProjectionMatrix();
   renderer.setSize(w,h,false);
   composer.setSize(w,h);
-  const pr=Math.min(window.devicePixelRatio,1.5);
-  fxaaPass.material.uniforms['resolution'].value.set(1/(w*pr), 1/(h*pr));
+  _syncFxaa(renderer.getPixelRatio());
 });
 
 // ============================================================
 //  RENDER LOOP
 // ============================================================
 const clock=new THREE.Clock();
-let _lastFrameTs = 0;
+let _nextFrameTs = 0;
 const _FRAME_MS  = 1000 / 60;  // ~16.67 ms — hard 60 fps cap
 
 // ── Minimap ──────────────────────────────────────────────────
@@ -4938,12 +5095,16 @@ function drawMinimap() {
 
 function animate(ts = 0) {
   requestAnimationFrame(animate);
-  if (ts - _lastFrameTs < _FRAME_MS) return;
-  _lastFrameTs = ts;
+  // 60 fps cap. The old strict "delta < 16.67ms → skip" dropped a frame every time
+  // the browser's timestamp jittered a hair early, holding 60 Hz screens at ~40 fps.
+  if (ts < _nextFrameTs - 1.5) return;
+  _nextFrameTs = Math.max(_nextFrameTs + _FRAME_MS, ts);
   const dt = Math.min(clock.getDelta(), 0.05);
   if (levelActive) renderer.shadowMap.needsUpdate = true;
   update(dt);
+  _updateSunShadow();
   composer.render();
+  if (!document.hidden) _adaptiveRes.tick(dt);
   drawMinimap();
 }
 
@@ -5403,6 +5564,18 @@ function _biomeForBlock(block) {
   return BIOMES[_biomeSeq[block]];
 }
 
+// Reflection environment for the current biome (only one kept alive at a time)
+const _CEIL_FIXTURES = [[-20,-20],[20,-20],[-20,20],[20,20],[0,0],[0,-30],[0,30],[-30,0],[30,0],[-10,-10],[10,-10],[-10,10],[10,10]];
+let _envRT = null, _envBiomeId = -1;
+function _applyEnvironment(biome) {
+  if (_envBiomeId === biome.biomeId) return;
+  const rt = GFXH.buildEnvironment(renderer, biome, _CEIL_FIXTURES);
+  scene.environment = rt.texture;
+  if (_envRT) _envRT.dispose();
+  _envRT = rt; _envBiomeId = biome.biomeId;
+}
+_applyEnvironment(BIOMES[0]);   // menu + first frames get reflections too
+
 function applyBiome(level) {
   const biome = _biomeForBlock(Math.floor((level - 1) / 5));
   currentBiome = biome;
@@ -5433,14 +5606,17 @@ function applyBiome(level) {
   if (!_floorTexCache[biome.biomeId]) {
     _floorTexCache[biome.biomeId] = makeFloorTex(biome.biomeId);
   }
-  ARENA_M.floor.map = _floorTexCache[biome.biomeId];
-  ARENA_M.floor.needsUpdate = true;
+  const _ft = _floorTexCache[biome.biomeId];
+  [ARENA_M.floor, mezzFloorMat].forEach(m => { m.map = _ft; m.normalMap = _ft.normalMapTex || null; m.needsUpdate = true; });
+  _applyEnvironment(biome);
 
   // Lights
   ambientLight.color.setHex(biome.ambient);
-  ambientLight.intensity = biome.ambientI;
+  ambientLight.intensity = biome.ambientI * AMBIENT_K;
+  hemiLight.color.setHex(biome.sun); hemiLight.color.lerp(new THREE.Color(0xffffff), 0.4);
+  hemiLight.groundColor.setHex(biome.floor ?? 0x101018).multiplyScalar(0.25);
   sun.color.setHex(biome.sun);
-  sun.intensity = biome.sunI;
+  sun.intensity = biome.sunI * SUN_K;
   accentLights.forEach((l, i) => l.color.setHex(biome.accentColors[i % biome.accentColors.length]));
 
   // Biome particles
@@ -5465,7 +5641,7 @@ function _buildBossArena() {
     [1.2, WH*0.72, 20, -28,  28],
   ];
   symmetricCovers.forEach(([w, h, d, cx, cz]) => {
-    const m1 = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), ARENA_M.cover);
+    const m1 = new THREE.Mesh(GFXH.worldUV(new THREE.BoxGeometry(w,h,d), cx, h/2, cz), ARENA_M.cover);
     m1.position.set(cx, h/2, cz); m1.castShadow = true; m1.receiveShadow = true;
     scene.add(m1);
     const m2 = new THREE.Mesh(new THREE.BoxGeometry(w+.04,.12,d+.04), ARENA_M.ctrim);
@@ -5630,7 +5806,17 @@ function _tintBotForBiome(allMats) {
   if (!entry) return;
   const tint = new THREE.Color(entry[0]);
   const str  = entry[1];
-  allMats.forEach(m => m.color.lerp(tint, str));
+  // Colourise each material once, keeping its own brightness: light armour turns
+  // light biome-coloured, dark joints stay dark. (allMats lists shared materials
+  // once per part, so the old per-entry lerp flattened every part to the tint.)
+  const lum = c => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+  const tl = Math.max(lum(tint), 0.02);
+  const target = new THREE.Color();
+  new Set(allMats).forEach(m => {
+    target.copy(tint).multiplyScalar(lum(m.color) / tl);
+    target.r = Math.min(1, target.r); target.g = Math.min(1, target.g); target.b = Math.min(1, target.b);
+    m.color.lerp(target, Math.min(0.9, str * 1.2));
+  });
 }
 
 function spawnBots(cfg) {
@@ -5728,6 +5914,7 @@ function transShow(html, dur, then) {
 }
 
 function startLevel(n) {
+  _adaptiveRes.cooldown = 3;   // ignore the one-off shader-compile hitch at level start
   currentLevel = n;
   levelActive  = false;
 
