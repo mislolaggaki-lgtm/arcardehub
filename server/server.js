@@ -11,6 +11,7 @@ const dns        = require('dns').promises;
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const { Server } = require('socket.io');
 const weeklyEmail = require('./weeklyEmail');
+const emails      = require('./emails');
 
 // ── Config ────────────────────────────────────────────────────
 const PORT        = process.env.PORT        || 3001;
@@ -994,16 +995,8 @@ async function start() {
 
       // Send verification email — roll back user if this fails
       try {
-        await _sendMail(emailLower, 'Verify your ArcadeHub account', `
-          <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
-            <h2 style="color:#4fc3f7;margin-top:0">Welcome to ArcadeHub!</h2>
-            <p style="color:#ccc">Thanks for signing up, <strong>${username}</strong>. Enter the code below to verify your email address.</p>
-            <div style="text-align:center;margin:24px 0">
-              <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${verifCode}</span>
-            </div>
-            <p style="color:#888;font-size:12px">This code expires in 24 hours. If you didn't create an account, you can ignore this email.</p>
-          </div>`
-        );
+        const { subject, html } = emails.codeEmail('welcome', { username, code: verifCode });
+        await _sendMail(emailLower, subject, html);
       } catch (mailErr) {
         console.error('[REGISTER] Mail send failed — account created without email verification:', mailErr.message);
         await usersCol.updateOne({ _id: insertResult.insertedId }, { $set: { emailVerified: true } });
@@ -1057,16 +1050,8 @@ async function start() {
       const verifExpiry = Date.now() + 24 * 60 * 60 * 1000;
       await usersCol.updateOne({ _id: user._id }, { $set: { verifCode, verifExpiry } });
       try {
-        await _sendMail(user.email, 'Your ArcadeHub verification code', `
-          <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
-            <h2 style="color:#4fc3f7;margin-top:0">ArcadeHub — New Verification Code</h2>
-            <p style="color:#ccc">Hi <strong>${user.username}</strong>, here is your new verification code:</p>
-            <div style="text-align:center;margin:24px 0">
-              <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${verifCode}</span>
-            </div>
-            <p style="color:#888;font-size:12px">Expires in 24 hours.</p>
-          </div>`
-        );
+        const { subject, html } = emails.codeEmail('resend', { username: user.username, code: verifCode });
+        await _sendMail(user.email, subject, html);
       } catch (mailErr) {
         console.error('[RESEND-VERIF] Mail send failed:', mailErr.message);
         return res.status(500).json({ error: 'Failed to send email. Please try again in a moment.' });
@@ -1146,16 +1131,8 @@ async function start() {
         const verifExpiry = Date.now() + 24 * 60 * 60 * 1000;
         await usersCol.updateOne({ _id: user._id }, { $set: { verifCode, verifExpiry } });
         try {
-          await _sendMail(user.email, 'Verify your ArcadeHub account', `
-            <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
-              <h2 style="color:#4fc3f7;margin-top:0">Verify your email</h2>
-              <p style="color:#ccc">Hi <strong>${user.username}</strong>, enter the code below to verify your email and finish logging in.</p>
-              <div style="text-align:center;margin:24px 0">
-                <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${verifCode}</span>
-              </div>
-              <p style="color:#888;font-size:12px">This code expires in 24 hours. If you didn't request this, you can ignore this email.</p>
-            </div>`
-          );
+          const { subject, html } = emails.codeEmail('login', { username: user.username, code: verifCode });
+          await _sendMail(user.email, subject, html);
           return res.status(403).json({ error: 'Please verify your email to continue.', emailNotVerified: true, username: user.username });
         } catch (mailErr) {
           console.error('[LOGIN] Verification mail failed — letting user through:', mailErr.message);
@@ -1788,16 +1765,8 @@ async function start() {
           $set.verifCode     = verifCode;
           $set.verifExpiry   = verifExpiry;
           try {
-            await _sendMail(emailLower, 'Verify your ArcadeHub email', `
-              <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
-                <h2 style="color:#4fc3f7;margin-top:0">Verify your email</h2>
-                <p style="color:#ccc">Enter the code below to verify <strong>${emailLower}</strong> on your ArcadeHub account.</p>
-                <div style="text-align:center;margin:24px 0">
-                  <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${verifCode}</span>
-                </div>
-                <p style="color:#888;font-size:12px">This code expires in 24 hours. If you didn't request this, you can ignore this email.</p>
-              </div>`
-            );
+            const { subject, html } = emails.codeEmail('change', { username: payload.username, code: verifCode, email: emailLower });
+            await _sendMail(emailLower, subject, html);
             emailVerificationRequired = true;
           } catch (mailErr) {
             console.error('[PROFILE] Verification mail failed — marking verified:', mailErr.message);
@@ -1962,16 +1931,8 @@ async function start() {
       await usersCol.updateOne({ _id: user._id }, { $set: { resetCode: code, resetExpiry: expiry } });
       console.log(`[RESET] ${user.username} → ${code}`);
       try {
-        await _sendMail(user.email, 'ArcadeHub — Password Reset Code', `
-          <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0e0e1e;color:#fff;padding:32px;border-radius:12px">
-            <h2 style="color:#4fc3f7;margin-top:0">Password Reset Request</h2>
-            <p style="color:#ccc">Hi <strong>${user.username}</strong>, use the code below to reset your ArcadeHub password.</p>
-            <div style="text-align:center;margin:24px 0">
-              <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#fff;background:#1a1a2e;padding:16px 28px;border-radius:8px;border:1px solid #333">${code}</span>
-            </div>
-            <p style="color:#888;font-size:12px">This code expires in 15 minutes. If you didn't request this, you can safely ignore it.</p>
-          </div>`
-        );
+        const { subject, html } = emails.codeEmail('reset', { username: user.username, code });
+        await _sendMail(user.email, subject, html);
       } catch (mailErr) {
         console.error('[RESET] Mail send failed:', mailErr.message);
         return res.status(500).json({ error: 'Could not send email. Check that your email address is correct, or try again later.' });
