@@ -250,6 +250,25 @@
     .nexus-mark { width: 16px; height: 16px; flex-shrink: 0; }
     .nexus-badge > span { color: rgba(255,255,255,0.55); }
     .nexus-row-modal { margin: 22px 0 0; }
+
+    /* "by Nexus Connections" lockups beside the logo and in the hero */
+    .nexus-by {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 10px; font-weight: 600; line-height: 1;
+      letter-spacing: 2.5px; text-transform: uppercase;
+      color: rgba(255,255,255,0.62); white-space: nowrap; user-select: none;
+    }
+    .nexus-by .nexus-word { letter-spacing: 2.5px; }
+    .nexus-by-mark { width: 15px; height: 15px; flex-shrink: 0; }
+    .logo-lockup { display: flex; flex-direction: column; gap: 5px; }
+    .logo-lockup .logo { line-height: 1; }
+    .nexus-by-nav { font-size: 8.5px; letter-spacing: 2px; gap: 5px; }
+    .nexus-by-nav .nexus-word { letter-spacing: 2px; }
+    .nexus-by-nav .nexus-by-mark { width: 12px; height: 12px; }
+    .nexus-by-hero { font-size: 12px; margin-top: 26px; position: relative; }
+    .nexus-by-hero .nexus-by-mark { width: 20px; height: 20px; }
+    .nexus-by-auth { display: flex; width: max-content; margin: -14px 0 22px; }
     .nexus-word {
       font-weight: 800; letter-spacing: 0.02em;
       background: linear-gradient(90deg, #22D3EE 0%, #6366F1 45%, #D946EF 70%, #22D3EE 100%);
@@ -2242,6 +2261,7 @@
   <div class="auth-overlay" id="auth-overlay" role="dialog" aria-modal="true">
     <div class="auth-modal">
       <div class="auth-logo">ARCADE<em>HUB</em></div>
+      <div class="nexus-by nexus-by-auth"><span>by</span><svg class="nexus-by-mark" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="nx-grad-auth" gradientUnits="userSpaceOnUse" x1="3" y1="3" x2="21" y2="21"><stop offset="0" stop-color="#22D3EE"/><stop offset=".5" stop-color="#6366F1"/><stop offset="1" stop-color="#D946EF"/></linearGradient></defs><path d="M12 5L5 17.5M12 5l7 12.5M5 17.5h14M12 5v7.5M5 17.5l7-5M19 17.5l-7-5" stroke="url(#nx-grad-auth)" stroke-width="1.6" stroke-linecap="round" fill="none"/><g fill="url(#nx-grad-auth)"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="17.5" r="2.4"/><circle cx="19" cy="17.5" r="2.4"/><circle cx="12" cy="12.5" r="1.9"/></g></svg><span class="nexus-word">Nexus Connections</span></div>
 
       <div class="auth-tabs">
         <button class="auth-tab active" data-tab="login">Login</button>
@@ -2369,7 +2389,10 @@
 
   <!-- ── Navbar ──────────────────────────────────────────── -->
   <nav>
-    <div class="logo">ARCADE<em>HUB</em></div>
+    <div class="logo-lockup">
+      <div class="logo">ARCADE<em>HUB</em></div>
+      <div class="nexus-by nexus-by-nav"><span>by</span><svg class="nexus-by-mark" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="nx-grad-nav" gradientUnits="userSpaceOnUse" x1="3" y1="3" x2="21" y2="21"><stop offset="0" stop-color="#22D3EE"/><stop offset=".5" stop-color="#6366F1"/><stop offset="1" stop-color="#D946EF"/></linearGradient></defs><path d="M12 5L5 17.5M12 5l7 12.5M5 17.5h14M12 5v7.5M5 17.5l7-5M19 17.5l-7-5" stroke="url(#nx-grad-nav)" stroke-width="1.6" stroke-linecap="round" fill="none"/><g fill="url(#nx-grad-nav)"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="17.5" r="2.4"/><circle cx="19" cy="17.5" r="2.4"/><circle cx="12" cy="12.5" r="1.9"/></g></svg><span class="nexus-word">Nexus Connections</span></div>
+    </div>
     <div class="nav-right">
       <div class="online-badge">
         <span class="online-dot"></span>
@@ -2432,6 +2455,7 @@
       <p class="hero-eyebrow">Welcome to ArcadeHub</p>
       <h1>YOUR GAMES.<br>YOUR FRIENDS.</h1>
       <p class="hero-sub">Pick a game, jump in, play together</p>
+      <div class="nexus-by nexus-by-hero"><span>Made by</span><svg class="nexus-by-mark" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="nx-grad-hero" gradientUnits="userSpaceOnUse" x1="3" y1="3" x2="21" y2="21"><stop offset="0" stop-color="#22D3EE"/><stop offset=".5" stop-color="#6366F1"/><stop offset="1" stop-color="#D946EF"/></linearGradient></defs><path d="M12 5L5 17.5M12 5l7 12.5M5 17.5h14M12 5v7.5M5 17.5l7-5M19 17.5l-7-5" stroke="url(#nx-grad-hero)" stroke-width="1.6" stroke-linecap="round" fill="none"/><g fill="url(#nx-grad-hero)"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="17.5" r="2.4"/><circle cx="19" cy="17.5" r="2.4"/><circle cx="12" cy="12.5" r="1.9"/></g></svg><span class="nexus-word">Nexus Connections</span></div>
       <div class="divider"></div>
     </section>
 
