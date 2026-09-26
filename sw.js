@@ -5,7 +5,7 @@ self.addEventListener('push', e => {
   e.waitUntil(
     self.registration.showNotification(data.title || 'Arcade Hub', {
       body:  data.body  || '',
-      icon:  '/favicon.ico',
+      icon:  '/icons/icon-192.png',
       badge: '/favicon.ico',
       tag:   'arcadehub-push',
       renotify: true,

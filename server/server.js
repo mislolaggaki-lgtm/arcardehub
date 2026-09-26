@@ -6,7 +6,6 @@ const cors       = require('cors');
 const bcrypt     = require('bcryptjs');
 const jwt        = require('jsonwebtoken');
 const path       = require('path');
-const nodemailer = require('nodemailer');
 const webpush    = require('web-push');
 const dns        = require('dns').promises;
 const { MongoClient, ServerApiVersion } = require('mongodb');
@@ -50,30 +49,72 @@ async function validateEmailDomain(email) {
 // Map<username, { code: string, expires: number }>
 const loginCodes = new Map();
 
-// ── Email sender (SendGrid HTTP API) ─────────────────────────
-async function _sendMail(to, subject, html) {
-  if (!process.env.SENDGRID_API_KEY) {
-    console.error('[MAIL] SENDGRID_API_KEY not set');
-    throw new Error('Email not configured on server.');
+// ── Email sender (Gmail API over HTTPS) ──────────────────────
+// Google's REST API rather than SMTP: Railway's Hobby plan blocks outbound SMTP
+// ports, and since Google sends its own mail there's no third-party sender
+// authentication to fail (the reason SendGrid/Brevo rejected a @gmail.com sender).
+function _base64url(str) {
+  return Buffer.from(str, 'utf8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// RFC 2047: non-ASCII header text (e.g. "—" in subjects) must be encoded or some
+// clients show mojibake. Chunks stay ≤39 bytes so every folded line is <78 chars.
+function _encodeHeader(value) {
+  if (/^[\x20-\x7E]*$/.test(value)) return value;
+  const words = [];
+  let chunk = '';
+  for (const ch of value) {
+    if (Buffer.byteLength(chunk + ch) > 39) { words.push(chunk); chunk = ''; }
+    chunk += ch;
   }
-  const fromEmail = process.env.GMAIL_USER || 'ioannismislis1206@gmail.com';
-  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+  if (chunk) words.push(chunk);
+  return words.map(w => `=?UTF-8?B?${Buffer.from(w, 'utf8').toString('base64')}?=`).join('\r\n ');
+}
+
+async function _gmailAccessToken() {
+  const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: to }] }],
-      from: { email: fromEmail, name: 'ArcadeHub' },
-      subject,
-      content: [{ type: 'text/html', value: html }],
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id:     process.env.GMAIL_CLIENT_ID,
+      client_secret: process.env.GMAIL_CLIENT_SECRET,
+      refresh_token: process.env.GMAIL_REFRESH_TOKEN,
+      grant_type:    'refresh_token',
     }),
   });
+  const data = await res.json();
+  if (!res.ok) throw new Error(`Gmail OAuth ${res.status}: ${data.error_description || data.error}`);
+  return data.access_token;
+}
+
+async function _sendMail(to, subject, html) {
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_CLIENT_SECRET || !process.env.GMAIL_REFRESH_TOKEN) {
+    console.error('[MAIL] Gmail API env vars not fully set');
+    throw new Error('Email not configured on server.');
+  }
+  const accessToken = await _gmailAccessToken();
+  const message = [
+    `From: "ArcadeHub" <${process.env.GMAIL_USER}>`,
+    `To: ${to}`,
+    `Subject: ${_encodeHeader(subject)}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    Buffer.from(html, 'utf8').toString('base64').replace(/.{76}/g, '$&\r\n'),
+  ].join('\r\n');
+
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ raw: _base64url(message) }),
+  });
   if (!res.ok) {
-    const err = await res.text();
-    console.error('[MAIL] SendGrid error:', err);
-    throw new Error(`SendGrid error: ${res.status}`);
+    const errText = await res.text();
+    console.error('[MAIL] Gmail API error:', errText);
+    let detail = errText;
+    try { detail = JSON.parse(errText)?.error?.message || errText; } catch { /* not JSON */ }
+    throw new Error(`Gmail API ${res.status}: ${detail}`.slice(0, 300));
   }
   console.log('[MAIL] Sent to', to);
 }
