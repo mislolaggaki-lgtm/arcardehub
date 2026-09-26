@@ -10,6 +10,7 @@ const webpush    = require('web-push');
 const dns        = require('dns').promises;
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const { Server } = require('socket.io');
+const weeklyEmail = require('./weeklyEmail');
 
 // ── Config ────────────────────────────────────────────────────
 const PORT        = process.env.PORT        || 3001;
@@ -93,8 +94,10 @@ async function _sendMail(to, subject, html) {
     throw new Error('Email not configured on server.');
   }
   const accessToken = await _gmailAccessToken();
-  html += '<div style="font-family:Arial,sans-serif;max-width:480px;margin:14px auto 0;text-align:center;font-size:12px;color:#8b8b9a">'
-        + 'ArcadeHub is made by <strong style="color:#6366F1">Nexus Connections</strong></div>';
+  if (!html.includes('Nexus Connections')) {
+    html += '<div style="font-family:Arial,sans-serif;max-width:480px;margin:14px auto 0;text-align:center;font-size:12px;color:#8b8b9a">'
+          + 'ArcadeHub is made by <strong style="color:#6366F1">Nexus Connections</strong></div>';
+  }
   const message = [
     `From: "ArcadeHub" <${process.env.GMAIL_USER}>`,
     `To: ${to}`,
@@ -1375,6 +1378,28 @@ async function start() {
     }
   });
 
+  // ── POST /api/admin/test-weekly-email ───────────────────────
+  // Sends this week's email to the admin's own address as a preview; doesn't
+  // affect when the admin receives the real weekly send.
+  app.post('/api/admin/test-weekly-email', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      if (!payload.isAdmin || payload.username !== 'Stotch')
+        return res.status(403).json({ error: 'Forbidden.' });
+      const admin = await usersCol.findOne({ username: payload.username }, { projection: { username: 1, email: 1 } });
+      if (!admin?.email) return res.status(400).json({ error: 'Your account has no email linked.' });
+      try {
+        await _sendMail(admin.email, weeklyEmail.subject(), weeklyEmail.html(admin.username));
+      } catch (mailErr) {
+        return res.status(500).json({ error: mailErr.message });
+      }
+      res.json({ success: true, sentTo: admin.email });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
   // ── POST /api/admin/take-bucks ──────────────────────────────
   app.post('/api/admin/take-bucks', async (req, res) => {
     try {
@@ -2180,6 +2205,8 @@ IMPORTANT RULES:
   app.get('*', (_req, res) => {
     res.sendFile(path.join(__dirname, '..', 'index.html'));
   });
+
+  weeklyEmail.start({ usersCol, sendMail: _sendMail });
 
   // ── Listen ──────────────────────────────────────────────────
   httpServer.listen(PORT, () => {
