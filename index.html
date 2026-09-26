@@ -235,6 +235,32 @@
     }
     footer span { color: #2e2e42; }
 
+    /* "Made by Nexus Connections" badge */
+    .nexus-row { display: flex; justify-content: center; margin: 0 0 12px; }
+    .nexus-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px 6px 9px; border-radius: 99px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 12px; font-weight: 500; line-height: 1; letter-spacing: 0.01em;
+      color: rgba(255,255,255,0.55); white-space: nowrap;
+      transition: border-color .3s ease, box-shadow .3s ease;
+    }
+    .nexus-badge:hover { border-color: rgba(99,102,241,0.45); box-shadow: 0 0 18px rgba(99,102,241,0.25); }
+    .nexus-mark { width: 16px; height: 16px; flex-shrink: 0; }
+    .nexus-badge > span { color: rgba(255,255,255,0.55); }
+    .nexus-row-modal { margin: 22px 0 0; }
+    .nexus-word {
+      font-weight: 800; letter-spacing: 0.02em;
+      background: linear-gradient(90deg, #22D3EE 0%, #6366F1 45%, #D946EF 70%, #22D3EE 100%);
+      background-size: 220% 100%; background-position: 0% 0;
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent; -webkit-text-fill-color: transparent;
+      transition: background-position .9s ease;
+    }
+    .nexus-badge:hover .nexus-word { background-position: 100% 0; }
+    @media (prefers-reduced-motion: reduce) { .nexus-badge, .nexus-word { transition: none; } }
+
     /* ── Admin panel (Stotch only) ────────────────────────── */
     #admin-section {
       display: none;
@@ -2337,6 +2363,7 @@
         <button class="auth-submit" onclick="verifyEmail()">VERIFY EMAIL</button>
         <div class="reset-back-link" onclick="resendVerifCode()" id="resend-verif-link">Resend code</div>
       </div>
+      <div class="nexus-row nexus-row-modal"><div class="nexus-badge"><svg class="nexus-mark" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="nx-grad-modal" gradientUnits="userSpaceOnUse" x1="3" y1="3" x2="21" y2="21"><stop offset="0" stop-color="#22D3EE"/><stop offset=".5" stop-color="#6366F1"/><stop offset="1" stop-color="#D946EF"/></linearGradient></defs><path d="M12 5L5 17.5M12 5l7 12.5M5 17.5h14M12 5v7.5M5 17.5l7-5M19 17.5l-7-5" stroke="url(#nx-grad-modal)" stroke-width="1.6" stroke-linecap="round" fill="none"/><g fill="url(#nx-grad-modal)"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="17.5" r="2.4"/><circle cx="19" cy="17.5" r="2.4"/><circle cx="12" cy="12.5" r="1.9"/></g></svg><span>Made by <span class="nexus-word">Nexus Connections</span></span></div></div>
     </div>
   </div>
 
@@ -2770,6 +2797,7 @@
   </div>
 
   <footer>
+    <div class="nexus-row"><div class="nexus-badge"><svg class="nexus-mark" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="nx-grad" gradientUnits="userSpaceOnUse" x1="3" y1="3" x2="21" y2="21"><stop offset="0" stop-color="#22D3EE"/><stop offset=".5" stop-color="#6366F1"/><stop offset="1" stop-color="#D946EF"/></linearGradient></defs><path d="M12 5L5 17.5M12 5l7 12.5M5 17.5h14M12 5v7.5M5 17.5l7-5M19 17.5l-7-5" stroke="url(#nx-grad)" stroke-width="1.6" stroke-linecap="round" fill="none"/><g fill="url(#nx-grad)"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="17.5" r="2.4"/><circle cx="19" cy="17.5" r="2.4"/><circle cx="12" cy="12.5" r="1.9"/></g></svg><span>Made by <span class="nexus-word">Nexus Connections</span></span></div></div>
     ArcadeHub &copy; 2026 &nbsp;—&nbsp; <span>Built with Claude Code</span>
   </footer>
 

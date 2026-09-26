@@ -93,6 +93,8 @@ async function _sendMail(to, subject, html) {
     throw new Error('Email not configured on server.');
   }
   const accessToken = await _gmailAccessToken();
+  html += '<div style="font-family:Arial,sans-serif;max-width:480px;margin:14px auto 0;text-align:center;font-size:12px;color:#8b8b9a">'
+        + 'ArcadeHub is made by <strong style="color:#6366F1">Nexus Connections</strong></div>';
   const message = [
     `From: "ArcadeHub" <${process.env.GMAIL_USER}>`,
     `To: ${to}`,
