@@ -1911,15 +1911,24 @@ async function start() {
     }
   });
 
+  // Password reset accepts a username or an email. Usernames may contain "@",
+  // so try the username first, then fall back to the (lowercase-stored) email.
+  async function findUserForReset(identifier) {
+    const id  = identifier.trim();
+    const esc = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const byName = await usersCol.findOne({ username: { $regex: new RegExp(`^${esc}$`, 'i') } });
+    if (byName || !id.includes('@')) return byName;
+    return usersCol.findOne({ email: id.toLowerCase() });
+  }
+
   // ── POST /api/auth/reset-request ───────────────────────────
   app.post('/api/auth/reset-request', async (req, res) => {
     try {
       const { username } = req.body;
-      if (!username || typeof username !== 'string')
-        return res.status(400).json({ error: 'Username required.' });
-      const esc = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const user = await usersCol.findOne({ username: { $regex: new RegExp(`^${esc}$`, 'i') } });
-      if (!user) return res.status(404).json({ error: 'No account found with that username.' });
+      if (!username || typeof username !== 'string' || !username.trim())
+        return res.status(400).json({ error: 'Enter your username or email.' });
+      const user = await findUserForReset(username);
+      if (!user) return res.status(404).json({ error: 'No account found with that username or email.' });
       if (!user.email) return res.status(400).json({ error: 'No email on file for this account. Please contact support.' });
       const code   = Math.random().toString(36).slice(2, 8).toUpperCase();
       const expiry = Date.now() + 15 * 60 * 1000;
@@ -1940,7 +1949,8 @@ async function start() {
         console.error('[RESET] Mail send failed:', mailErr.message);
         return res.status(500).json({ error: 'Could not send email. Check that your email address is correct, or try again later.' });
       }
-      res.json({ success: true, username: user.username });
+      // Don't echo the username: typing someone's email must not reveal their username.
+      res.json({ success: true });
     } catch (err) { console.error('[RESET]', err); res.status(500).json({ error: 'Server error.' }); }
   });
 
@@ -1952,8 +1962,8 @@ async function start() {
         return res.status(400).json({ error: 'All fields required.' });
       if (typeof newPassword !== 'string' || newPassword.length < 6)
         return res.status(400).json({ error: 'Password must be at least 6 characters.' });
-      const esc = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const user = await usersCol.findOne({ username: { $regex: new RegExp(`^${esc}$`, 'i') } });
+      if (typeof username !== 'string') return res.status(400).json({ error: 'All fields required.' });
+      const user = await findUserForReset(username);
       if (!user || !user.resetCode || user.resetCode !== code.trim().toUpperCase() || Date.now() > (user.resetExpiry || 0))
         return res.status(400).json({ error: 'Invalid or expired reset code.' });
       const hash = await bcrypt.hash(newPassword, 10);

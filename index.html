@@ -2245,11 +2245,11 @@
 
       <!-- Password reset form -->
       <div class="auth-form" id="form-reset" style="display:none;flex-direction:column;gap:12px">
-        <!-- Step 1: enter username -->
+        <!-- Step 1: enter username or email -->
         <div class="reset-step active" id="reset-step1">
           <div class="auth-field">
-            <label for="reset-username">Your username</label>
-            <input id="reset-username" type="text" placeholder="Enter your username" autocomplete="username">
+            <label for="reset-username">Username or email</label>
+            <input id="reset-username" type="text" placeholder="Enter your username or email" autocomplete="username">
           </div>
           <div class="auth-msg" id="reset-msg1"></div>
           <button class="auth-submit" onclick="resetRequest()">GET RESET CODE</button>
@@ -5818,7 +5818,7 @@
         const d = await r.json();
         if (!r.ok) { showMsg('reset-msg1', d.error || 'Error.', 'error'); }
         else {
-          _resetUsername = d.username;
+          _resetUsername = username;
           document.getElementById('reset-step1').classList.remove('active');
           document.getElementById('reset-step2').classList.add('active');
         }
