@@ -1216,12 +1216,8 @@ async function start() {
     }
   });
 
-  // ── POST /api/badges/unlock ─────────────────────────────────
-  app.post('/api/badges/unlock', async (req, res) => {
-    try {
-      const payload = verifyToken(req.headers.authorization);
-      const { badgeId } = req.body;
-      const VALID = [
+  // Badges players can earn in-game (unlockable via /api/badges/unlock)
+  const BADGE_IDS = [
         'besto_frendo', 'pro_gamer', 'unstoppable', 'veteran', 'code_breaker',
         'first_step', 'rookie', 'getting_warmed', 'double_digits', 'lvl20', 'lvl30', 'lvl40', 'lvl60', 'lvl75', 'lvl150', 'max_rank',
         'first_blood', 'serial_killer', 'centurion', 'bloodbath', 'kill_machine', 'reaper', 'death_dealer', 'world_ender',
@@ -1237,7 +1233,17 @@ async function start() {
         'sharpshooter', 'laser_focus', 'long_shot', 'map_master', 'comeback_kid', 'daily_grinder',
         'legend_of_hub', 'cosmic_warrior', 'deity_mode', 'omniscient',
         'fashionista', 'trendsetter', 'big_spender', 'legendary_drip', 'full_drip', 'rare_taste',
-      ];
+  ];
+  // Shown in the hub but not earnable yet: only an admin can grant these
+  const ADMIN_ONLY_BADGE_IDS = ['apex_predator', 'carry', 'easter_egg', 'melee_master', 'melee_only',
+    'oops_i_died', 'phoenix_rise', 'secret_finder', 'try_hard', 'wingman'];
+
+  // ── POST /api/badges/unlock ─────────────────────────────────
+  app.post('/api/badges/unlock', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const { badgeId } = req.body;
+      const VALID = BADGE_IDS;
       if (!VALID.includes(badgeId))
         return res.status(400).json({ error: 'Invalid badge.' });
       const { ObjectId } = require('mongodb');
@@ -1373,6 +1379,31 @@ async function start() {
       res.json({ success: true, sentTo: admin.email });
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── POST /api/admin/badge ───────────────────────────────────
+  // Grant or revoke any badge for any player. body: { targetUsername, badgeId, revoke? }
+  app.post('/api/admin/badge', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      if (!payload.isAdmin || payload.username !== 'Stotch')
+        return res.status(403).json({ error: 'Forbidden.' });
+      const { targetUsername, badgeId, revoke } = req.body;
+      if (!targetUsername || typeof targetUsername !== 'string')
+        return res.status(400).json({ error: 'Enter a username.' });
+      if (!BADGE_IDS.includes(badgeId) && !ADMIN_ONLY_BADGE_IDS.includes(badgeId))
+        return res.status(400).json({ error: 'Unknown badge.' });
+      const esc = targetUsername.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const target = await usersCol.findOne({ username: { $regex: new RegExp(`^${esc}$`, 'i') } }, { projection: { username: 1, badges: 1 } });
+      if (!target) return res.status(404).json({ error: `User "${targetUsername.trim()}" not found.` });
+      const had = (target.badges || []).includes(badgeId);
+      await usersCol.updateOne({ _id: target._id }, revoke ? { $pull: { badges: badgeId } } : { $addToSet: { badges: badgeId } });
+      res.json({ success: true, username: target.username, changed: revoke ? had : !had });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      console.error('/api/admin/badge error:', err);
       res.status(500).json({ error: 'Server error.' });
     }
   });

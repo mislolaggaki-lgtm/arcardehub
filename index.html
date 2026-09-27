@@ -2587,6 +2587,20 @@
         <div class="admin-players-list" id="ap-players-list"></div>
       </div>
 
+      <!-- Badges card -->
+      <div class="admin-card">
+        <div class="admin-card-title">🏅 Badges</div>
+        <div class="admin-input-row">
+          <input id="ap-badge-username" type="text" placeholder="Username…" maxlength="24" autocomplete="off">
+          <select id="ap-badge-id" style="flex:1;min-width:0;background:#0d0d18;color:#ddd;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:8px"></select>
+        </div>
+        <div class="admin-input-row" style="margin-top:8px">
+          <button class="admin-btn admin-btn-gold" onclick="apBadge(false)">GRANT</button>
+          <button class="admin-btn admin-btn-red" onclick="apBadge(true)">REVOKE</button>
+        </div>
+        <div class="admin-status" id="ap-badge-status"></div>
+      </div>
+
       <!-- All Accounts card -->
       <div class="admin-card admin-card-wide">
         <div class="admin-card-title" style="display:flex;align-items:center;justify-content:space-between">
@@ -2906,7 +2920,7 @@
       // Show admin panel for Stotch only
       if (localStorage.getItem('isAdmin') === 'true' && username === 'Stotch') {
         const ap = document.getElementById('admin-section');
-        if (ap) { ap.style.display = 'block'; apLoadPlayers(); apLoadAccounts(); }
+        if (ap) { ap.style.display = 'block'; apLoadPlayers(); apLoadAccounts(); _apFillBadgeSelect(); }
         _setupAdminPush();
       }
       chatConnect();
@@ -5504,6 +5518,33 @@
       el.textContent = msg;
       el.className = 'admin-status' + (isErr ? ' err' : '');
       if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000);
+    }
+
+    function _apFillBadgeSelect() {
+      const sel = document.getElementById('ap-badge-id');
+      if (!sel || sel.options.length) return;
+      [...BADGE_DEFS].sort((a, b) => a.name.localeCompare(b.name)).forEach(d => {
+        const o = document.createElement('option'); o.value = d.id; o.textContent = d.name; sel.appendChild(o);
+      });
+    }
+    async function apBadge(revoke) {
+      _apFillBadgeSelect();
+      const username = (document.getElementById('ap-badge-username').value || '').trim();
+      const badgeId  = document.getElementById('ap-badge-id').value;
+      const name     = (BADGE_DEFS.find(d => d.id === badgeId) || {}).name || badgeId;
+      if (!username) { _apStatus('ap-badge-status', 'Enter a username.', true); return; }
+      _apStatus('ap-badge-status', revoke ? 'Revoking…' : 'Granting…', false);
+      try {
+        const r = await fetch(`${API}/admin/badge`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('ah_token')}` },
+          body: JSON.stringify({ targetUsername: username, badgeId, revoke }),
+        });
+        const d = await r.json();
+        if (!r.ok) { _apStatus('ap-badge-status', d.error || 'Failed.', true); return; }
+        const verb = revoke ? 'Revoked' : 'Granted';
+        _apStatus('ap-badge-status', d.changed ? `✓ ${verb} ${name} ${revoke ? 'from' : 'to'} ${d.username}.` : `${d.username} ${revoke ? "doesn't have" : 'already has'} ${name}.`, false);
+        if (d.username.toLowerCase() === (localStorage.getItem('ah_username') || '').toLowerCase() && typeof loadBadges === 'function') loadBadges();
+      } catch { _apStatus('ap-badge-status', 'Could not reach server.', true); }
     }
 
     async function apTestWeeklyEmail() {
