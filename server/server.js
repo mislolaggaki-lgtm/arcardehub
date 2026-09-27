@@ -178,6 +178,14 @@ let tdmScores      = { red: 0, blue: 0 };
 let ffaKills       = new Map();  // socketId → kills this round
 
 function onlinePlayers() { return new Set([...players.values()].map(p => p.username)); }
+// Real people online right now: logged-in visitors on the hub (chat socket) plus
+// everyone in the FPS game. A person with several tabs counts once; game guests
+// (no account) count per connection.
+function onlineCount() {
+  const people = new Set([...chatUsers.values()].map(u => u.username.toLowerCase()));
+  for (const [sid, p] of players) people.add(p.isGuest ? 'guest:' + sid : p.username.toLowerCase());
+  return people.size;
+}
 
 function buildFFABoard() {
   return [...players.values()]
@@ -390,7 +398,14 @@ async function start() {
   }
 
   // ── Socket.io connection handler ────────────────────────────
+  let _lastOnline = -1;
+  function _emitOnline() {
+    const n = onlineCount();
+    if (n !== _lastOnline) { _lastOnline = n; io.emit('onlineCount', n); }
+  }
+
   io.on('connection', socket => {
+    socket.emit('onlineCount', onlineCount());
     const color = PLAYER_COLORS[players.size % PLAYER_COLORS.length];
 
     socket.on('join', async ({ username, equippedItems: clientEquipped }) => {
@@ -422,6 +437,7 @@ async function start() {
         equippedItems,
       };
       players.set(socket.id, player);
+      _emitOnline();
       socket.emit('currentPlayers', [...players.values()].filter(p => p.id !== socket.id));
       socket.broadcast.emit('playerJoined', player);
     });
@@ -576,6 +592,7 @@ async function start() {
       try {
         const payload = jwt.verify(token, JWT_SECRET);
         chatUsers.set(socket.id, { username: payload.username });
+        _emitOnline();
         socket.emit('chatHistory', []); // could persist messages here later
         io.emit('chatOnline', [...chatUsers.values()].map(u => u.username));
         // Emit unread notification count
@@ -922,6 +939,7 @@ async function start() {
       // Clean up chat / voice
       if (chatUsers.delete(socket.id))
         io.emit('chatOnline', [...chatUsers.values()].map(u => u.username));
+      _emitOnline();
       if (voiceUsers.delete(socket.id))
         io.emit('voiceUserLeft', { socketId: socket.id });
       // Cancel any active trade sessions
@@ -1699,7 +1717,7 @@ async function start() {
 
   // ── GET /api/users/online ───────────────────────────────────
   app.get('/api/users/online', (_req, res) => {
-    res.json({ online: players.size || 3 });
+    res.json({ online: onlineCount() });
   });
 
   // ── GET /api/leaderboard ────────────────────────────────────

@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ArcadeHub — Your Games. Your Friends.</title>
-  <link rel="icon" href="/favicon.ico" sizes="48x48">
-  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="icon" href="/favicon.ico?v=2" sizes="48x48">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=2">
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png?v=2">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
@@ -2396,7 +2396,7 @@
     <div class="nav-right">
       <div class="online-badge">
         <span class="online-dot"></span>
-        <span id="online-count">3</span>&nbsp;ONLINE
+        <span id="online-count">–</span>&nbsp;ONLINE
       </div>
       <!-- Logged-out state -->
       <button class="btn-login" id="btn-login">LOGIN</button>
@@ -5154,13 +5154,20 @@
       setTimeout(_maybeShowChangelog, 600);
     })();
 
-    // ── Fake online count drift ───────────────────────────────
+    // ── Live online count ─────────────────────────────────────
+    // Real number of people on ArcadeHub (hub + in game). Pushed live over the
+    // chat socket when logged in; polled for logged-out visitors and as a backup.
     const countEl = document.getElementById('online-count');
-    let count = 3;
-    setInterval(() => {
-      count = Math.max(1, Math.min(9, count + (Math.random() < 0.5 ? 1 : -1)));
-      countEl.textContent = count;
-    }, 4000 + Math.random() * 3000);
+    function _setOnlineCount(n) { if (Number.isFinite(n)) countEl.textContent = n; }
+    async function _pollOnlineCount() {
+      try {
+        const r = await fetch(`${API}/users/online`);
+        if (r.ok) _setOnlineCount((await r.json()).online);
+      } catch { /* keep last value */ }
+    }
+    countEl.textContent = '–';
+    _pollOnlineCount();
+    setInterval(() => { if (!document.hidden) _pollOnlineCount(); }, 20000);
 
     // ═══════════════════════════════════════════════════════════
     // CHAT + VOICE CHAT
@@ -5189,6 +5196,8 @@
       _chatSocket.on('connect', () => {
         _chatSocket.emit('chatJoin', { token });
       });
+
+      _chatSocket.on('onlineCount', _setOnlineCount);
 
       _chatSocket.on('chatOnline', (names) => {
         document.getElementById('chat-online-count').textContent = names.length;
