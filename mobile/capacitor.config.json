@@ -23,7 +23,15 @@
     },
     "StatusBar": {
       "style": "DARK",
-      "overlaysWebView": true
+      "overlaysWebView": false
+    },
+    "SystemBars": {
+      "insetsHandling": "native",
+      "style": "DARK"
     }
+  },
+  "android": {
+    "backgroundColor": "#0a0a0f",
+    "appendUserAgent": "ArcadeHubApp/1.0"
   }
 }
