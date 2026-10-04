@@ -1,0 +1,29 @@
+{
+  "appId": "com.nexusconnections.arcadehub",
+  "appName": "ArcadeHub",
+  "webDir": "www",
+  "server": {
+    "url": "https://arcardehub-production-e3de.up.railway.app/",
+    "errorPath": "offline.html",
+    "allowNavigation": [
+      "arcardehub-production-e3de.up.railway.app"
+    ]
+  },
+  "ios": {
+    "backgroundColor": "#0a0a0f",
+    "contentInset": "never",
+    "appendUserAgent": "ArcadeHubApp/1.0"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "launchAutoHide": true,
+      "backgroundColor": "#0a0a0f",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "overlaysWebView": true
+    }
+  }
+}
