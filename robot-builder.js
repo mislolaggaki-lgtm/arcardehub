@@ -106,7 +106,7 @@ function buildRobot() {
   const EYE_R  = new THREE.MeshBasicMaterial({color:0xffffff});
   // remap all legacy red/orange glows to icy blue-white
   const _GR = {0xff0800:0x88ccff,0xff2200:0x66aaee,0xff1800:0x77bbff,0xff3300:0x55aadd,
-               0xff4400:0x4499cc,0xff0000:0xaaddff,0x0022cc:0x77bbff,0xff3300:0x55aadd};
+               0xff4400:0x4499cc,0xff0000:0xaaddff,0x0022cc:0x77bbff};
   // Quality knobs set by the host page (FPS game / hub preview); defaults keep the original look.
   const _D    = (typeof window !== 'undefined' && window.ROBOT_DETAIL) || 1;
   const _GLOW = (typeof window !== 'undefined' && window.ROBOT_GLOW)   || 1;

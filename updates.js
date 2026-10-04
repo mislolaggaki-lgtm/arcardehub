@@ -2,6 +2,22 @@
 // and by the server (the weekly email always features UPDATES[0]).
 const UPDATES = [
   {
+    version: '2.1', date: 'September 2026', title: 'GRAPHICS OVERHAUL, BADGES & CODES',
+    changes: [
+      'Big graphics upgrade in FPS Arena: HDR lighting, smoother edges, reflections and detailed textures, and the game now runs up to 4x faster',
+      'Glowing combat effects, plus textured crates and barrels around the arena',
+      'Minimap in FPS Arena: press M to expand it',
+      'Badges now unlock for real as you play, with a pop-up the moment you earn one',
+      'Redeem codes: enter a secret code in the Codes menu to claim rewards',
+      'Live online counter: see how many players are on ArcadeHub right now',
+      'New joystick logo and a proper app icon',
+      'A weekly "This week on ArcadeHub" email with the latest news, in a new neon arcade design',
+      'Show/hide password button on the login, sign-up and reset forms',
+      'Password reset now accepts your username or your email',
+      'The Gaming AI is fixed and knows even more about the game',
+    ]
+  },
+  {
     version: '2.0', date: 'June 2026', title: 'GAMING AI, NEW NAV & ACCOUNT SECURITY',
     changes: [
       'Gaming AI — full-screen Siri-style AI assistant powered by Groq. Knows everything about ArcadeHub: weapons, biomes, bosses, enemies, potions, attachments, cosmetics and more',

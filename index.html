@@ -2227,13 +2227,13 @@
       padding: 10px 12px; outline: none; resize: vertical; min-height: 70px;
     }
     #profile-bio-input:focus { border-color: rgba(231,76,60,0.4); }
-    #profile-username-input {
+    #profile-username-input, #profile-email-input {
       width: 100%; box-sizing: border-box;
       background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
       border-radius: 7px; color: #c0c0ee; font-family: inherit; font-size: 13px;
       padding: 10px 12px; outline: none;
     }
-    #profile-username-input:focus { border-color: rgba(231,76,60,0.4); }
+    #profile-username-input:focus, #profile-email-input:focus { border-color: rgba(231,76,60,0.4); }
   </style>
 </head>
 <body>
@@ -2757,7 +2757,7 @@
         <div class="shop-search-wrap">
           <div class="shop-search-inner">
             <span class="shop-search-icon">🔍</span>
-            <input class="shop-search" id="shop-search" placeholder="Search items…" oninput="_shopSearchInput(this.value)">
+            <input type="search" class="shop-search" id="shop-search" placeholder="Search items…" oninput="_shopSearchInput(this.value)">
           </div>
         </div>
         <div class="shop-grid-wrap">
@@ -2883,7 +2883,7 @@
     </div>
 
     <div class="chat-input-row" id="chat-input-row" style="display:none">
-      <input id="chat-input" placeholder="Say something…" maxlength="300"
+      <input type="text" id="chat-input" placeholder="Say something…" maxlength="300"
         onkeydown="if(event.key==='Enter')chatSend()">
       <button id="btn-chat-send" onclick="chatSend()" aria-label="Send">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#fff">
@@ -5120,7 +5120,6 @@
       if (!token || !username) {
         const hasVisited = localStorage.getItem('ah_visited');
         openModal(hasVisited ? 'login' : 'register');
-        setTimeout(_maybeShowChangelog, 800);
         return;
       }
 

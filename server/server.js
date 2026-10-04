@@ -132,7 +132,19 @@ const httpServer = http.createServer(app);
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '..')));
+// Only the website's own files are public. The project folder also holds the server
+// code (with redeem codes), settings files and node_modules, which must never be served.
+const PUBLIC_FILES = new Set(['/', '/index.html', '/terms.html', '/sw.js', '/updates.js', '/robot-builder.js',
+  '/favicon.ico', '/arcadehub-game-logo.png', '/dropdown-gameai-logo.png']);
+const PUBLIC_DIRS = new Set(['icons', 'email', 'games']);
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/') || req.path.startsWith('/socket.io/')) return next();
+  let p;
+  try { p = decodeURIComponent(req.path); } catch { return res.status(400).end(); }
+  if (PUBLIC_FILES.has(p) || (PUBLIC_DIRS.has(p.split('/')[1]) && !p.includes('/.'))) return next();
+  res.status(404).send('Not found');
+});
+app.use(express.static(path.join(__dirname, '..'), { dotfiles: 'deny' }));
 
 // ── Socket.io ─────────────────────────────────────────────────
 const io = new Server(httpServer, {
@@ -219,7 +231,8 @@ async function start() {
       strict: true,
       deprecationErrors: true,
     },
-    tls: true,
+    // Encrypted for the hosted database; a database on this same computer has no TLS
+    tls: !/^mongodb:\/\/(localhost|127\.0\.0\.1)[:/]/.test(MONGODB_URI),
     tlsAllowInvalidCertificates: false,
     tlsAllowInvalidHostnames: false,
   });
@@ -409,8 +422,12 @@ async function start() {
     socket.emit('onlineCount', onlineCount());
     const color = PLAYER_COLORS[players.size % PLAYER_COLORS.length];
 
-    socket.on('join', async ({ username, equippedItems: clientEquipped }) => {
-      const cleanName = (username || 'Guest').slice(0, 24);
+    socket.on('join', async ({ token, equippedItems: clientEquipped }) => {
+      // The name comes from the verified sign-in, never from what the browser claims
+      // (otherwise anyone could join as an admin and ban players)
+      let signedIn = null;
+      try { signedIn = jwt.verify(String(token || ''), JWT_SECRET); } catch { signedIn = null; }
+      const cleanName = (signedIn?.username || 'Guest').slice(0, 24);
 
       // Reject banned players immediately
       const isBanned = await bannedCol.findOne({ username: cleanName.toLowerCase() });

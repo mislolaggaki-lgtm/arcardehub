@@ -6169,7 +6169,7 @@ function initSocket() {
   const username = localStorage.getItem('ah_username') || 'Guest';
 
   socket.on('connect', () => {
-    socket.emit('join', { username, equippedItems: JSON.parse(localStorage.getItem('ah_equipped') || '[]') });
+    socket.emit('join', { token: localStorage.getItem('ah_token'), username, equippedItems: JSON.parse(localStorage.getItem('ah_equipped') || '[]') });
 
     // Broadcast position + health every 50 ms
     if (moveInterval) clearInterval(moveInterval);
