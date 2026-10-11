@@ -3,30 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Text fields under 16px make iPhones and iPads zoom in when they're focused (the sign-in box focuses one
+    // as the page opens), and the page stays zoomed. Turn that zoom off there and in the ArcadeHub app;
+    // Safari still lets people pinch to zoom.
+    (function () {
+      var ua = navigator.userAgent;
+      if (/ArcadeHubApp\//.test(ua) || /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1))
+        document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    })();
+  </script>
   <title>ArcadeHub — Your Games. Your Friends.</title>
   <script>
   /* ArcadeHub loading screen — "insert coin". A CRT switches on over a synthwave
      world (neon grid rushing at you, a striped sun rising, stars), ARCADEHUB is
      built from pixel blocks that rain down and stack like Tetris, the screen
-     shakes and glitches as the last block lands, an arcade HUD counts the score
-     up to 002300, then the screen breaks into pixel tiles that clear into the
-     site. Exactly 2.3 s, timed from the first paint; loops (CRT off, CRT on)
-     until the page is ready; calm version for reduced motion. In the phone app
-     it drops the native launch screen as soon as it shows. It is inline at the
-     top of <head> so it is ready the moment the browser can draw. */
+     shakes and glitches as the last block lands, and an arcade HUD counts the
+     score up to 002300. Then it waits on PRESS START: once the page has loaded,
+     a tap, click or Enter makes the prompt flash and the screen break into pixel
+     tiles that clear into the site. Calm version for reduced motion. In the phone
+     app it drops the native launch screen as soon as it shows. It is inline at
+     the top of <head> so it is ready the moment the browser can draw. */
   (function () {
-    var CYCLE = 2300, OUT = 300, MAX_CYCLES = 6, BG = '#0a0a0f', RED = '#e74c3c';
-    var calm = false;
-    try { calm = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    var PROMPT = 1.3, FLASH = 0.4, WIPE = 0.3, GIVE_UP = 13.8, BG = '#0a0a0f', RED = '#e74c3c';
+    var calm = false, touch = false;
+    try { calm = matchMedia('(prefers-reduced-motion: reduce)').matches; touch = matchMedia('(pointer: coarse)').matches; } catch (e) {}
 
     var css = document.createElement('style');
-    css.textContent = '#ah-splash{position:fixed;inset:0;z-index:2147483000;background:' + BG + ';overflow:hidden;user-select:none;-webkit-user-select:none}' +
+    css.textContent = '#ah-splash{position:fixed;inset:0;z-index:2147483000;background:' + BG + ';overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none;cursor:pointer;-webkit-tap-highlight-color:transparent;outline:none}' +
       '#ah-splash canvas{position:absolute;inset:0;width:100%;height:100%}';
     document.head.appendChild(css);
     var root = document.createElement('div');
     root.id = 'ah-splash';
-    root.setAttribute('role', 'status');
-    root.setAttribute('aria-label', 'Loading ArcadeHub');
+    root.setAttribute('role', 'button');
+    root.setAttribute('tabindex', '0');
+    root.setAttribute('aria-label', 'ArcadeHub. Press start to enter');
     // Three stacked canvases: the still background, the moving picture, and the still scanlines on top.
     // The browser layers the still ones itself, so each frame only redraws what moves.
     root.innerHTML = '<canvas></canvas><canvas></canvas><canvas></canvas>';
@@ -36,11 +47,23 @@
     // The sign-in box focuses its first field as the page loads, which on a phone opens the keyboard over the
     // animation. Hold that focus back while the splash is showing and hand it over when it's done.
     var held = null;
-    function hold(e) { var el = e.target; if (el && el.blur && el !== document.body) { held = el; el.blur(); } }
+    function hold(e) { var el = e.target; if (el && el.blur && el !== document.body && el !== root) { held = el; el.blur(); } }
     document.addEventListener('focusin', hold, true);
+
+    // PRESS START: a tap or click anywhere, or Enter / Space, once the prompt is showing
+    var armed = false, pressedAt = null, lastTs = 0;
+    function press(e) {
+      if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+      if (e.cancelable) e.preventDefault();
+      if (armed && pressedAt === null) pressedAt = lastTs;
+    }
+    root.addEventListener('pointerdown', press);
+    document.addEventListener('keydown', press, true);
+
     function finish() {
       root.remove(); css.remove();
       document.removeEventListener('focusin', hold, true);
+      document.removeEventListener('keydown', press, true);
       if (held && held.isConnected && held.offsetParent && (!document.activeElement || document.activeElement === document.body)) held.focus();
     }
 
@@ -48,7 +71,6 @@
     var lerp = function (a, b, t) { return a + (b - a) * t; };
     var ramp = function (t, a, b) { return clamp((t - a) / (b - a), 0, 1); };
     var easeOut = function (t) { return 1 - Math.pow(1 - t, 3); };
-    var easeIn = function (t) { return t * t * t; };
     var hash = function (n) { var x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }; // same "random" every frame
 
     // 5x7 pixel font
@@ -58,7 +80,8 @@
       I: '11111001000010000100001000010011111', N: '10001110011010110011100011000110001', O: '01110100011000110001100011000101110',
       P: '11110100011000111110100001000010000', R: '11110100011000111110101001001010001', S: '01111100001000001110000010000111110',
       T: '11111001000010000100001000010000100', U: '10001100011000110001100011000101110', X: '10001100010101000100010101000110001',
-      Y: '10001100010101000100001000010000100', 0: '01110100111010110101110011000101110', 1: '00100011000010000100001000010001110',
+      Y: '10001100010101000100001000010000100', G: '01110100011000010111100011000101111', K: '10001100101010011000101001001010001',
+      L: '10000100001000010000100001000011111', W: '10001100011000110101101011010101010', 0: '01110100111010110101110011000101110', 1: '00100011000010000100001000010001110',
       2: '01110100010000100110010001000011111', 3: '11110000010000101110000010000111110', 4: '00010001100101010010111110001000010',
       5: '11111100001111000001000011000101110', 6: '00110010001000011110100011000101110', 7: '11111000010001000100010000100001000',
       8: '01110100011000101110100011000101110', 9: '01110100011000101111000010001001100',
@@ -208,8 +231,8 @@
     }
 
     var shook = '';
-    function draw(ts, mode) { // mode: 'loop' or 'final'
-      var exiting = mode === 'final' && !calm && ts > 2.0;
+    function draw(ts, out, ready) { // out: seconds since START was pressed (-1 before); ready: the page has loaded
+      var exiting = !calm && out >= FLASH;
       if (exiting && bgEl.style.display !== 'none') { // the tiles have to cut through every layer, so draw them all here
         bgEl.style.display = ovEl.style.display = 'none'; root.style.background = 'transparent';
       }
@@ -254,15 +277,25 @@
       for (var d = 0; d < 6; d++) text(d < 6 - score.length ? '0' : score[d - 6 + score.length], sx + d * 6 * hud, safeTop + hud * 10, hud, '#f2f2ff');
       text('HI 002300', W - 16 - textW('HI 002300', hud), safeTop + hud * 10, hud, '#ffd166');
       var barW = 53 * B * 0.72, segs = 14, sw = barW / segs, by = logoY + 7 * B + B * 2.2, bx = cx - barW / 2;
-      var fill = calm ? 1 : ramp(ts, 0.45, 1.95);
+      var fill = calm ? 1 : ramp(ts, 0.45, 1.95), blink = Math.floor((ts - PROMPT) * 3) % 2 === 0;
+      if (!ready) fill = Math.min(fill, (segs - 1) / segs);
       ctx.fillStyle = 'rgba(10,10,15,0.6)'; ctx.fillRect(bx - 3, by - 3, barW + 6, B * 1.2 + 6);
       ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(bx - 3, by - 3, barW + 6, B * 1.2 + 6);
       for (var sg = 0; sg < segs; sg++) {
-        ctx.fillStyle = (sg + 1) / segs <= fill ? (sg >= segs - 4 ? '#ffd166' : RED) : 'rgba(255,255,255,0.06)';
+        var lit = (sg + 1) / segs <= fill + 1e-9 || (!ready && sg === segs - 1 && fill >= (segs - 1) / segs && blink);
+        ctx.fillStyle = lit ? (sg >= segs - 4 ? '#ffd166' : RED) : 'rgba(255,255,255,0.06)';
         ctx.fillRect(bx + sg * sw + 1, by, sw - 2, B * 1.2);
       }
-      var pp = Math.max(2, Math.round(B * 0.45));
-      if (calm || (ts > 1.3 && Math.floor(ts * 6) % 2 === 0)) text('PRESS START', cx - textW('PRESS START', pp) / 2, by + B * 1.2 + pp * 9, pp, '#ffffff');
+      // The prompt: LOADING until the page is ready, then PRESS START (yellow / white once pressed)
+      var pp = Math.max(2, Math.round(B * 0.45)), py = by + B * 1.2 + pp * 9, word;
+      if (out >= 0) word = ['PRESS START', calm || Math.floor(out * 16) % 2 === 0 ? '#ffd166' : '#ffffff'];
+      else if (ts >= PROMPT || calm) word = !ready ? (calm || blink ? ['LOADING', '#9a9ac4'] : null) : calm || blink ? ['PRESS START', '#ffffff'] : null;
+      if (word) text(word[0], cx - textW(word[0], pp) / 2, py, pp, word[1]);
+      if (ready && out < 0 && (ts >= PROMPT || calm)) {
+        var hint = touch ? 'TAP ANYWHERE' : 'CLICK OR PRESS ENTER';
+        ctx.globalAlpha = hudA * 0.85; text(hint, cx - textW(hint, hud) / 2, py + pp * 7 + hud * 6, hud, '#c9c9ff'); ctx.globalAlpha = hudA;
+      }
+      if (!calm && out >= 0 && out < 0.15) { ctx.globalAlpha = 0.3 * (1 - out / 0.15); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = hudA; }
       ctx.globalAlpha = hudA * 0.55;
       text('BY NEXUS CONNECTIONS', cx - textW('BY NEXUS CONNECTIONS', hud) / 2, H - 26 - hud * 7, hud, '#c9c9ff');
       ctx.globalAlpha = 1;
@@ -273,18 +306,16 @@
         // CRT switching on: a bright line opens up into the picture
         var on = easeOut(ramp(ts, 0.03, 0.22));
         if (on < 1) crt(on, 1 - ramp(ts, 0.0, 0.2));
-        // Looping: CRT switching off before the next cycle starts
-        if (mode === 'loop' && ts > 2.05) crt(1 - easeIn(ramp(ts, 2.05, 2.28)), ramp(ts, 2.05, 2.2));
       }
-      if (mode === 'final') {
-        if (calm) root.style.opacity = 1 - ramp(ts, 2.0, 2.3);
+      if (out >= 0) {
+        if (calm) root.style.opacity = 1 - ramp(out, 0, WIPE);
         else if (exiting) { // Level start: the screen breaks into pixel tiles that clear from the centre out
           ctx.globalCompositeOperation = 'destination-out';
           ctx.fillStyle = '#000';
           var tile = Math.max(18, Math.round(Math.min(W, H) / 14)), maxD = Math.hypot(W, H) / 2;
           for (var ty = 0; ty < H; ty += tile) for (var tx = 0; tx < W; tx += tile) {
-            var at = 2.0 + Math.hypot(tx + tile / 2 - cx, ty + tile / 2 - H / 2) / maxD * 0.16 + hash(tx * 7 + ty) * 0.05;
-            var q = easeOut(ramp(ts, at, at + 0.09));
+            var at = FLASH + Math.hypot(tx + tile / 2 - cx, ty + tile / 2 - H / 2) / maxD * 0.16 + hash(tx * 7 + ty) * 0.05;
+            var q = easeOut(ramp(out, at, at + 0.09));
             if (q > 0) { var sz = tile * q + 1; ctx.fillRect(tx + (tile - sz) / 2, ty + (tile - sz) / 2, sz, sz); }
           }
           ctx.globalCompositeOperation = 'source-over';
@@ -304,23 +335,20 @@
       }
     }
 
-    // ── Clock: 2.3 s cycles from the first paint ──
-    var t0 = null, cycle = 0, finalCycle = -1, decided = -1, painted = null;
+    // ── Clock: timed from the first paint ──
+    var t0 = null, painted = null, ready = false;
     function frame(now) {
-      var elapsed = now - t0;
-      cycle = Math.floor(elapsed / CYCLE);
-      var t = elapsed - cycle * CYCLE;
-      if (decided < cycle && t >= CYCLE - OUT) {
-        decided = cycle;
-        if (document.readyState === 'complete' || cycle >= MAX_CYCLES - 1) finalCycle = cycle;
-      }
-      if (finalCycle >= 0 && cycle > finalCycle) { finish(); return; }
-      draw(t / 1000, cycle === finalCycle ? 'final' : 'loop');
+      var ts = Math.max(0, (now - t0) / 1000);
+      if (!ready && (document.readyState === 'complete' || ts > GIVE_UP)) ready = true; // never keep anyone out for good
+      armed = ready && ts >= PROMPT; lastTs = ts;
+      var out = pressedAt === null ? -1 : ts - pressedAt;
+      if (out >= (calm ? WIPE : FLASH + WIPE)) { finish(); return; }
+      draw(ts, out, ready);
       requestAnimationFrame(frame);
     }
 
     build();
-    draw(0, 'loop');
+    draw(0, -1, false);
     addEventListener('resize', build);
     requestAnimationFrame(function (now) {
       t0 = now;
@@ -328,7 +356,7 @@
       try {
         var onPaint = function (list) {
           list.forEach(function (p) { if (p.name === 'first-paint' && painted === null) painted = p.startTime; });
-          if (painted !== null && cycle === 0 && finalCycle < 0) t0 = painted;
+          if (painted !== null && pressedAt === null) t0 = painted;
         };
         onPaint(performance.getEntriesByType('paint'));
         new PerformanceObserver(function (l) { onPaint(l.getEntries()); }).observe({ type: 'paint', buffered: true });
