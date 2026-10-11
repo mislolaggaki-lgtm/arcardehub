@@ -4,6 +4,340 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ArcadeHub — Your Games. Your Friends.</title>
+  <script>
+  /* ArcadeHub loading screen — "insert coin". A CRT switches on over a synthwave
+     world (neon grid rushing at you, a striped sun rising, stars), ARCADEHUB is
+     built from pixel blocks that rain down and stack like Tetris, the screen
+     shakes and glitches as the last block lands, an arcade HUD counts the score
+     up to 002300, then the screen breaks into pixel tiles that clear into the
+     site. Exactly 2.3 s, timed from the first paint; loops (CRT off, CRT on)
+     until the page is ready; calm version for reduced motion. In the phone app
+     it drops the native launch screen as soon as it shows. It is inline at the
+     top of <head> so it is ready the moment the browser can draw. */
+  (function () {
+    var CYCLE = 2300, OUT = 300, MAX_CYCLES = 6, BG = '#0a0a0f', RED = '#e74c3c';
+    var calm = false;
+    try { calm = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+
+    var css = document.createElement('style');
+    css.textContent = '#ah-splash{position:fixed;inset:0;z-index:2147483000;background:' + BG + ';overflow:hidden;user-select:none;-webkit-user-select:none}' +
+      '#ah-splash canvas{position:absolute;inset:0;width:100%;height:100%}';
+    document.head.appendChild(css);
+    var root = document.createElement('div');
+    root.id = 'ah-splash';
+    root.setAttribute('role', 'status');
+    root.setAttribute('aria-label', 'Loading ArcadeHub');
+    // Three stacked canvases: the still background, the moving picture, and the still scanlines on top.
+    // The browser layers the still ones itself, so each frame only redraws what moves.
+    root.innerHTML = '<canvas></canvas><canvas></canvas><canvas></canvas>';
+    document.documentElement.appendChild(root); // <body> doesn't exist yet
+    var layers = root.querySelectorAll('canvas'), bgEl = layers[0], canvas = layers[1], ovEl = layers[2], ctx = canvas.getContext('2d');
+
+    // The sign-in box focuses its first field as the page loads, which on a phone opens the keyboard over the
+    // animation. Hold that focus back while the splash is showing and hand it over when it's done.
+    var held = null;
+    function hold(e) { var el = e.target; if (el && el.blur && el !== document.body) { held = el; el.blur(); } }
+    document.addEventListener('focusin', hold, true);
+    function finish() {
+      root.remove(); css.remove();
+      document.removeEventListener('focusin', hold, true);
+      if (held && held.isConnected && held.offsetParent && (!document.activeElement || document.activeElement === document.body)) held.focus();
+    }
+
+    var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+    var lerp = function (a, b, t) { return a + (b - a) * t; };
+    var ramp = function (t, a, b) { return clamp((t - a) / (b - a), 0, 1); };
+    var easeOut = function (t) { return 1 - Math.pow(1 - t, 3); };
+    var easeIn = function (t) { return t * t * t; };
+    var hash = function (n) { var x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }; // same "random" every frame
+
+    // 5x7 pixel font
+    var FONT = {
+      A: '01110100011000111111100011000110001', B: '11110100011000111110100011000111110', C: '01111100001000010000100001000001111',
+      D: '11110100011000110001100011000111110', E: '11111100001000011110100001000011111', H: '10001100011000111111100011000110001',
+      I: '11111001000010000100001000010011111', N: '10001110011010110011100011000110001', O: '01110100011000110001100011000101110',
+      P: '11110100011000111110100001000010000', R: '11110100011000111110101001001010001', S: '01111100001000001110000010000111110',
+      T: '11111001000010000100001000010000100', U: '10001100011000110001100011000101110', X: '10001100010101000100010101000110001',
+      Y: '10001100010101000100001000010000100', 0: '01110100111010110101110011000101110', 1: '00100011000010000100001000010001110',
+      2: '01110100010000100110010001000011111', 3: '11110000010000101110000010000111110', 4: '00010001100101010010111110001000010',
+      5: '11111100001111000001000011000101110', 6: '00110010001000011110100011000101110', 7: '11111000010001000100010000100001000',
+      8: '01110100011000101110100011000101110', 9: '01110100011000101111000010001001100',
+    };
+    var textW = function (str, p) { return (str.length * 6 - 1) * p; };
+
+    // Everything that doesn't change from frame to frame is drawn once onto its own canvas and stamped
+    function layer(w, h, scale) {
+      var c = document.createElement('canvas');
+      c.width = Math.max(1, Math.ceil(w * scale)); c.height = Math.max(1, Math.ceil(h * scale));
+      var g = c.getContext('2d'); g.scale(scale, scale);
+      return { c: c, g: g, w: w, h: h };
+    }
+    var labels = {};
+    function text(str, x, y, p, color) { // pixel text with a drop shadow; x is the left edge
+      var key = str + '|' + p + '|' + color, l = labels[key], sh = Math.max(1, Math.round(p / 2));
+      if (!l) {
+        l = labels[key] = layer(textW(str, p) + sh, 7 * p + sh, dpr);
+        [[sh, 'rgba(10,10,15,0.8)'], [0, color]].forEach(function (pass) {
+          l.g.fillStyle = pass[1];
+          for (var i = 0; i < str.length; i++) {
+            var g = FONT[str[i]];
+            if (g) for (var b = 0; b < 35; b++) if (g[b] === '1') l.g.fillRect((i * 6 + b % 5) * p + pass[0], Math.floor(b / 5) * p + pass[0], p, p);
+          }
+        });
+      }
+      ctx.drawImage(l.c, Math.round(x * dpr) / dpr, Math.round(y * dpr) / dpr, l.w, l.h);
+    }
+
+    // ── Scene ──
+    var W, H, dpr, cx, horizon, R, B, logoX, logoY, blocks, lastLand, settled, horizonGlow, sun, solid, glow, glowCyan, bricks, stars, hud, safeTop, margin;
+    function build() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = innerWidth; H = innerHeight;
+      [bgEl, canvas, ovEl].forEach(function (c) { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); });
+      cx = W / 2; horizon = Math.round(H * 0.62); R = Math.min(W, H) * 0.22;
+      B = clamp(Math.floor(Math.min(W * 0.88 / 53, H * 0.12 / 7)), 4, 16);
+      logoX = Math.round(cx - 53 * B / 2); logoY = Math.round(H * 0.34 - 3.5 * B);
+      labels = {};
+      var probe = document.createElement('div'); probe.style.paddingTop = 'env(safe-area-inset-top)'; root.appendChild(probe);
+      safeTop = 14 + (parseFloat(getComputedStyle(probe).paddingTop) || 0); probe.remove();
+      hud = clamp(Math.round(B * 0.34), 2, 4);
+
+      blocks = []; lastLand = 0; settled = 0;
+      var word = 'ARCADEHUB';
+      for (var li = 0; li < word.length; li++) {
+        var g = FONT[word[li]];
+        for (var b = 0; b < 35; b++) if (g[b] === '1') {
+          var r = Math.floor(b / 5), c = b % 5, n = li * 35 + b;
+          var start = 0.3 + li * 0.065 + (6 - r) * 0.02 + hash(n) * 0.02;
+          blocks.push({ x: logoX + (li * 6 + c) * B, y: logoY + r * B, red: li >= 6, start: start, from: -B * (3 + hash(n + 9) * 12) - H * 0.15 });
+          lastLand = Math.max(lastLand, start + 0.26); settled = Math.max(settled, start + 0.38);
+        }
+      }
+
+      // Background: sky, floor and the grid lines that run towards the horizon (they don't move)
+      var s = bgEl.getContext('2d'), gr = s.createLinearGradient(0, 0, 0, horizon);
+      s.setTransform(dpr, 0, 0, dpr, 0, 0);
+      s.fillStyle = BG; s.fillRect(0, 0, W, H);
+      gr.addColorStop(0, '#0a0a0f'); gr.addColorStop(1, '#2a0c1e'); s.fillStyle = gr; s.fillRect(0, 0, W, horizon);
+      gr = s.createLinearGradient(0, horizon, 0, H); gr.addColorStop(0, '#1a0614'); gr.addColorStop(1, '#0a0a0f');
+      s.fillStyle = gr; s.fillRect(0, horizon, W, H - horizon);
+      s.beginPath();
+      for (var v = -14; v <= 14; v++) { s.moveTo(cx + v * W * 0.012, horizon); s.lineTo(cx + v * W * 0.17, H); }
+      neon(s);
+
+      // The striped sun with its halo
+      var hs = R * 2.1;
+      sun = layer(hs * 2, hs * 2, dpr);
+      s = sun.g;
+      gr = s.createRadialGradient(hs, hs, R * 0.6, hs, hs, hs);
+      gr.addColorStop(0, 'rgba(255,90,110,0.35)'); gr.addColorStop(1, 'rgba(255,90,110,0)');
+      s.fillStyle = gr; s.fillRect(0, 0, hs * 2, hs * 2);
+      gr = s.createLinearGradient(0, hs - R, 0, hs + R);
+      gr.addColorStop(0, '#ffd166'); gr.addColorStop(0.5, '#ff6b6b'); gr.addColorStop(1, RED);
+      s.fillStyle = gr; s.beginPath(); s.arc(hs, hs, R, 0, Math.PI * 2); s.fill();
+      s.fillStyle = '#1c0a17';
+      for (var k = 0; k < 6; k++) s.fillRect(hs - R, hs + R * (0.08 + k * 0.16), R * 2, 1.5 + k * 1.7);
+
+      // One white and one red block, bevelled, and the finished logo made of them
+      bricks = [false, true].map(function (red) {
+        var l = layer(B, B, dpr), e = Math.max(1, Math.round(B / 5));
+        l.g.fillStyle = red ? RED : '#e9e9fb'; l.g.fillRect(0, 0, B, B);
+        l.g.fillStyle = red ? '#ff8a7d' : '#ffffff'; l.g.fillRect(0, 0, B, e); l.g.fillRect(0, 0, e, B);
+        l.g.fillStyle = red ? '#9c2a1f' : '#9a9ac4'; l.g.fillRect(0, B - e, B, e); l.g.fillRect(B - e, 0, e, B);
+        return l;
+      });
+      solid = layer(53 * B, 7 * B, dpr);
+      blocks.forEach(function (k) { solid.g.drawImage(bricks[k.red ? 1 : 0].c, k.x - logoX, k.y - logoY, B, B); });
+
+      // The finished logo's neon glow (faded in as blocks land), and a cyan copy for the glitch
+      margin = Math.ceil(B * 3);
+      var glowLayer = function (white, red) {
+        var l = layer(53 * B + margin * 2, 7 * B + margin * 2, dpr);
+        l.g.shadowBlur = B * 2.2 * dpr;
+        [white, red].forEach(function (col, isRed) { // one blur per colour
+          var flat = layer(l.w, l.h, dpr);
+          flat.g.fillStyle = col[0];
+          blocks.forEach(function (k) { if (k.red === !!isRed) flat.g.fillRect(k.x - logoX + margin, k.y - logoY + margin, B, B); });
+          l.g.shadowColor = col[1]; l.g.drawImage(flat.c, 0, 0, l.w, l.h);
+        });
+        return l;
+      };
+      glow = glowLayer(['#f2f2ff', 'rgba(170,170,255,0.55)'], [RED, 'rgba(231,76,60,0.9)']);
+      glowCyan = glowLayer(['#00e5ff', 'rgba(0,229,255,0.6)'], ['#00e5ff', 'rgba(0,229,255,0.6)']);
+
+      horizonGlow = ctx.createLinearGradient(0, horizon - 30, 0, horizon + 18);
+      horizonGlow.addColorStop(0, 'rgba(255,107,129,0)'); horizonGlow.addColorStop(0.6, 'rgba(255,107,129,0.55)'); horizonGlow.addColorStop(1, 'rgba(255,107,129,0)');
+
+      // Scanlines and vignette on top of everything
+      s = ovEl.getContext('2d');
+      s.setTransform(dpr, 0, 0, dpr, 0, 0);
+      s.fillStyle = 'rgba(0,0,0,0.22)';
+      for (var y = 0; y < H; y += 3) s.fillRect(0, y, W, 1);
+      gr = s.createRadialGradient(cx, H / 2, Math.min(W, H) * 0.3, cx, H / 2, Math.hypot(W, H) * 0.62);
+      gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,0.7)');
+      s.fillStyle = gr; s.fillRect(0, 0, W, H);
+
+      stars = [];
+      for (var st = 0; st < 70; st++) stars.push([hash(st + 500) * W, hash(st + 900) * horizon * 0.92, hash(st + 1300)]);
+    }
+
+    function neon(g) { // strokes the current path as a glowing neon line
+      g.strokeStyle = 'rgba(231,76,60,0.35)'; g.lineWidth = 5; g.stroke();
+      g.strokeStyle = '#ff6b81'; g.lineWidth = 1.2; g.stroke();
+    }
+
+    function drawWorld(ts) {
+      ctx.fillStyle = '#fff';
+      for (var i = 0; i < stars.length; i++) {
+        var st = stars[i], z = st[2] > 0.8 ? 2 : 1;
+        ctx.globalAlpha = 0.25 + 0.5 * (0.5 + 0.5 * Math.sin(ts * 6 + st[2] * 20));
+        ctx.fillRect(st[0], st[1], z, z);
+      }
+      ctx.globalAlpha = 1;
+      // The sun rising, cut off at the horizon
+      var rise = calm ? 1 : easeOut(ramp(ts, 0.12, 0.95)), sy = horizon + R * 0.25 - rise * R * 0.95;
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, horizon); ctx.clip();
+      ctx.drawImage(sun.c, cx - sun.w / 2, sy - sun.h / 2, sun.w, sun.h);
+      ctx.restore();
+      // The grid's cross lines rushing towards you (exactly 3 rows a cycle, so it loops seamlessly)
+      var scroll = calm ? 0 : (ts / 2.3 * 3) % 1, rows = 12;
+      ctx.beginPath();
+      for (var h = 0; h < rows; h++) { var yy = horizon + (H - horizon) * Math.pow((h + scroll) / rows, 2.4); ctx.moveTo(0, yy); ctx.lineTo(W, yy); }
+      neon(ctx);
+      ctx.fillStyle = horizonGlow; ctx.fillRect(0, horizon - 30, W, 48);
+    }
+
+    var shook = '';
+    function draw(ts, mode) { // mode: 'loop' or 'final'
+      var exiting = mode === 'final' && !calm && ts > 2.0;
+      if (exiting && bgEl.style.display !== 'none') { // the tiles have to cut through every layer, so draw them all here
+        bgEl.style.display = ovEl.style.display = 'none'; root.style.background = 'transparent';
+      }
+      // The whole screen shakes as the last block lands
+      var shake = !calm && ts > lastLand - 0.02 && ts < lastLand + 0.22 ? (1 - ramp(ts, lastLand, lastLand + 0.22)) * B * 0.8 : 0;
+      var tr = shake ? 'translate(' + ((hash(Math.floor(ts * 60)) - 0.5) * shake).toFixed(1) + 'px,' + ((hash(Math.floor(ts * 60) + 7) - 0.5) * shake).toFixed(1) + 'px)' : '';
+      if (tr !== shook) { shook = tr; for (var c = 0; c < 3; c++) layers[c].style.transform = tr; }
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      if (exiting) ctx.drawImage(bgEl, 0, 0, W, H);
+      drawWorld(ts);
+
+      // ARCADEHUB, block by block
+      var landed = 0;
+      if (calm || ts > settled) { landed = blocks.length; ctx.drawImage(solid.c, logoX, logoY, solid.w, solid.h); }
+      else for (var i = 0; i < blocks.length; i++) {
+        var k = blocks[i], p = ramp(ts, k.start, k.start + 0.26), y = lerp(k.from, k.y, p * p);
+        if (p === 1) { landed++; var bo = ramp(ts, k.start + 0.26, k.start + 0.38); y = k.y - Math.sin(bo * Math.PI) * B * 0.3 * (1 - bo); }
+        if (p > 0) ctx.drawImage(bricks[k.red ? 1 : 0].c, k.x, y, B, B);
+      }
+      var gx = logoX - margin, gy = logoY - margin;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = (landed / blocks.length) * 0.9;
+      ctx.drawImage(glow.c, gx, gy, glow.w, glow.h);
+      // Glitch: red / cyan split as the last block lands
+      var gl = calm ? 0 : 1 - ramp(ts, lastLand, lastLand + 0.3);
+      if (gl > 0 && ts > lastLand - 0.04) {
+        var off = gl * B * 1.6 * (hash(Math.floor(ts * 40)) > 0.4 ? 1 : -0.6);
+        ctx.globalAlpha = 0.55 * gl;
+        ctx.drawImage(glow.c, gx + off, gy, glow.w, glow.h);
+        ctx.drawImage(glowCyan.c, gx - off, gy, glow.w, glow.h);
+      }
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+
+      // HUD: score counting up to 002300, hi-score, loading bar, PRESS START, credit
+      var hudA = calm ? 1 : ramp(ts, 0.25, 0.45);
+      ctx.globalAlpha = hudA;
+      var score = String(Math.min(2300, Math.floor(ts * 1000))), sx = 16 + textW('SCORE ', hud) + hud;
+      text('1UP', 16, safeTop, hud, RED);
+      text('SCORE', 16, safeTop + hud * 10, hud, '#f2f2ff');
+      for (var d = 0; d < 6; d++) text(d < 6 - score.length ? '0' : score[d - 6 + score.length], sx + d * 6 * hud, safeTop + hud * 10, hud, '#f2f2ff');
+      text('HI 002300', W - 16 - textW('HI 002300', hud), safeTop + hud * 10, hud, '#ffd166');
+      var barW = 53 * B * 0.72, segs = 14, sw = barW / segs, by = logoY + 7 * B + B * 2.2, bx = cx - barW / 2;
+      var fill = calm ? 1 : ramp(ts, 0.45, 1.95);
+      ctx.fillStyle = 'rgba(10,10,15,0.6)'; ctx.fillRect(bx - 3, by - 3, barW + 6, B * 1.2 + 6);
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(bx - 3, by - 3, barW + 6, B * 1.2 + 6);
+      for (var sg = 0; sg < segs; sg++) {
+        ctx.fillStyle = (sg + 1) / segs <= fill ? (sg >= segs - 4 ? '#ffd166' : RED) : 'rgba(255,255,255,0.06)';
+        ctx.fillRect(bx + sg * sw + 1, by, sw - 2, B * 1.2);
+      }
+      var pp = Math.max(2, Math.round(B * 0.45));
+      if (calm || (ts > 1.3 && Math.floor(ts * 6) % 2 === 0)) text('PRESS START', cx - textW('PRESS START', pp) / 2, by + B * 1.2 + pp * 9, pp, '#ffffff');
+      ctx.globalAlpha = hudA * 0.55;
+      text('BY NEXUS CONNECTIONS', cx - textW('BY NEXUS CONNECTIONS', hud) / 2, H - 26 - hud * 7, hud, '#c9c9ff');
+      ctx.globalAlpha = 1;
+
+      if (exiting) ctx.drawImage(ovEl, 0, 0, W, H);
+
+      if (!calm) {
+        // CRT switching on: a bright line opens up into the picture
+        var on = easeOut(ramp(ts, 0.03, 0.22));
+        if (on < 1) crt(on, 1 - ramp(ts, 0.0, 0.2));
+        // Looping: CRT switching off before the next cycle starts
+        if (mode === 'loop' && ts > 2.05) crt(1 - easeIn(ramp(ts, 2.05, 2.28)), ramp(ts, 2.05, 2.2));
+      }
+      if (mode === 'final') {
+        if (calm) root.style.opacity = 1 - ramp(ts, 2.0, 2.3);
+        else if (exiting) { // Level start: the screen breaks into pixel tiles that clear from the centre out
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.fillStyle = '#000';
+          var tile = Math.max(18, Math.round(Math.min(W, H) / 14)), maxD = Math.hypot(W, H) / 2;
+          for (var ty = 0; ty < H; ty += tile) for (var tx = 0; tx < W; tx += tile) {
+            var at = 2.0 + Math.hypot(tx + tile / 2 - cx, ty + tile / 2 - H / 2) / maxD * 0.16 + hash(tx * 7 + ty) * 0.05;
+            var q = easeOut(ramp(ts, at, at + 0.09));
+            if (q > 0) { var sz = tile * q + 1; ctx.fillRect(tx + (tile - sz) / 2, ty + (tile - sz) / 2, sz, sz); }
+          }
+          ctx.globalCompositeOperation = 'source-over';
+        }
+      }
+    }
+
+    function crt(open, flash) { // open 0..1: how much of the picture shows; flash: white line strength
+      var band = Math.max(2, H * open), top = (H - band) / 2;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, top); ctx.fillRect(0, top + band, W, H);
+      if (flash > 0) {
+        var lw = lerp(W * 0.1, W, Math.min(1, open * 3 + 0.3));
+        ctx.globalAlpha = flash; ctx.fillStyle = '#fff';
+        ctx.fillRect(cx - lw / 2, H / 2 - 1.5, lw, 3);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // ── Clock: 2.3 s cycles from the first paint ──
+    var t0 = null, cycle = 0, finalCycle = -1, decided = -1, painted = null;
+    function frame(now) {
+      var elapsed = now - t0;
+      cycle = Math.floor(elapsed / CYCLE);
+      var t = elapsed - cycle * CYCLE;
+      if (decided < cycle && t >= CYCLE - OUT) {
+        decided = cycle;
+        if (document.readyState === 'complete' || cycle >= MAX_CYCLES - 1) finalCycle = cycle;
+      }
+      if (finalCycle >= 0 && cycle > finalCycle) { finish(); return; }
+      draw(t / 1000, cycle === finalCycle ? 'final' : 'loop');
+      requestAnimationFrame(frame);
+    }
+
+    build();
+    draw(0, 'loop');
+    addEventListener('resize', build);
+    requestAnimationFrame(function (now) {
+      t0 = now;
+      // Count from the first paint where the browser reports it (Chrome / Android); it can come a little after this frame
+      try {
+        var onPaint = function (list) {
+          list.forEach(function (p) { if (p.name === 'first-paint' && painted === null) painted = p.startTime; });
+          if (painted !== null && cycle === 0 && finalCycle < 0) t0 = painted;
+        };
+        onPaint(performance.getEntriesByType('paint'));
+        new PerformanceObserver(function (l) { onPaint(l.getEntries()); }).observe({ type: 'paint', buffered: true });
+      } catch (e) {}
+      try { var cap = window.Capacitor; if (cap && cap.isNativePlatform && cap.isNativePlatform()) cap.Plugins.SplashScreen.hide({ fadeOutDuration: 150 }); } catch (e) {}
+      frame(now);
+    });
+  })();
+  </script>
   <link rel="icon" href="/favicon.ico?v=2" sizes="48x48">
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=2">
   <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png?v=2">
