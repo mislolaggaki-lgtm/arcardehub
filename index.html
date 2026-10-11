@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script>
-    // Text fields under 16px make iPhones and iPads zoom in when they're focused (the sign-in box focuses one
-    // as the page opens), and the page stays zoomed. Turn that zoom off there and in the ArcadeHub app;
-    // Safari still lets people pinch to zoom.
+    // The ArcadeHub app shows the site zoomed out to 80%, so more fits on a phone screen. Text fields under 16px
+    // also make iPhones and iPads zoom in when they're focused (the sign-in box focuses one as the page opens)
+    // and stay zoomed, so the zoom is fixed in the app and on iPhone / iPad (Safari still allows pinch zoom).
     (function () {
-      var ua = navigator.userAgent;
-      if (/ArcadeHubApp\//.test(ua) || /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1))
-        document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+      var ua = navigator.userAgent, s = /ArcadeHubApp\//.test(ua) ? '0.8' : '1.0';
+      if (s !== '1.0' || /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1))
+        document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=device-width, initial-scale=' + s + ', minimum-scale=' + s + ', maximum-scale=' + s + ', user-scalable=no');
     })();
   </script>
   <title>ArcadeHub — Your Games. Your Friends.</title>
