@@ -23,7 +23,8 @@
     },
     "StatusBar": {
       "style": "DARK",
-      "overlaysWebView": false
+      "overlaysWebView": false,
+      "backgroundColor": "#0a0a0f"
     },
     "SystemBars": {
       "insetsHandling": "native",
