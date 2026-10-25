@@ -8,6 +8,9 @@ const jwt        = require('jsonwebtoken');
 const path       = require('path');
 const webpush    = require('web-push');
 const dns        = require('dns').promises;
+// Passkeys (@simplewebauthn/server) need the Web Crypto API on globalThis, which Node only provides
+// from v19 (Railway runs this on Node 18)
+if (!globalThis.crypto) globalThis.crypto = require('crypto').webcrypto;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse } = require('@simplewebauthn/server');
 const { isoBase64URL, isoUint8Array } = require('@simplewebauthn/server/helpers');

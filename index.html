@@ -3582,12 +3582,22 @@
       document.getElementById('btn-passkey-login').style.display = '';
     }
 
+    // A session past its 7 days can't manage passkeys: sign out, back to the sign-in box
+    function _passkeySessionExpired() {
+      closeProfile();
+      ['ah_token', 'ah_username', 'isAdmin', 'ah_terms'].forEach(k => localStorage.removeItem(k));
+      setLoggedOut();
+      openModal('login');
+      showMsg('login-msg', 'Your session has expired. Please sign in again.', 'error');
+    }
+
     async function _loadProfilePasskeys(message = '') {
       const box = document.getElementById('pk-box');
       box.innerHTML = '<div class="pk-note">Loading your passkeys…</div>';
       let list = [];
       try {
         const r = await fetch(`${API}/passkeys`, { headers: { Authorization: `Bearer ${localStorage.getItem('ah_token')}` } });
+        if (r.status === 401) return _passkeySessionExpired();
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || "Couldn't load your passkeys.");
         list = d.passkeys || [];
@@ -3611,12 +3621,16 @@
         try {
           await passkeys.register(localStorage.getItem('ah_token'));
           _loadProfilePasskeys();
-        } catch (e) { _loadProfilePasskeys(e.quiet ? '' : e.message); }
+        } catch (e) {
+          if (e.status === 401) return _passkeySessionExpired();
+          _loadProfilePasskeys(e.quiet ? '' : e.message);
+        }
       });
       box.querySelectorAll('[data-pk]').forEach(b => b.addEventListener('click', async () => {
         if (!confirm("Remove this passkey? You won't be able to sign in with it any more.")) return;
         try {
           const r = await fetch(`${API}/passkeys/${encodeURIComponent(b.dataset.pk)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('ah_token')}` } });
+          if (r.status === 401) return _passkeySessionExpired();
           const d = await r.json().catch(() => ({}));
           _loadProfilePasskeys(r.ok ? '' : (d.error || "Couldn't remove that passkey."));
         } catch { _loadProfilePasskeys('Could not reach the server.'); }

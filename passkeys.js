@@ -71,12 +71,12 @@
   // Adds a passkey to the account this session token belongs to; resolves to the saved passkey
   async function register(token) {
     const o = await post(`${api()}/passkey/register/options`, {}, token);
-    if (!o.res.ok) throw new Error(o.data.error || 'Couldn\'t start adding a passkey. Please try again.');
+    if (!o.res.ok) throw Object.assign(new Error(o.data.error || 'Couldn\'t start adding a passkey. Please try again.'), { status: o.res.status });
     let cred;
     try { cred = await navigator.credentials.create({ publicKey: creationOptions(o.data.options) }); }
     catch (e) { throw friendly(e, true); }
     const v = await post(`${api()}/passkey/register/verify`, { token: o.data.token, response: credentialJSON(cred) }, token);
-    if (!v.res.ok) throw new Error(v.data.error || 'Couldn\'t add that passkey. Please try again.');
+    if (!v.res.ok) throw Object.assign(new Error(v.data.error || 'Couldn\'t add that passkey. Please try again.'), { status: v.res.status });
     return v.data.passkey;
   }
 
