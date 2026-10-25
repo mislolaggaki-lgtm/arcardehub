@@ -8,7 +8,9 @@ const jwt        = require('jsonwebtoken');
 const path       = require('path');
 const webpush    = require('web-push');
 const dns        = require('dns').promises;
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse } = require('@simplewebauthn/server');
+const { isoBase64URL, isoUint8Array } = require('@simplewebauthn/server/helpers');
 const { Server } = require('socket.io');
 const weeklyEmail = require('./weeklyEmail');
 const emails      = require('./emails');
@@ -134,7 +136,7 @@ app.use(cors());
 app.use(express.json());
 // Only the website's own files are public. The project folder also holds the server
 // code (with redeem codes), settings files and node_modules, which must never be served.
-const PUBLIC_FILES = new Set(['/', '/index.html', '/terms.html', '/sw.js', '/updates.js', '/robot-builder.js',
+const PUBLIC_FILES = new Set(['/', '/index.html', '/terms.html', '/sw.js', '/updates.js', '/robot-builder.js', '/passkeys.js',
   '/favicon.ico', '/arcadehub-game-logo.png', '/dropdown-gameai-logo.png']);
 const PUBLIC_DIRS = new Set(['icons', 'email', 'games']);
 app.use((req, res, next) => {
@@ -223,6 +225,37 @@ function verifyToken(authHeader) {
   }
 }
 
+// ── Passkeys (WebAuthn) ───────────────────────────────────────
+// Another way to sign in, alongside the password. The relying party is the site's own host name,
+// so passkeys made on the website work on the website. Each ceremony's challenge travels in a
+// short-lived signed token rather than a server-side session, and a sign-in challenge works once.
+function relyingParty(req) {
+  const rpID = req.hostname;
+  return { rpID, origin: rpID === 'localhost' ? `http://localhost:${PORT}` : `https://${rpID}` };
+}
+const challengeToken = (purpose, challenge, extra = {}) => jwt.sign({ purpose, challenge, ...extra }, JWT_SECRET, { expiresIn: '5m' });
+function readChallenge(token, purpose) {
+  try { const d = jwt.verify(String(token || ''), JWT_SECRET); return d.purpose === purpose ? d : null; } catch { return null; }
+}
+const spentChallenges = new Map(); // sign-in challenge -> when it can be forgotten
+function spendChallenge(challenge) {
+  const now = Date.now();
+  for (const [c, until] of spentChallenges) if (until < now) spentChallenges.delete(c);
+  if (spentChallenges.has(challenge)) return false;
+  spentChallenges.set(challenge, now + 6 * 60 * 1000);
+  return true;
+}
+function passkeyDeviceName(ua = '') {
+  if (/iPhone/.test(ua)) return 'iPhone';
+  if (/iPad/.test(ua)) return 'iPad';
+  if (/Android/.test(ua)) return 'Android phone';
+  if (/CrOS/.test(ua)) return 'Chromebook';
+  if (/Macintosh|Mac OS X/.test(ua)) return 'Mac';
+  if (/Windows/.test(ua)) return 'Windows PC';
+  return 'Passkey';
+}
+const publicPasskey = p => ({ id: p.id, name: p.name, createdAt: p.createdAt, lastUsedAt: p.lastUsedAt || null });
+
 // ── Start (connects to MongoDB, then registers routes) ────────
 async function start() {
   const client = new MongoClient(MONGODB_URI, {
@@ -252,6 +285,7 @@ async function start() {
 
   // Enforce unique usernames
   await usersCol.createIndex({ username: 1 }, { unique: true });
+  await usersCol.createIndex({ 'passkeys.id': 1 });
   await bannedCol.createIndex({ username: 1 }, { unique: true });
 
   // ── VAPID keys (generated once, stored in DB) ───────────────
@@ -1162,39 +1196,161 @@ async function start() {
       if (!match)
         return res.status(401).json({ error: 'Invalid username or password.' });
 
-      if (user.email && !user.emailVerified) {
-        const verifCode   = String(Math.floor(100000 + Math.random() * 900000));
-        const verifExpiry = Date.now() + 24 * 60 * 60 * 1000;
-        await usersCol.updateOne({ _id: user._id }, { $set: { verifCode, verifExpiry } });
-        try {
-          const { subject, html } = emails.codeEmail('login', { username: user.username, code: verifCode });
-          await _sendMail(user.email, subject, html);
-          return res.status(403).json({ error: 'Please verify your email to continue.', emailNotVerified: true, username: user.username });
-        } catch (mailErr) {
-          console.error('[LOGIN] Verification mail failed — letting user through:', mailErr.message);
-          await usersCol.updateOne({ _id: user._id }, { $set: { emailVerified: true }, $unset: { verifCode: '', verifExpiry: '' } });
-        }
-      }
-
-      const token = jwt.sign(
-        { userId: user._id.toString(), username: user.username, isAdmin: !!user.isAdmin },
-        JWT_SECRET,
-        { expiresIn: '7d' }
-      );
-      const termsAccepted = user.termsAccepted && user.termsVersion === TERMS_VERSION;
-      res.json({
-        success: true, token, username: user.username,
-        isAdmin: !!user.isAdmin, termsAccepted: !!termsAccepted,
-        bucks: user.bucks || 0,
-        ownedItems: user.ownedItems || [],
-        equippedItems: user.equippedItems || [],
-        kills:  user.kills  || 0,
-        deaths: user.deaths || 0,
-        bio:    user.bio    || '',
-        hasEmail: !!user.email,
-      });
+      await _finishLogin(user, res);
     } catch (err) {
       console.error('/api/login error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // The rest of signing in, once the password or passkey checks out: an unverified email gets a
+  // code first, then the session token and the player's details are sent
+  async function _finishLogin(user, res) {
+    if (user.email && !user.emailVerified) {
+      const verifCode   = String(Math.floor(100000 + Math.random() * 900000));
+      const verifExpiry = Date.now() + 24 * 60 * 60 * 1000;
+      await usersCol.updateOne({ _id: user._id }, { $set: { verifCode, verifExpiry } });
+      try {
+        const { subject, html } = emails.codeEmail('login', { username: user.username, code: verifCode });
+        await _sendMail(user.email, subject, html);
+        return res.status(403).json({ error: 'Please verify your email to continue.', emailNotVerified: true, username: user.username });
+      } catch (mailErr) {
+        console.error('[LOGIN] Verification mail failed — letting user through:', mailErr.message);
+        await usersCol.updateOne({ _id: user._id }, { $set: { emailVerified: true }, $unset: { verifCode: '', verifExpiry: '' } });
+      }
+    }
+
+    const token = jwt.sign(
+      { userId: user._id.toString(), username: user.username, isAdmin: !!user.isAdmin },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    const termsAccepted = user.termsAccepted && user.termsVersion === TERMS_VERSION;
+    res.json({
+      success: true, token, username: user.username,
+      isAdmin: !!user.isAdmin, termsAccepted: !!termsAccepted,
+      bucks: user.bucks || 0,
+      ownedItems: user.ownedItems || [],
+      equippedItems: user.equippedItems || [],
+      kills:  user.kills  || 0,
+      deaths: user.deaths || 0,
+      bio:    user.bio    || '',
+      hasEmail: !!user.email,
+    });
+  }
+
+  // ── Passkeys ────────────────────────────────────────────────
+  // Adding one to the signed-in account
+  app.post('/api/passkey/register/options', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) });
+      if (!user) return res.status(404).json({ error: 'Account not found.' });
+      const { rpID } = relyingParty(req);
+      const options = await generateRegistrationOptions({
+        rpName: 'ArcadeHub', rpID, userName: user.username, userDisplayName: user.username,
+        userID: isoUint8Array.fromUTF8String(user._id.toString()),
+        attestationType: 'none',
+        excludeCredentials: (user.passkeys || []).map(p => ({ id: p.id, transports: p.transports })),
+        authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
+      });
+      res.json({ options, token: challengeToken('register', options.challenge, { uid: user._id.toString() }) });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      console.error('/api/passkey/register/options error:', err);
+      res.status(500).json({ error: "Couldn't start adding a passkey. Please try again." });
+    }
+  });
+
+  app.post('/api/passkey/register/verify', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const c = readChallenge(req.body?.token, 'register');
+      if (!c || c.uid !== payload.userId) return res.status(400).json({ error: 'That took too long. Please try again.' });
+      const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) });
+      if (!user) return res.status(404).json({ error: 'Account not found.' });
+      const { rpID, origin } = relyingParty(req);
+      let v = null;
+      try {
+        v = await verifyRegistrationResponse({ response: req.body.response, expectedChallenge: c.challenge, expectedOrigin: origin, expectedRPID: rpID, requireUserVerification: false });
+      } catch (e) { console.error('[PASSKEY] registration not verified:', e.message); }
+      if (!v?.verified) return res.status(400).json({ error: "Couldn't add that passkey. Please try again." });
+      const { credential, credentialBackedUp } = v.registrationInfo;
+      const existing = (user.passkeys || []).find(p => p.id === credential.id);
+      if (existing) return res.json({ ok: true, passkey: publicPasskey(existing) });
+      const passkey = {
+        id: credential.id, publicKey: isoBase64URL.fromBuffer(credential.publicKey), counter: credential.counter, transports: credential.transports || [],
+        name: String(req.body.name || '').trim().slice(0, 40) || passkeyDeviceName(req.get('user-agent')),
+        createdAt: new Date().toISOString(), lastUsedAt: null, backedUp: !!credentialBackedUp,
+      };
+      await usersCol.updateOne({ _id: user._id }, { $push: { passkeys: passkey } });
+      res.json({ ok: true, passkey: publicPasskey(passkey) });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      console.error('/api/passkey/register/verify error:', err);
+      res.status(500).json({ error: "Couldn't add that passkey. Please try again." });
+    }
+  });
+
+  // Signing in with a passkey (any account's: the passkey says whose it is)
+  app.post('/api/passkey/login/options', async (req, res) => {
+    try {
+      const { rpID } = relyingParty(req);
+      const options = await generateAuthenticationOptions({ rpID, userVerification: 'preferred' });
+      res.json({ options, token: challengeToken('login', options.challenge) });
+    } catch (err) {
+      console.error('/api/passkey/login/options error:', err);
+      res.status(500).json({ error: "Couldn't start signing in with a passkey. Please try again." });
+    }
+  });
+
+  app.post('/api/passkey/login/verify', async (req, res) => {
+    try {
+      const c = readChallenge(req.body?.token, 'login');
+      if (!c || !spendChallenge(c.challenge)) return res.status(400).json({ error: 'That took too long. Please try again.' });
+      const credId = String(req.body?.response?.id || '');
+      const user = credId ? await usersCol.findOne({ 'passkeys.id': credId }) : null;
+      const passkey = user && (user.passkeys || []).find(p => p.id === credId);
+      if (!passkey) return res.status(401).json({ error: "That passkey isn't linked to an ArcadeHub account any more. Sign in with your password instead.", unknownCredential: true });
+      const { rpID, origin } = relyingParty(req);
+      let v = null;
+      try {
+        v = await verifyAuthenticationResponse({
+          response: req.body.response, expectedChallenge: c.challenge, expectedOrigin: origin, expectedRPID: rpID, requireUserVerification: false,
+          credential: { id: passkey.id, publicKey: isoBase64URL.toBuffer(passkey.publicKey), counter: passkey.counter, transports: passkey.transports },
+        });
+      } catch (e) { console.error('[PASSKEY] sign-in not verified:', e.message); }
+      if (!v?.verified) return res.status(401).json({ error: "Couldn't sign in with that passkey. Please try again." });
+      await usersCol.updateOne({ _id: user._id, 'passkeys.id': passkey.id }, { $set: { 'passkeys.$.counter': v.authenticationInfo.newCounter, 'passkeys.$.lastUsedAt': new Date().toISOString() } });
+      if (user.banned) return res.status(403).json({ error: 'This account has been banned.' });
+      await _finishLogin(user, res);
+    } catch (err) {
+      console.error('/api/passkey/login/verify error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // The signed-in account's passkeys
+  app.get('/api/passkeys', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { passkeys: 1 } });
+      if (!user) return res.status(404).json({ error: 'Account not found.' });
+      res.json({ passkeys: (user.passkeys || []).map(publicPasskey) });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  app.delete('/api/passkeys/:id', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const r = await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, { $pull: { passkeys: { id: String(req.params.id) } } });
+      if (!r.modifiedCount) return res.status(404).json({ error: "That passkey isn't on your account." });
+      res.json({ ok: true });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
       res.status(500).json({ error: 'Server error.' });
     }
   });

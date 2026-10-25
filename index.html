@@ -1059,6 +1059,40 @@
     }
     .auth-submit:disabled { opacity: 0.35; cursor: not-allowed; }
 
+    /* ── Passkeys ─────────────────────────────────────────── */
+    .auth-or {
+      display: flex; align-items: center; gap: 10px; margin-top: 2px;
+      font-size: 10px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: #444466;
+    }
+    .auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.07); }
+    .auth-passkey-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 0;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.14); border-radius: 7px;
+      color: #d6d6ee; font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase; cursor: pointer; transition: background .15s, border-color .15s;
+    }
+    .auth-passkey-btn:hover { background: rgba(255,255,255,0.07); border-color: rgba(231,76,60,0.45); }
+    .auth-passkey-btn svg { width: 16px; height: 16px; }
+    .passkey-offer-icon {
+      width: 56px; height: 56px; margin: 0 auto; border-radius: 14px; color: #e74c3c;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(231,76,60,0.12); border: 1px solid rgba(231,76,60,0.38); box-shadow: 0 0 22px rgba(231,76,60,0.18);
+    }
+    .passkey-offer-icon svg { width: 28px; height: 28px; }
+    .passkey-offer-title { text-align: center; font-size: 13px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: #e0e0f0; }
+    .passkey-offer-text { font-size: 13px; color: #aaa; text-align: center; line-height: 1.6; }
+    .pk-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .pk-list li {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 7px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); font-size: 13px; color: #e0e0f0;
+    }
+    .pk-list small { display: block; color: #777; font-size: 11px; margin-top: 2px; }
+    .pk-remove {
+      background: none; border: 1px solid rgba(231,76,60,0.38); color: #e74c3c; border-radius: 6px; padding: 4px 10px;
+      font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer;
+    }
+    .pk-note { font-size: 12px; color: #888; margin: 0 0 10px; line-height: 1.5; }
+
     /* ── Bucks display (nav) ─────────────────────────────── */
     .bucks-display {
       display: flex; align-items: center; gap: 6px;
@@ -2634,7 +2668,7 @@
       <form class="auth-form" id="form-login">
         <div class="auth-field">
           <label for="login-username">Username</label>
-          <input id="login-username" type="text" placeholder="Your username" autocomplete="username">
+          <input id="login-username" type="text" placeholder="Your username" autocomplete="username webauthn">
         </div>
         <div class="auth-field">
           <label for="login-password">Password</label>
@@ -2648,6 +2682,8 @@
         </div>
         <div class="auth-msg" id="login-msg"></div>
         <button type="submit" class="auth-submit">Sign In</button>
+        <div class="auth-or" id="passkey-or" style="display:none">or</div>
+        <button type="button" class="auth-passkey-btn" id="btn-passkey-login" style="display:none" onclick="passkeyLogin(false)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M10.85 12.15 19 4"/><path d="m18 5 2 2"/><path d="m15 8 2 2"/></svg>Sign in with a passkey</button>
         <div class="reset-back-link" onclick="switchTab('reset')" style="margin-top:8px">Forgot password?</div>
       </form>
 
@@ -2744,6 +2780,16 @@
         <div class="auth-msg" id="verify-msg"></div>
         <button class="auth-submit" onclick="verifyEmail()">VERIFY EMAIL</button>
         <div class="reset-back-link" onclick="resendVerifCode()" id="resend-verif-link">Resend code</div>
+      </div>
+
+      <!-- Passkey offer: a new account, straight after its email is verified -->
+      <div class="auth-form" id="form-passkey-offer" style="display:none;flex-direction:column;gap:12px">
+        <div class="passkey-offer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M10.85 12.15 19 4"/><path d="m18 5 2 2"/><path d="m15 8 2 2"/></svg></div>
+        <div class="passkey-offer-title">Sign in faster next time</div>
+        <div class="passkey-offer-text">Create a passkey and sign in to ArcadeHub with Face ID, Touch ID or your device's screen lock, without typing your password. Your password still works too.</div>
+        <div class="auth-msg" id="passkey-offer-msg"></div>
+        <button class="auth-submit" id="btn-passkey-create" onclick="createOfferedPasskey()">CREATE A PASSKEY</button>
+        <div class="reset-back-link" id="btn-passkey-skip" onclick="skipOfferedPasskey()">Not now</div>
       </div>
       <div class="nexus-row nexus-row-modal"><div class="nexus-badge"><svg class="nexus-mark" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="nx-grad-modal" gradientUnits="userSpaceOnUse" x1="3" y1="3" x2="21" y2="21"><stop offset="0" stop-color="#22D3EE"/><stop offset=".5" stop-color="#6366F1"/><stop offset="1" stop-color="#D946EF"/></linearGradient></defs><path d="M12 5L5 17.5M12 5l7 12.5M5 17.5h14M12 5v7.5M5 17.5l7-5M19 17.5l-7-5" stroke="url(#nx-grad-modal)" stroke-width="1.6" stroke-linecap="round" fill="none"/><g fill="url(#nx-grad-modal)"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="17.5" r="2.4"/><circle cx="19" cy="17.5" r="2.4"/><circle cx="12" cy="12.5" r="1.9"/></g></svg><span>Made by <span class="nexus-word">Nexus Connections</span></span></div></div>
     </div>
@@ -3257,6 +3303,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
   <script src="/updates.js"></script>
+  <script src="/passkeys.js"></script>
   <script>
     const isLocal = ['localhost','127.0.0.1'].includes(window.location.hostname);
     const API = (isLocal ? 'http://localhost:3001' : window.location.origin) + '/api';
@@ -3336,6 +3383,7 @@
     function openModal(tab) {
       overlay.classList.add('open');
       switchTab(tab || 'login');
+      if (window.passkeys?.supported) _offerPasskeyAutofill();
       const firstInput = overlay.querySelector('.auth-form:not([style*="none"]) input');
       if (firstInput) setTimeout(() => firstInput.focus(), 40);
     }
@@ -3365,6 +3413,7 @@
       document.getElementById('form-reset').style.display       = tab === 'reset'    ? 'flex' : 'none';
       document.getElementById('form-verify-email').style.display = 'none';
       document.getElementById('form-login-2fa').style.display    = 'none';
+      document.getElementById('form-passkey-offer').style.display = 'none';
       if (tab === 'reset') {
         // Reset back to step 1 each time
         document.getElementById('reset-step1').classList.add('active');
@@ -3472,6 +3521,106 @@
       closeModal();
       loadBadges();
       if (!data.hasEmail) showForceEmailModal();
+    }
+
+    // ── Passkeys ──────────────────────────────────────────────
+    // New accounts are offered one straight after verifying their email; anyone can sign in with one
+    // from the Login tab (the button, or the browser's suggestions in the username box) and manage
+    // them in Profile. Website only (passkeys.js explains why).
+    let _offerData = null;
+    function _offerPasskey(data) {
+      _offerData = data;
+      localStorage.setItem('ah_token', data.token); // the passkey is added to this account
+      ['form-login', 'form-register', 'form-reset', 'form-verify-email', 'form-login-2fa'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+      document.querySelector('.auth-tabs').style.display = 'none';
+      clearMsg('passkey-offer-msg');
+      document.getElementById('form-passkey-offer').style.display = 'flex';
+    }
+    async function createOfferedPasskey() {
+      const btn = document.getElementById('btn-passkey-create');
+      btn.disabled = true; btn.textContent = 'WAITING FOR YOUR DEVICE…';
+      try {
+        await passkeys.register(_offerData.token);
+        showMsg('passkey-offer-msg', 'Passkey created!', 'success');
+        setTimeout(_leavePasskeyOffer, 900);
+      } catch (e) {
+        if (!e.quiet) showMsg('passkey-offer-msg', e.message, 'error');
+        btn.disabled = false; btn.textContent = 'CREATE A PASSKEY';
+      }
+    }
+    function skipOfferedPasskey() { _leavePasskeyOffer(); }
+    function _leavePasskeyOffer() {
+      document.getElementById('form-passkey-offer').style.display = 'none';
+      document.querySelector('.auth-tabs').style.display = '';
+      const data = _offerData; _offerData = null;
+      _completeLogin(data);
+    }
+
+    async function passkeyLogin(conditional) {
+      if (!conditional) clearMsg('login-msg');
+      try {
+        const { res, data } = await passkeys.signIn({ conditional });
+        if (res.ok) return _completeLogin(data);
+        if (data.emailNotVerified) {
+          _pendingVerifUsername = data.username || ''; _pendingVerifPassword = '';
+          document.getElementById('form-login').style.display = 'none';
+          document.getElementById('form-verify-email').style.display = 'flex';
+          clearMsg('verify-msg'); document.getElementById('verify-code-input').value = '';
+          return;
+        }
+        showMsg('login-msg', data.error || "Couldn't sign in with that passkey. Please try again.", 'error');
+      } catch (e) {
+        if (!e.quiet) showMsg('login-msg', e.message, 'error');
+      }
+      if (!conditional) _offerPasskeyAutofill(); // the box's suggestions come back after a button attempt
+    }
+    async function _offerPasskeyAutofill() {
+      if (!localStorage.getItem('ah_token') && await passkeys.autofillAvailable()) passkeyLogin(true);
+    }
+    if (window.passkeys?.supported) {
+      document.getElementById('passkey-or').style.display = '';
+      document.getElementById('btn-passkey-login').style.display = '';
+    }
+
+    async function _loadProfilePasskeys(message = '') {
+      const box = document.getElementById('pk-box');
+      box.innerHTML = '<div class="pk-note">Loading your passkeys…</div>';
+      let list = [];
+      try {
+        const r = await fetch(`${API}/passkeys`, { headers: { Authorization: `Bearer ${localStorage.getItem('ah_token')}` } });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || "Couldn't load your passkeys.");
+        list = d.passkeys || [];
+      } catch (e) {
+        box.innerHTML = `<div class="pk-note" style="color:#e74c3c">${_esc(e.message)}</div>`;
+        return;
+      }
+      const can = window.passkeys?.supported;
+      const day = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      box.innerHTML = `
+        <div class="pk-note">Sign in with Face ID, Touch ID or your device's screen lock instead of typing your password. Your password still works too.</div>
+        ${list.length ? `<ul class="pk-list">${list.map(p => `<li><div>${_esc(p.name)}<small>Added ${_esc(day(p.createdAt))}${p.lastUsedAt ? ` · last used ${_esc(day(p.lastUsedAt))}` : ' · not used yet'}</small></div><button class="pk-remove" data-pk="${_esc(p.id)}">Remove</button></li>`).join('')}</ul>`
+          : '<div class="pk-note">You haven\'t added a passkey yet.</div>'}
+        ${window.passkeys?.inApp ? '<div class="pk-note">Passkeys can\'t be added inside the iPhone app yet. Open ArcadeHub in Safari to add one, then sign in with it there.</div>'
+          : can ? '' : '<div class="pk-note">This browser can\'t use passkeys.</div>'}
+        <div class="auth-msg error" id="pk-msg">${_esc(message)}</div>
+        ${can ? '<button class="profile-save-btn" id="pk-add">ADD A PASSKEY</button>' : ''}`;
+      document.getElementById('pk-add')?.addEventListener('click', async () => {
+        const btn = document.getElementById('pk-add');
+        btn.disabled = true; btn.textContent = 'WAITING FOR YOUR DEVICE…';
+        try {
+          await passkeys.register(localStorage.getItem('ah_token'));
+          _loadProfilePasskeys();
+        } catch (e) { _loadProfilePasskeys(e.quiet ? '' : e.message); }
+      });
+      box.querySelectorAll('[data-pk]').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm("Remove this passkey? You won't be able to sign in with it any more.")) return;
+        try {
+          const r = await fetch(`${API}/passkeys/${encodeURIComponent(b.dataset.pk)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('ah_token')}` } });
+          const d = await r.json().catch(() => ({}));
+          _loadProfilePasskeys(r.ok ? '' : (d.error || "Couldn't remove that passkey."));
+        } catch { _loadProfilePasskeys('Could not reach the server.'); }
+      }));
     }
 
     document.getElementById('form-login').addEventListener('submit', async e => {
@@ -6256,19 +6405,9 @@
           });
           const loginData = await loginRes.json();
           if (loginRes.ok) {
-            localStorage.setItem('ah_token',    loginData.token);
-            localStorage.setItem('ah_username', loginData.username);
-            localStorage.setItem('isAdmin',     loginData.isAdmin ? 'true' : 'false');
-            localStorage.setItem('ah_terms',    loginData.termsAccepted ? TERMS_VERSION : '0');
-            _bucks = loginData.bucks || 0;
-            _ownedItems    = new Set(loginData.ownedItems    || []);
-            _equippedItems = new Set(loginData.equippedItems || []);
-            _saveBucksLocal(); updateBucksDisplay();
             _pendingVerifPassword = '';
-            if (!loginData.termsAccepted) { window.location.href = '/terms.html'; return; }
-            setLoggedIn(loginData.username);
-            closeModal();
-            loadBadges();
+            if (window.passkeys?.supported) return _offerPasskey(loginData);
+            _completeLogin(loginData);
           } else {
             showMsg('verify-msg', 'Verified! Please log in.', 'success');
             setTimeout(() => { document.getElementById('form-verify-email').style.display = 'none'; switchTab('login'); }, 1500);
@@ -6727,6 +6866,7 @@
 
     async function openProfile() {
       document.getElementById('profile-overlay').classList.add('open');
+      _loadProfilePasskeys();
       const token = localStorage.getItem('ah_token');
       const username = localStorage.getItem('ah_user');
       if (username) document.getElementById('profile-username-input').value = username;
@@ -7230,6 +7370,11 @@
       <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
         <button class="profile-save-btn" onclick="saveProfile()">SAVE CHANGES</button>
         <span id="profile-save-status" style="font-size:12px;color:#22dd64"></span>
+      </div>
+
+      <div class="profile-section" style="margin-top:26px">
+        <div class="profile-section-label">PASSKEYS</div>
+        <div id="pk-box"></div>
       </div>
     </div>
   </div>
