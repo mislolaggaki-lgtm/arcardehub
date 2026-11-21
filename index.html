@@ -5894,8 +5894,10 @@
     }
 
     function _esc(s) {
-      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
+    // A value for an inline onclick="fn(...)": a JavaScript string, escaped for the attribute
+    function _jsArg(s) { return _esc(JSON.stringify(String(s))); }
 
     // ── voice toggle ─────────────────────────────────────────
     async function voiceToggle() {
@@ -6626,7 +6628,7 @@
       banner.id = 'itb-' + data.sessionId;
       banner.innerHTML = `
         <div class="itb-title">⇄ TRADE REQUEST</div>
-        <div class="itb-body"><b>${data.fromUsername}</b> wants to trade with you!</div>
+        <div class="itb-body"><b>${_esc(data.fromUsername)}</b> wants to trade with you!</div>
         <div class="itb-btns">
           <button class="itb-btn itb-decline" onclick="_respondTrade('${data.sessionId}',false)">DECLINE</button>
           <button class="itb-btn itb-accept"  onclick="_respondTrade('${data.sessionId}',true)">ACCEPT</button>
@@ -6784,7 +6786,7 @@
         const dot = s === 'in-game' ? 'ingame' : s === 'online' ? 'online' : 'offline';
         const tag = s === 'in-game' ? '🎮 In Game' : s === 'online' ? '● Online' : '○ Offline';
         const ring = s === 'in-game' ? '#ffc107' : s === 'online' ? '#4caf50' : '#22223a';
-        const av = f.avatar ? `<img src="${f.avatar}" alt="">` : f.username.slice(0,2).toUpperCase();
+        const av = f.avatar ? `<img src="${_esc(f.avatar)}" alt="">` : _esc(f.username.slice(0,2).toUpperCase());
         const bioAttr    = (f.bio    || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
         const avatarAttr = (f.avatar || '').replace(/"/g,'&quot;');
         const userAttr   = f.username.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
@@ -6800,7 +6802,7 @@
             <div class="fl-tag ${dot}">${tag}</div>
             ${bioHint}
           </div>
-          <button class="fl-remove" onclick="event.stopPropagation();removeFriend('${_esc(f.username)}')" title="Remove">✕</button>
+          <button class="fl-remove" onclick="event.stopPropagation();removeFriend(${_jsArg(f.username)})" title="Remove">✕</button>
         </div>`;
       }
       const groups = [
@@ -6827,8 +6829,8 @@
       const tag  = status==='in-game' ? '🎮 In Game': status==='online' ? '● Online': '○ Offline';
       const ring = status==='in-game' ? '#ffc107'  : status==='online' ? '#4caf50' : '#22223a';
       const avHtml = avatar
-        ? `<img src="${avatar}" alt="">`
-        : username.slice(0,2).toUpperCase();
+        ? `<img src="${_esc(avatar)}" alt="">`
+        : _esc(username.slice(0,2).toUpperCase());
       const card = document.createElement('div');
       card.id = 'fl-profile-card';
       card.className = 'fl-profile-card';
@@ -6843,7 +6845,7 @@
           : `<div class="fl-pc-bio" style="color:#252540;font-style:italic">No bio written yet.</div>`}
         <div style="flex:1;min-height:16px"></div>
         <button class="fl-pc-remove"
-          onclick="removeFriend('${_esc(username)}');document.getElementById('fl-profile-card')?.remove()">
+          onclick="removeFriend(${_jsArg(username)});document.getElementById('fl-profile-card')?.remove()">
           Remove Friend
         </button>`;
       card.addEventListener('click', e => e.stopPropagation());
@@ -7196,13 +7198,13 @@
         if (d.accounts.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="color:#555;text-align:center">No accounts found.</td></tr>'; return; }
         tbody.innerHTML = d.accounts.map(a => `
           <tr>
-            <td><strong style="color:#ddd">${a.username}</strong>${a.isAdmin ? ' <span class="admin-player-badge badge-admin">ADMIN</span>' : ''}</td>
-            <td class="acc-email">${a.email || '<span style="color:#444">—</span>'}</td>
+            <td><strong style="color:#ddd">${_esc(a.username)}</strong>${a.isAdmin ? ' <span class="admin-player-badge badge-admin">ADMIN</span>' : ''}</td>
+            <td class="acc-email">${a.email ? _esc(a.email) : '<span style="color:#444">—</span>'}</td>
             <td>${a.email && a.emailVerified ? '<span class="acc-verified-yes">✓ YES</span>' : a.email ? '<span class="acc-verified-no">✗ NO</span>' : '<span style="color:#666">—</span>'}</td>
             <td><span class="admin-player-badge ${a.isAdmin ? 'badge-admin' : 'badge-user'}">${a.isAdmin ? 'ADMIN' : 'USER'}</span></td>
             <td style="color:#fdcb3c">${a.bucks.toLocaleString()}</td>
-            <td style="color:#555;font-size:11px">${a.created ? a.created.slice(0,10) : '—'}</td>
-            <td>${a.username === 'Stotch' ? '' : `<button class="admin-btn admin-btn-red" style="font-size:9px;padding:3px 10px" onclick="apDeleteAccount('${a.username}')">DELETE</button>`}</td>
+            <td style="color:#555;font-size:11px">${a.created ? _esc(String(a.created).slice(0,10)) : '—'}</td>
+            <td>${a.username === 'Stotch' ? '' : `<button class="admin-btn admin-btn-red" style="font-size:9px;padding:3px 10px" onclick="apDeleteAccount(${_jsArg(a.username)})">DELETE</button>`}</td>
           </tr>`).join('');
       } catch { tbody.innerHTML = '<tr><td colspan="7" style="color:#e74c3c;text-align:center">Could not reach server.</td></tr>'; }
     }
@@ -7241,7 +7243,7 @@
         if (!r.ok || !d.players) { list.innerHTML = ''; return; }
         list.innerHTML = d.players.map(p => `
           <div class="admin-player-row">
-            <span class="admin-player-name">${p.username}</span>
+            <span class="admin-player-name">${_esc(p.username)}</span>
             <span class="admin-player-badge ${p.isAdmin?'badge-admin':'badge-user'}">${p.isAdmin?'ADMIN':'USER'}</span>
           </div>`).join('');
       } catch { list.innerHTML = ''; }

@@ -19,9 +19,14 @@ const weeklyEmail = require('./weeklyEmail');
 const emails      = require('./emails');
 const gamingAi    = require('./gamingAi');
 
+const nodeCrypto  = require('crypto');
+
 // ── Config ────────────────────────────────────────────────────
 const PORT        = process.env.PORT        || 3001;
-const JWT_SECRET  = process.env.JWT_SECRET  || 'arcadehub-dev-secret-change-in-production';
+// Sign-ins are signed with JWT_SECRET. Without it, a random secret is made at start (sign-ins
+// then end whenever the server restarts), never a fixed one anyone could read in the code.
+const JWT_SECRET  = process.env.JWT_SECRET  || nodeCrypto.randomBytes(48).toString('hex');
+if (!process.env.JWT_SECRET) console.warn('[CONFIG] JWT_SECRET is not set: using a random one, so everyone is signed out on each restart. Set it in the Railway variables.');
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/arcadehub';
 const SALT_ROUNDS    = 10;
 const TERMS_VERSION  = 1;
@@ -135,6 +140,7 @@ async function _sendMail(to, subject, html) {
 const app        = express();
 const httpServer = http.createServer(app);
 
+app.set('trust proxy', 1); // Railway's proxy: req.ip is the visitor's address (for the guessing limits)
 app.use(cors());
 app.use(express.json());
 // Only the website's own files are public. The project folder also holds the server
@@ -218,15 +224,62 @@ function assignTDMTeam() {
 }
 
 // ── Auth helper ───────────────────────────────────────────────
+// A password reset or a ban signs the account out everywhere: sign-ins issued before that
+// moment stop working. userId → the second from which sign-ins count (loaded from the
+// database at start, kept up to date by signOutEverywhere()).
+const signedOutBefore = new Map();
+function verifySession(token) {
+  const payload = jwt.verify(token, JWT_SECRET);
+  if (payload.purpose) throw new Error('Not a sign-in token.'); // passkey challenges are signed with the same secret
+  const before = signedOutBefore.get(String(payload.userId));
+  if (before && (payload.iat || 0) < before) throw new Error('Signed out.');
+  return payload;
+}
 function verifyToken(authHeader) {
   if (!authHeader || !authHeader.startsWith('Bearer '))
     throw Object.assign(new Error('No token provided.'), { status: 401 });
   try {
-    return jwt.verify(authHeader.slice(7), JWT_SECRET);
+    return verifySession(authHeader.slice(7));
   } catch {
     throw Object.assign(new Error('Invalid or expired token.'), { status: 401 });
   }
 }
+
+// Days are UK days (like iTutor): 'YYYY-MM-DD' in London
+const _ukFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' });
+const ukDay = (d = new Date()) => _ukFmt.format(d);
+
+// ── Guessing limits ───────────────────────────────────────────
+// At most `max` attempts per key in a sliding window. hit() records one and says whether it
+// went over; clear() forgets a key (after a correct password, say).
+function limiter(max, windowMs) {
+  const hits = new Map();
+  setInterval(() => {
+    const cutoff = Date.now() - windowMs;
+    for (const [k, times] of hits) { const kept = times.filter(t => t > cutoff); if (kept.length) hits.set(k, kept); else hits.delete(k); }
+  }, Math.min(windowMs, 10 * 60 * 1000)).unref();
+  return {
+    hit(key) {
+      const now = Date.now(), times = (hits.get(key) || []).filter(t => t > now - windowMs);
+      times.push(now); hits.set(key, times);
+      return times.length > max;
+    },
+    clear(key) { hits.delete(key); },
+  };
+}
+const loginLimit      = limiter(10, 15 * 60 * 1000);  // wrong passwords per account and per address
+const signupLimit     = limiter(5, 60 * 60 * 1000);   // new accounts per address
+const codeSendLimit   = limiter(5, 60 * 60 * 1000);   // emailed codes (verify, reset) per account
+const codeGuessLimit  = limiter(30, 60 * 60 * 1000);  // code guesses per address, across accounts
+// Per connection (keyed by socket id)
+const chatRate        = limiter(5, 5000);             // chat messages
+const killRate        = limiter(12, 5000);            // kills reported by the game
+const deathRate       = limiter(3, 5000);             // deaths reported by the game
+const reportRate      = limiter(3, 60 * 1000);        // player reports sent to admins
+const tooMany = res => res.status(429).json({ error: 'Too many tries. Please wait a few minutes and try again.' });
+// One-time codes come from a secure random source
+const newCode = () => String(nodeCrypto.randomInt(100000, 1000000));
+const CODE_TRIES = 5; // wrong guesses before a code stops working and a new one is needed
 
 // ── Passkeys (WebAuthn) ───────────────────────────────────────
 // Another way to sign in, alongside the password. The relying party is the site's own host name,
@@ -291,6 +344,16 @@ async function start() {
   await usersCol.createIndex({ 'passkeys.id': 1 });
   await bannedCol.createIndex({ username: 1 }, { unique: true });
 
+  // Accounts signed out everywhere (a password reset or a ban) — see verifySession()
+  for (const u of await usersCol.find({ signedOutBefore: { $exists: true } }, { projection: { signedOutBefore: 1 } }).toArray())
+    signedOutBefore.set(String(u._id), u.signedOutBefore);
+  async function signOutEverywhere(filter) {
+    const at = Math.floor(Date.now() / 1000);
+    const u = await usersCol.findOneAndUpdate(filter, { $set: { signedOutBefore: at } }, { projection: { _id: 1 } });
+    if (u) signedOutBefore.set(String(u._id), at);
+    return u;
+  }
+
   // ── VAPID keys (generated once, stored in DB) ───────────────
   let _vapidDoc = await configCol.findOne({ key: 'vapid' });
   if (!_vapidDoc) {
@@ -343,7 +406,7 @@ async function start() {
     if (!authHeader || !authHeader.startsWith('Bearer ')) return next();
     if (EMAIL_GATE_ALLOWED_PATHS.has(req.path)) return next();
     let payload;
-    try { payload = jwt.verify(authHeader.slice(7), JWT_SECRET); }
+    try { payload = verifySession(authHeader.slice(7)); }
     catch { return next(); } // invalid/expired — let the route's own verifyToken() produce the real error
     try {
       const { ObjectId } = require('mongodb');
@@ -359,39 +422,50 @@ async function start() {
   }
   app.use('/api', emailVerifiedGate);
 
+  // ── Level rewards (see 'levelReached') ──────────────────────
+  // 100 bucks for each level from 100 on, plus 10 on every 50th level (50, 100, 150…).
+  // Paid levels must be at least 15 s apart, and play pays at most 3,000 bucks a day.
+  const levelPay = n => (n >= 100 ? 100 : 0) + (n % 50 === 0 ? 10 : 0);
+  const LEVEL_PAY_GAP_MS = 15 * 1000, LEVEL_PAY_DAY_MAX = 3000;
+  async function _payLevel(_id, pay) {
+    const now = new Date(), day = ukDay(), opts = { returnDocument: 'after', projection: { bucks: 1 } };
+    // The same day: only within the day's limit and not too soon after the last one
+    return (await usersCol.findOneAndUpdate(
+      { _id, 'fpsPay.day': day, 'fpsPay.total': { $lte: LEVEL_PAY_DAY_MAX - pay }, 'fpsPay.at': { $lte: new Date(now - LEVEL_PAY_GAP_MS) } },
+      { $inc: { bucks: pay, 'fpsPay.total': pay }, $set: { 'fpsPay.at': now } }, opts))
+      // The first paid level of the day
+      || usersCol.findOneAndUpdate(
+        { _id, 'fpsPay.day': { $ne: day } },
+        { $inc: { bucks: pay }, $set: { fpsPay: { day, total: pay, at: now } } }, opts);
+  }
+  // Badges for how far you've got, given by the server as the levels are reached
+  const LEVEL_BADGES = { first_step: 1, rookie: 5, getting_warmed: 10, double_digits: 15, lvl20: 20, pro_gamer: 25,
+    lvl30: 30, lvl40: 40, unstoppable: 50, lvl60: 60, lvl75: 75, veteran: 100, boss_hunter: 101, lvl150: 150, max_rank: 200 };
+  function _levelBadges(_id, n) {
+    const earned = Object.keys(LEVEL_BADGES).filter(b => n >= LEVEL_BADGES[b]);
+    return earned.length ? usersCol.updateOne({ _id }, { $addToSet: { badges: { $each: earned } } }) : null;
+  }
+
   // ── Trade execution helper (needs usersCol) ─────────────────
   async function _executeTrade(session) {
     tradeSessions.delete(session.id);
+    const cancel = () => {
+      io.to(session.initiatorSocketId).emit('tradeCancelled', { sessionId: session.id, byUsername: 'System' });
+      io.to(session.targetSocketId).emit('tradeCancelled',   { sessionId: session.id, byUsername: 'System' });
+    };
+    const A = session.initiatorUsername, B = session.targetUsername;
+    const aItems = session.initiatorItems, bItems = session.targetItems;
+    // Each side's items are taken in one step that only happens if they still own all of them,
+    // so two trades (or a trade and a sale) at the same moment can't hand out the same item twice
+    const take = (username, items) => !items.length ? Promise.resolve(true)
+      : usersCol.updateOne({ username, ownedItems: { $all: items } },
+          { $pull: { ownedItems: { $in: items }, equippedItems: { $in: items } } }).then(r => r.modifiedCount === 1);
+    const give = (username, items) => items.length
+      ? usersCol.updateOne({ username }, { $addToSet: { ownedItems: { $each: items } } }) : null;
     try {
-      const { ObjectId } = require('mongodb');
-      const [initiator, target] = await Promise.all([
-        usersCol.findOne({ username: session.initiatorUsername }, { projection: { ownedItems:1 } }),
-        usersCol.findOne({ username: session.targetUsername },    { projection: { ownedItems:1 } }),
-      ]);
-      if (!initiator || !target) {
-        io.to(session.initiatorSocketId).emit('tradeCancelled', { sessionId: session.id, byUsername: 'System' });
-        io.to(session.targetSocketId).emit('tradeCancelled',   { sessionId: session.id, byUsername: 'System' });
-        return;
-      }
-      const initiatorOwns = session.initiatorItems.every(id => (initiator.ownedItems||[]).includes(id));
-      const targetOwns    = session.targetItems.every(id => (target.ownedItems||[]).includes(id));
-      if (!initiatorOwns || !targetOwns) {
-        io.to(session.initiatorSocketId).emit('tradeCancelled', { sessionId: session.id, byUsername: 'System' });
-        io.to(session.targetSocketId).emit('tradeCancelled',   { sessionId: session.id, byUsername: 'System' });
-        return;
-      }
-      if (session.initiatorItems.length) {
-        await usersCol.updateOne({ username: session.initiatorUsername },
-          { $pull: { ownedItems: { $in: session.initiatorItems }, equippedItems: { $in: session.initiatorItems } } });
-        await usersCol.updateOne({ username: session.targetUsername },
-          { $addToSet: { ownedItems: { $each: session.initiatorItems } } });
-      }
-      if (session.targetItems.length) {
-        await usersCol.updateOne({ username: session.targetUsername },
-          { $pull: { ownedItems: { $in: session.targetItems }, equippedItems: { $in: session.targetItems } } });
-        await usersCol.updateOne({ username: session.initiatorUsername },
-          { $addToSet: { ownedItems: { $each: session.targetItems } } });
-      }
+      if (!(await take(A, aItems))) return cancel();
+      if (!(await take(B, bItems))) { await give(A, aItems); return cancel(); } // put A's items back
+      await Promise.all([give(B, aItems), give(A, bItems)]);
       io.to(session.initiatorSocketId).emit('tradeCompleted', { sessionId: session.id });
       io.to(session.targetSocketId).emit('tradeCompleted',   { sessionId: session.id });
     } catch (err) {
@@ -426,6 +500,18 @@ async function start() {
     }
   }
 
+  // ── Deleting an account: the account, and what's left of it elsewhere ─
+  async function _deleteAccount(filter) {
+    const user = await usersCol.findOneAndDelete(filter, { projection: { _id: 1, username: 1 } });
+    if (!user) return null;
+    await Promise.all([
+      notificationsCol.deleteMany({ userId: user._id }),
+      pushSubscriptionsCol.deleteMany({ userId: user._id }),
+      usersCol.updateMany({ friends: user.username }, { $pull: { friends: user.username } }),
+    ]);
+    return user;
+  }
+
   // ── Friends list helper ──────────────────────────────────────
   async function _getFriendsList(username) {
     const user = await usersCol.findOne({ username }, { projection: { friends: 1 } });
@@ -458,12 +544,16 @@ async function start() {
   io.on('connection', socket => {
     socket.emit('onlineCount', onlineCount());
     const color = PLAYER_COLORS[players.size % PLAYER_COLORS.length];
+    // Events that need to know who's playing wait until 'join' has looked them up
+    let _joined; const joined = new Promise(r => { _joined = r; });
+    socket.data.coopInvites = new Set(); // hosts that invited this player to co-op
 
     socket.on('join', async ({ token, equippedItems: clientEquipped }) => {
+     try {
       // The name comes from the verified sign-in, never from what the browser claims
       // (otherwise anyone could join as an admin and ban players)
       let signedIn = null;
-      try { signedIn = jwt.verify(String(token || ''), JWT_SECRET); } catch { signedIn = null; }
+      try { signedIn = verifySession(String(token || '')); } catch { signedIn = null; }
       const cleanName = (signedIn?.username || 'Guest').slice(0, 24);
 
       // Reject banned players immediately
@@ -475,7 +565,9 @@ async function start() {
       }
 
       // Look up admin status + equipped items from DB
-      const userDoc = await usersCol.findOne({ username: cleanName });
+      const userDoc = signedIn ? await usersCol.findOne({ username: cleanName }) : null;
+      // Kept on the socket, not the player (the player object is sent to everyone)
+      socket.data.userId = userDoc ? String(userDoc._id) : null;
       const isAdmin      = !!(userDoc && userDoc.isAdmin);
       const equippedItems = (userDoc && userDoc.equippedItems) || clientEquipped || [];
 
@@ -495,7 +587,41 @@ async function start() {
       _emitOnline();
       socket.emit('currentPlayers', [...players.values()].filter(p => p.id !== socket.id));
       socket.broadcast.emit('playerJoined', player);
+     } finally { _joined(); }
     });
+
+    // ── Level rewards ─────────────────────────────────────────
+    // The game says which level it has started; the server decides what that's worth (the
+    // browser can't add bucks). A run climbs one level at a time from level 1 (a co-op guest
+    // follows its host) and is saved on the account, so it survives a server restart.
+    // One at a time per player, in the order they were sent
+    let levelQueue = Promise.resolve();
+    socket.on('levelReached', data => { levelQueue = levelQueue.then(() => onLevel(data || {})).catch(() => {}); });
+    async function onLevel({ level }) {
+      await joined;
+      const n = Number(level), player = players.get(socket.id), userId = socket.data.userId;
+      if (!player || !userId || !Number.isInteger(n) || n < 1 || n > 1000) return;
+      try {
+        const _id = new ObjectId(userId);
+        if (n === 1) { player.runLevel = 1; await usersCol.updateOne({ _id }, { $set: { fpsRun: { level: 1, at: new Date() } } }); return; }
+        // Following a co-op host: the guest is on whatever level the host is
+        let host = null;
+        for (const [hid, guests] of coopGroups) if (guests.has(socket.id)) { host = players.get(hid); break; }
+        const followsHost = host && host.runLevel === n;
+        const before = await usersCol.findOneAndUpdate(
+          followsHost ? { _id } : { _id, 'fpsRun.level': { $in: [n - 1, n] } },
+          { $set: { fpsRun: { level: n, at: new Date() } }, $max: { fpsBest: n } },
+          { returnDocument: 'before', projection: { fpsRun: 1 } });
+        if (!before) return;                                // skipped levels: no reward
+        player.runLevel = n;                                // (co-op guests follow this)
+        if (before.fpsRun?.level === n) return;             // the same level again (a reconnect): nothing new
+        await _levelBadges(_id, n);
+        const pay = levelPay(n);
+        if (!pay) return;
+        const paid = await _payLevel(_id, pay);
+        if (paid) socket.emit('levelReward', { level: n, gained: pay, bucks: paid.bucks || 0 });
+      } catch (err) { console.error('levelReached:', err.message); }
+    }
 
     socket.on('move', ({ x, y, z, rotationY, health, gunId }) => {
       const player = players.get(socket.id);
@@ -556,6 +682,7 @@ async function start() {
         if (err.code !== 11000) console.error('banPlayer bannedCol error:', err);
       }
       await usersCol.updateOne({ username: targetName }, { $set: { banned: true } });
+      await signOutEverywhere({ username: targetName }); // their sign-ins stop working everywhere
 
       // Find and disconnect the target
       for (const [sid, p] of players.entries()) {
@@ -584,7 +711,9 @@ async function start() {
       const sender = players.get(socket.id);
       if (!sender) return;
       const ts = io.sockets.sockets.get(targetId);
-      if (ts) ts.emit('coopInviteReceived', { fromId: socket.id, fromUsername: sender.username });
+      if (!ts || ts.id === socket.id) return;
+      ts.data.coopInvites?.add(socket.id);
+      ts.emit('coopInviteReceived', { fromId: socket.id, fromUsername: sender.username });
     });
 
     socket.on('coopAccept', ({ hostId }) => {
@@ -592,10 +721,11 @@ async function start() {
       const guest = players.get(socket.id);
       const host  = players.get(hostId);
       if (!hs || !host || !guest) return;
+      if (!socket.data.coopInvites.delete(hostId)) return; // only with an invite from that host
       if (!coopGroups.has(hostId)) coopGroups.set(hostId, new Set());
       coopGroups.get(hostId).add(socket.id);
       hs.emit('coopAccepted', { guestId: socket.id, guestUsername: guest.username });
-      socket.emit('coopStart', { hostId, hostUsername: host.username, level: host.level || 1 });
+      socket.emit('coopStart', { hostId, hostUsername: host.username, level: host.runLevel || host.level || 1 });
     });
 
     socket.on('coopDeny', ({ hostId }) => {
@@ -645,7 +775,7 @@ async function start() {
     // ── Chat ──────────────────────────────────────────────────
     socket.on('chatJoin', async ({ token }) => {
       try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = verifySession(token);
         chatUsers.set(socket.id, { username: payload.username });
         _emitOnline();
         socket.emit('chatHistory', []); // could persist messages here later
@@ -664,6 +794,7 @@ async function start() {
     socket.on('chatMsg', ({ text }) => {
       const user = chatUsers.get(socket.id);
       if (!user) return;
+      if (chatRate.hit(socket.id)) return;
       const clean = (typeof text === 'string' ? text : '').trim().slice(0, 300);
       if (!clean) return;
       io.emit('chatMsg', { username: user.username, text: clean, ts: Date.now() });
@@ -672,7 +803,7 @@ async function start() {
     // ── Voice signaling ───────────────────────────────────────
     socket.on('voiceJoin', ({ token }) => {
       try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = verifySession(token);
         voiceUsers.set(socket.id, { username: payload.username });
         // Tell the new user about everyone already in voice
         const existing = [...voiceUsers.entries()]
@@ -702,6 +833,7 @@ async function start() {
     });
 
     socket.on('voiceIce', ({ targetId, candidate }) => {
+      if (!voiceUsers.has(socket.id)) return;
       const ts = io.sockets.sockets.get(targetId);
       if (ts) ts.emit('voiceIce', { fromId: socket.id, candidate });
     });
@@ -713,10 +845,18 @@ async function start() {
     });
 
     // ── Game mode ─────────────────────────────────────────────
+    // The mode is shared by everyone in the game, so it only changes when nobody else is
+    // playing (or an admin changes it); otherwise the player is told what it is
     socket.on('setGameMode', ({ token, mode }) => {
       try {
-        jwt.verify(token, JWT_SECRET);
+        verifySession(token);
         if (!['solo', 'ffa', 'tdm'].includes(mode)) return;
+        const me = players.get(socket.id);
+        const others = [...players.keys()].some(sid => sid !== socket.id);
+        if (others && !me?.isAdmin) {
+          if (mode !== activeGameMode) socket.emit('gameModeLocked', { mode: activeGameMode });
+          return socket.emit('gameModeChanged', { mode: activeGameMode, teams: Object.fromEntries(tdmTeams), tdmScores });
+        }
         activeGameMode = mode;
         ffaKills.clear();
         tdmTeams.clear();
@@ -742,9 +882,13 @@ async function start() {
     });
 
     // ── Stats ─────────────────────────────────────────────────
+    // Kills and deaths come from the game in the browser (the robots run there), so they only
+    // count from a signed-in game connection, at a rate a real player could manage
     socket.on('statsKill', async ({ token }) => {
+      await joined;
       try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = verifySession(token);
+        if (socket.data.userId !== String(payload.userId) || killRate.hit(socket.id)) return;
         const { ObjectId } = require('mongodb');
         await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, { $inc: { kills: 1 } });
         if (activeGameMode === 'ffa') {
@@ -761,8 +905,10 @@ async function start() {
     });
 
     socket.on('statsDeath', async ({ token }) => {
+      await joined;
       try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = verifySession(token);
+        if (socket.data.userId !== String(payload.userId) || deathRate.hit(socket.id)) return;
         const { ObjectId } = require('mongodb');
         await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, { $inc: { deaths: 1 } });
       } catch {}
@@ -771,7 +917,7 @@ async function start() {
     // ── Friends ───────────────────────────────────────────────
     socket.on('friendRequest', async ({ token, toUsername }) => {
       try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = verifySession(token);
         const fromUsername = payload.username;
         if (fromUsername === toUsername) return;
         const { ObjectId } = require('mongodb');
@@ -793,10 +939,11 @@ async function start() {
 
     socket.on('friendRespond', async ({ token, notifId, accept }) => {
       try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = verifySession(token);
         const { ObjectId } = require('mongodb');
         const notif = await notificationsCol.findOne({ _id: new ObjectId(notifId) });
-        if (!notif || notif.type !== 'friend_request') return;
+        // Only the person the request was sent to can answer it
+        if (!notif || notif.type !== 'friend_request' || String(notif.userId) !== String(payload.userId)) return;
         await notificationsCol.updateOne({ _id: notif._id }, { $set: { read: true } });
         if (accept) {
           const fromUsername = notif.data.fromUsername;
@@ -812,14 +959,14 @@ async function start() {
 
     socket.on('getFriendsList', async ({ token }) => {
       try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = verifySession(token);
         socket.emit('friendsList', await _getFriendsList(payload.username));
       } catch {}
     });
 
     socket.on('removeFriend', async ({ token, username }) => {
       try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = verifySession(token);
         await usersCol.updateOne({ username: payload.username }, { $pull: { friends: username } });
         await usersCol.updateOne({ username },                   { $pull: { friends: payload.username } });
         socket.emit('friendsList', await _getFriendsList(payload.username));
@@ -831,8 +978,9 @@ async function start() {
 
     // ── Report player ─────────────────────────────────────────
     socket.on('reportPlayer', ({ targetUsername, reason, token }) => {
+      if (reportRate.hit(socket.id)) return socket.emit('reportResult', { success: false, error: 'Please wait a minute before sending another report.' });
       let reporter = 'Guest';
-      try { const p = jwt.verify(token, JWT_SECRET); reporter = p.username || 'Guest'; } catch {}
+      try { const p = verifySession(token); reporter = p.username || 'Guest'; } catch {}
       const report = {
         reporter,
         targetUsername: String(targetUsername || '').trim().slice(0, 24),
@@ -860,14 +1008,14 @@ async function start() {
       ];
       if (!VALID.includes(emoteId)) return;
       let username = 'Guest';
-      try { const p = jwt.verify(token, JWT_SECRET); username = p.username || 'Guest'; } catch {}
+      try { const p = verifySession(token); username = p.username || 'Guest'; } catch {}
       socket.broadcast.emit('remoteEmote', { socketId: socket.id, username, emoteId });
     });
 
     // ── Trade (socket-based) ──────────────────────────────────
     socket.on('tradeRequest', ({ token, toUsername }) => {
       try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = verifySession(token);
         const fromUsername = payload.username;
         if (fromUsername === toUsername) return socket.emit('tradeError', 'Cannot trade with yourself.');
         let targetSocketId = null;
@@ -875,7 +1023,7 @@ async function start() {
           if (u.username === toUsername) { targetSocketId = sid; break; }
         }
         if (!targetSocketId) return socket.emit('tradeError', `${toUsername} is not online.`);
-        const sessionId = Math.random().toString(36).slice(2, 10);
+        const sessionId = nodeCrypto.randomBytes(8).toString('hex');
         const session = {
           id: sessionId,
           initiatorSocketId: socket.id,
@@ -920,7 +1068,7 @@ async function start() {
       const isTgt  = session.targetSocketId    === socket.id;
       if (!isInit && !isTgt) return;
       try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = verifySession(token);
         const { ObjectId } = require('mongodb');
         const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { ownedItems:1 } });
         if (!(user?.ownedItems||[]).includes(itemId)) return socket.emit('tradeError', 'You do not own that item.');
@@ -1011,10 +1159,12 @@ async function start() {
   app.post('/api/register', async (req, res) => {
     try {
       const { username, password, email } = req.body;
-      if (!username || !password || !email)
+      if (!username || !password || !email || ![username, password, email].every(v => typeof v === 'string'))
         return res.status(400).json({ error: 'Username, password, and email are required.' });
-      if (username.length < 3 || username.length > 24)
-        return res.status(400).json({ error: 'Username must be 3–24 characters.' });
+      // The same rule as changing your username: names show up all over the site and the game
+      if (!/^[a-zA-Z0-9_]{3,24}$/.test(username))
+        return res.status(400).json({ error: 'Username must be 3–24 characters: letters, numbers and _ only.' });
+      if (signupLimit.hit('ip:' + req.ip)) return tooMany(res);
       if (password.length < 6)
         return res.status(400).json({ error: 'Password must be at least 6 characters.' });
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -1040,7 +1190,7 @@ async function start() {
         return res.status(409).json({ error: 'An account with that email already exists.' });
 
       const hashed = await bcrypt.hash(password, SALT_ROUNDS);
-      const verifCode   = String(Math.floor(100000 + Math.random() * 900000));
+      const verifCode   = newCode();
       const verifExpiry = Date.now() + 24 * 60 * 60 * 1000;
 
       const doc = {
@@ -1089,19 +1239,27 @@ async function start() {
   app.post('/api/auth/verify-email', async (req, res) => {
     try {
       const { username, code } = req.body;
-      if (!username || !code)
+      if (!username || !code || typeof username !== 'string' || typeof code !== 'string')
         return res.status(400).json({ error: 'Username and code are required.' });
+      if (codeGuessLimit.hit('ip:' + req.ip)) return tooMany(res);
       const esc  = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const user = await usersCol.findOne({ username: { $regex: new RegExp(`^${esc}$`, 'i') } });
       if (!user)
         return res.status(404).json({ error: 'Account not found.' });
       if (user.emailVerified)
         return res.json({ success: true, alreadyVerified: true });
-      if (!user.verifCode || user.verifCode !== code.trim() || Date.now() > (user.verifExpiry || 0))
+      if (!user.verifCode || Date.now() > (user.verifExpiry || 0))
         return res.status(400).json({ error: 'Invalid or expired verification code.' });
+      if (user.verifCode !== code.trim()) {
+        // After 5 wrong guesses the code stops working: ask for a new one
+        const tries = (user.verifTries || 0) + 1;
+        await usersCol.updateOne({ _id: user._id }, tries >= CODE_TRIES
+          ? { $unset: { verifCode: '', verifExpiry: '', verifTries: '' } } : { $set: { verifTries: tries } });
+        return res.status(400).json({ error: tries >= CODE_TRIES ? 'Too many wrong codes. Please ask for a new code.' : 'Invalid or expired verification code.' });
+      }
       await usersCol.updateOne({ _id: user._id }, {
         $set:   { emailVerified: true },
-        $unset: { verifCode: '', verifExpiry: '' },
+        $unset: { verifCode: '', verifExpiry: '', verifTries: '' },
       });
       res.json({ success: true });
     } catch (err) {
@@ -1114,14 +1272,15 @@ async function start() {
   app.post('/api/auth/resend-verif', async (req, res) => {
     try {
       const { username } = req.body;
-      if (!username) return res.status(400).json({ error: 'Username required.' });
+      if (!username || typeof username !== 'string') return res.status(400).json({ error: 'Username required.' });
       const esc  = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const user = await usersCol.findOne({ username: { $regex: new RegExp(`^${esc}$`, 'i') } });
       if (!user || user.emailVerified)
         return res.status(400).json({ error: 'Account not found or already verified.' });
-      const verifCode   = String(Math.floor(100000 + Math.random() * 900000));
+      if (codeSendLimit.hit('verif:' + user._id)) return tooMany(res);
+      const verifCode   = newCode();
       const verifExpiry = Date.now() + 24 * 60 * 60 * 1000;
-      await usersCol.updateOne({ _id: user._id }, { $set: { verifCode, verifExpiry } });
+      await usersCol.updateOne({ _id: user._id }, { $set: { verifCode, verifExpiry }, $unset: { verifTries: '' } });
       try {
         const { subject, html } = emails.codeEmail('resend', { username: user.username, code: verifCode });
         await _sendMail(user.email, subject, html);
@@ -1185,8 +1344,11 @@ async function start() {
   app.post('/api/login', async (req, res) => {
     try {
       const { username, password } = req.body;
-      if (!username || !password)
+      if (!username || !password || typeof username !== 'string' || typeof password !== 'string')
         return res.status(400).json({ error: 'Username and password are required.' });
+      // At most 10 wrong passwords in 15 minutes, per account and per address
+      const keys = ['user:' + username.toLowerCase(), 'ip:' + req.ip];
+      if (keys.map(k => loginLimit.hit(k)).some(Boolean)) return tooMany(res);
 
       const user = await usersCol.findOne({ username });
       if (!user)
@@ -1198,6 +1360,7 @@ async function start() {
       const match = await bcrypt.compare(password, user.password);
       if (!match)
         return res.status(401).json({ error: 'Invalid username or password.' });
+      loginLimit.clear(keys[0]);
 
       await _finishLogin(user, res);
     } catch (err) {
@@ -1209,10 +1372,11 @@ async function start() {
   // The rest of signing in, once the password or passkey checks out: an unverified email gets a
   // code first, then the session token and the player's details are sent
   async function _finishLogin(user, res) {
+    if (user.banned) return res.status(403).json({ error: 'This account has been banned.' });
     if (user.email && !user.emailVerified) {
-      const verifCode   = String(Math.floor(100000 + Math.random() * 900000));
+      const verifCode   = newCode();
       const verifExpiry = Date.now() + 24 * 60 * 60 * 1000;
-      await usersCol.updateOne({ _id: user._id }, { $set: { verifCode, verifExpiry } });
+      await usersCol.updateOne({ _id: user._id }, { $set: { verifCode, verifExpiry }, $unset: { verifTries: '' } });
       try {
         const { subject, html } = emails.codeEmail('login', { username: user.username, code: verifCode });
         await _sendMail(user.email, subject, html);
@@ -1382,8 +1546,7 @@ async function start() {
       if (payload.username === 'Stotch')
         return res.status(403).json({ error: 'The Stotch account cannot be deleted.' });
       const { ObjectId } = require('mongodb');
-      const result = await usersCol.deleteOne({ _id: new ObjectId(payload.userId) });
-      if (result.deletedCount === 0)
+      if (!(await _deleteAccount({ _id: new ObjectId(payload.userId) })))
         return res.status(404).json({ error: 'Account not found.' });
       res.json({ success: true });
     } catch (err) {
@@ -1429,6 +1592,8 @@ async function start() {
         'legend_of_hub', 'cosmic_warrior', 'deity_mode', 'omniscient',
         'fashionista', 'trendsetter', 'big_spender', 'legendary_drip', 'full_drip', 'rare_taste',
   ];
+  // Given only by the server, from what it has seen (levels reached, the daily streak)
+  const SERVER_BADGES = new Set([...Object.keys(LEVEL_BADGES), 'code_breaker']);
   // Shown in the hub but not earnable yet: only an admin can grant these
   const ADMIN_ONLY_BADGE_IDS = ['apex_predator', 'carry', 'easter_egg', 'melee_master', 'melee_only',
     'oops_i_died', 'phoenix_rise', 'secret_finder', 'try_hard', 'wingman'];
@@ -1441,6 +1606,8 @@ async function start() {
       const VALID = BADGE_IDS;
       if (!VALID.includes(badgeId))
         return res.status(400).json({ error: 'Invalid badge.' });
+      // Level and streak badges are given by the server as they're earned
+      if (SERVER_BADGES.has(badgeId)) return res.json({ success: true, byServer: true });
       const { ObjectId } = require('mongodb');
       await usersCol.updateOne(
         { _id: new ObjectId(payload.userId) },
@@ -1455,15 +1622,17 @@ async function start() {
   });
 
   // ── POST /api/codes/redeem ──────────────────────────────────
-  const REDEEM_CODES = {
-    '100011011110001011001010010': { badge: 'code_breaker', bucks: 10000 },
-  };
+  // Kept out of the code: REDEEM_CODES is a Railway variable holding JSON, for example
+  // {"SECRETCODE": {"badge": "code_breaker", "bucks": 10000}}
+  let REDEEM_CODES = {};
+  try { REDEEM_CODES = JSON.parse(process.env.REDEEM_CODES || '{}'); }
+  catch { console.warn('[CONFIG] REDEEM_CODES is not valid JSON: no codes will work.'); }
   app.post('/api/codes/redeem', async (req, res) => {
     try {
       const payload = verifyToken(req.headers.authorization);
       const code = String(req.body.code || '').trim();
-      const entry = REDEEM_CODES[code];
-      if (!entry) return res.status(400).json({ error: 'Invalid code.' });
+      const entry = Object.prototype.hasOwnProperty.call(REDEEM_CODES, code) ? REDEEM_CODES[code] : null;
+      if (!entry || !entry.badge) return res.status(400).json({ error: 'Invalid code.' });
 
       const { ObjectId } = require('mongodb');
       const user = await usersCol.findOne(
@@ -1474,12 +1643,14 @@ async function start() {
       if ((user.badges || []).includes(entry.badge))
         return res.status(409).json({ error: "You've already redeemed this code." });
 
+      // Only if the badge isn't there yet, in one step (two requests at once can't both pay)
       const result = await usersCol.findOneAndUpdate(
-        { _id: new ObjectId(payload.userId) },
-        { $inc: { bucks: entry.bucks }, $addToSet: { badges: entry.badge } },
+        { _id: new ObjectId(payload.userId), badges: { $ne: entry.badge } },
+        { $inc: { bucks: Number(entry.bucks) || 0 }, $addToSet: { badges: entry.badge } },
         { returnDocument: 'after', projection: { bucks: 1 } }
       );
-      res.json({ success: true, badge: entry.badge, bucksAwarded: entry.bucks, bucks: result.bucks });
+      if (!result) return res.status(409).json({ error: "You've already redeemed this code." });
+      res.json({ success: true, badge: entry.badge, bucksAwarded: Number(entry.bucks) || 0, bucks: result.bucks });
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
       console.error('/api/codes/redeem error:', err);
@@ -1505,23 +1676,8 @@ async function start() {
     }
   });
 
-  // ── POST /api/bucks/add ─────────────────────────────────────
-  app.post('/api/bucks/add', async (req, res) => {
-    try {
-      const payload = verifyToken(req.headers.authorization);
-      const n = Math.max(0, Math.min(1000, parseInt(req.body.amount) || 0));
-      const { ObjectId } = require('mongodb');
-      const result = await usersCol.findOneAndUpdate(
-        { _id: new ObjectId(payload.userId) },
-        { $inc: { bucks: n } },
-        { returnDocument: 'after', projection: { bucks: 1 } }
-      );
-      res.json({ success: true, bucks: (result && result.bucks) || 0 });
-    } catch (err) {
-      if (err.status) return res.status(err.status).json({ error: err.message });
-      res.status(500).json({ error: 'Server error.' });
-    }
-  });
+  // (Bucks from playing are paid by the server as levels are reached: see 'levelReached'.
+  //  There's deliberately no route that lets the browser add bucks.)
 
   // ── POST /api/admin/give-bucks ─────────────────────────────
   app.post('/api/admin/give-bucks', async (req, res) => {
@@ -1731,8 +1887,7 @@ async function start() {
         return res.status(403).json({ error: 'Forbidden.' });
       const target = req.params.username;
       if (target === 'Stotch') return res.status(400).json({ error: 'Cannot delete the root admin account.' });
-      const result = await usersCol.deleteOne({ username: target });
-      if (result.deletedCount === 0) return res.status(404).json({ error: `No account found with username "${target}".` });
+      if (!(await _deleteAccount({ username: target }))) return res.status(404).json({ error: `No account found with username "${target}".` });
       res.json({ success: true, deleted: target });
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
@@ -1753,21 +1908,18 @@ async function start() {
       if (!Number.isFinite(n) || n < 1 || n > 10000)
         return res.status(400).json({ error: 'Amount must be 1–10 000.' });
       const { ObjectId } = require('mongodb');
-      const sender = await usersCol.findOne(
-        { _id: new ObjectId(payload.userId) },
-        { projection: { bucks: 1, username: 1 } }
-      );
-      if (!sender) return res.status(404).json({ error: 'Sender not found.' });
-      if ((sender.bucks || 0) < n) return res.status(402).json({ error: 'Not enough bucks.' });
-      const target = await usersCol.findOne({ username: targetUsername });
+      const target = await usersCol.findOne({ username: targetUsername }, { projection: { _id: 1 } });
       if (!target) return res.status(404).json({ error: `User "${targetUsername}" not found.` });
       if (target._id.toString() === payload.userId)
         return res.status(400).json({ error: 'Cannot gift yourself.' });
-      await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, { $inc: { bucks: -n } });
-      await usersCol.updateOne({ _id: new ObjectId(target._id) },     { $inc: { bucks:  n } });
-      const updated = await usersCol.findOne(
-        { _id: new ObjectId(payload.userId) }, { projection: { bucks: 1 } }
+      // Taken only if the sender still has them, in one step: two gifts at once can't spend the same bucks
+      const updated = await usersCol.findOneAndUpdate(
+        { _id: new ObjectId(payload.userId), bucks: { $gte: n } },
+        { $inc: { bucks: -n } },
+        { returnDocument: 'after', projection: { bucks: 1 } }
       );
+      if (!updated) return res.status(402).json({ error: 'Not enough bucks.' });
+      await usersCol.updateOne({ _id: target._id }, { $inc: { bucks: n } });
       res.json({ success: true, bucks: updated.bucks });
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
@@ -1817,15 +1969,20 @@ async function start() {
       const price  = ITEM_PRICES[itemId] ?? (isGunAttach ? ATTACH_RARITY_PRICES[rarity] : RARITY_PRICES[rarity]);
       if (!price) return res.status(400).json({ error: 'Invalid item.' });
       const { ObjectId } = require('mongodb');
-      const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { bucks:1, ownedItems:1 } });
-      if (!user) return res.status(404).json({ error: 'User not found.' });
-      if ((user.ownedItems || []).includes(itemId)) return res.status(409).json({ error: 'Already owned.' });
-      if ((user.bucks || 0) < price) return res.status(402).json({ error: 'Not enough bucks.' });
-      await usersCol.updateOne(
-        { _id: new ObjectId(payload.userId) },
-        { $inc: { bucks: -price }, $addToSet: { ownedItems: itemId } }
+      // Paid and added in one step, only if it isn't owned yet and there are enough bucks:
+      // two purchases at once can't spend the same bucks
+      const bought = await usersCol.findOneAndUpdate(
+        { _id: new ObjectId(payload.userId), ownedItems: { $ne: itemId }, bucks: { $gte: price } },
+        { $inc: { bucks: -price }, $addToSet: { ownedItems: itemId } },
+        { returnDocument: 'after', projection: { bucks: 1 } }
       );
-      res.json({ success: true, bucks: (user.bucks || 0) - price });
+      if (!bought) {
+        const user = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { ownedItems: 1 } });
+        if (!user) return res.status(404).json({ error: 'User not found.' });
+        if ((user.ownedItems || []).includes(itemId)) return res.status(409).json({ error: 'Already owned.' });
+        return res.status(402).json({ error: 'Not enough bucks.' });
+      }
+      res.json({ success: true, bucks: bought.bucks || 0 });
     } catch (err) {
       if (err.status) return res.status(err.status).json({ error: err.message });
       res.status(500).json({ error: 'Server error.' });
@@ -1986,7 +2143,7 @@ async function start() {
         if (current.email !== emailLower) {
           $set.email         = emailLower;
           $set.emailVerified = false;
-          const verifCode    = String(Math.floor(100000 + Math.random() * 900000));
+          const verifCode    = newCode();
           const verifExpiry  = Date.now() + 24 * 60 * 60 * 1000;
           $set.verifCode     = verifCode;
           $set.verifExpiry   = verifExpiry;
@@ -2004,7 +2161,7 @@ async function start() {
       }
 
       if (avatar !== undefined) {
-        if (typeof avatar !== 'string' || !avatar.startsWith('data:image/'))
+        if (typeof avatar !== 'string' || !/^data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(avatar))
           return res.status(400).json({ error: 'Invalid avatar format.' });
         if (avatar.length > 200000)
           return res.status(400).json({ error: 'Avatar too large (max ~150KB).' });
@@ -2149,13 +2306,16 @@ async function start() {
       const { username } = req.body;
       if (!username || typeof username !== 'string' || !username.trim())
         return res.status(400).json({ error: 'Enter your username or email.' });
+      if (codeGuessLimit.hit('ip:' + req.ip)) return tooMany(res);
       const user = await findUserForReset(username);
       if (!user) return res.status(404).json({ error: 'No account found with that username or email.' });
       if (!user.email) return res.status(400).json({ error: 'No email on file for this account. Please contact support.' });
-      const code   = Math.random().toString(36).slice(2, 8).toUpperCase();
+      if (codeSendLimit.hit('reset:' + user._id)) return tooMany(res);
+      // 6 letters and numbers from a secure random source (never written to the logs)
+      const ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const code   = Array.from({ length: 6 }, () => ABC[nodeCrypto.randomInt(ABC.length)]).join('');
       const expiry = Date.now() + 15 * 60 * 1000;
-      await usersCol.updateOne({ _id: user._id }, { $set: { resetCode: code, resetExpiry: expiry } });
-      console.log(`[RESET] ${user.username} → ${code}`);
+      await usersCol.updateOne({ _id: user._id }, { $set: { resetCode: code, resetExpiry: expiry }, $unset: { resetTries: '' } });
       try {
         const { subject, html } = emails.codeEmail('reset', { username: user.username, code });
         await _sendMail(user.email, subject, html);
@@ -2176,12 +2336,21 @@ async function start() {
         return res.status(400).json({ error: 'All fields required.' });
       if (typeof newPassword !== 'string' || newPassword.length < 6)
         return res.status(400).json({ error: 'Password must be at least 6 characters.' });
-      if (typeof username !== 'string') return res.status(400).json({ error: 'All fields required.' });
+      if (typeof username !== 'string' || typeof code !== 'string') return res.status(400).json({ error: 'All fields required.' });
+      if (codeGuessLimit.hit('ip:' + req.ip)) return tooMany(res);
       const user = await findUserForReset(username);
-      if (!user || !user.resetCode || user.resetCode !== code.trim().toUpperCase() || Date.now() > (user.resetExpiry || 0))
+      if (!user || !user.resetCode || Date.now() > (user.resetExpiry || 0))
         return res.status(400).json({ error: 'Invalid or expired reset code.' });
+      if (user.resetCode !== code.trim().toUpperCase()) {
+        // After 5 wrong guesses the code stops working: ask for a new one
+        const tries = (user.resetTries || 0) + 1;
+        await usersCol.updateOne({ _id: user._id }, tries >= CODE_TRIES
+          ? { $unset: { resetCode: '', resetExpiry: '', resetTries: '' } } : { $set: { resetTries: tries } });
+        return res.status(400).json({ error: tries >= CODE_TRIES ? 'Too many wrong codes. Please ask for a new code.' : 'Invalid or expired reset code.' });
+      }
       const hash = await bcrypt.hash(newPassword, 10);
-      await usersCol.updateOne({ _id: user._id }, { $set: { password: hash }, $unset: { resetCode: '', resetExpiry: '' } });
+      await usersCol.updateOne({ _id: user._id }, { $set: { password: hash }, $unset: { resetCode: '', resetExpiry: '', resetTries: '' } });
+      await signOutEverywhere({ _id: user._id }); // whoever else was signed in is signed out
       res.json({ success: true });
     } catch (err) { res.status(500).json({ error: 'Server error.' }); }
   });

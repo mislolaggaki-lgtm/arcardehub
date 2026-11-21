@@ -40,25 +40,17 @@ let coopBotTimer     = 0;
 const _isLocal = ['localhost','127.0.0.1'].includes(window.location.hostname);
 const _API_BASE = _isLocal ? 'http://localhost:3001' : window.location.origin;
 
-function awardBucks(n) {
-  let cur = parseInt(localStorage.getItem('ah_bucks') || '0', 10);
-  cur += n;
-  localStorage.setItem('ah_bucks', String(cur));
+// Bucks for levels are paid by the server ('levelReward'), never added by the game itself
+function showBucks(total, gained) {
+  localStorage.setItem('ah_bucks', String(total));
   const el = document.getElementById('hud-bucks-val');
-  if (el) el.textContent = cur;
-  const token = localStorage.getItem('ah_token');
-  if (token) {
-    fetch(_API_BASE + '/api/bucks/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ amount: n }),
-    }).then(r => r.ok ? r.json() : null).then(d => {
-      if (d && d.bucks !== undefined) {
-        localStorage.setItem('ah_bucks', String(d.bucks));
-        if (el) el.textContent = d.bucks;
-      }
-    }).catch(() => {});
-  }
+  if (el) el.textContent = total;
+  if (gained && typeof pushKillFeed === 'function') pushKillFeed(`+${gained} BUCKS`);
+}
+// Tell the server which level has started (it checks the run and pays from level 100 on,
+// plus 10 on every 50th level). Not connected yet: it's sent on connecting instead.
+function reportLevel(n) {
+  if (socket && socket.connected && localStorage.getItem('ah_token')) socket.emit('levelReached', { level: n });
 }
 
 // ── Persistent stats (pre-declared so the init IIFE below can assign them) ──
@@ -5993,6 +5985,7 @@ function startLevel(n) {
   levelTransitioning = false;
   updateLevelHUD();
   updateEnemyCountHUD();
+  reportLevel(n);
   if (coopIsHost && socket) socket.emit('coopLevelUp', { level: n });
   if (n === 1)  unlockBadge('first_step');
   if (n >= 5)   unlockBadge('rookie');
@@ -6005,7 +5998,7 @@ function startLevel(n) {
   if (n >= 50)  unlockBadge('unstoppable');
   if (n >= 60)  unlockBadge('lvl60');
   if (n >= 75)  unlockBadge('lvl75');
-  if (n >= 100) { unlockBadge('veteran'); awardBucks(100); }
+  if (n >= 100) unlockBadge('veteran');
   if (n >= 150) unlockBadge('lvl150');
   if (n >= 200) unlockBadge('max_rank');
 }
@@ -6170,6 +6163,7 @@ function initSocket() {
 
   socket.on('connect', () => {
     socket.emit('join', { token: localStorage.getItem('ah_token'), username, equippedItems: JSON.parse(localStorage.getItem('ah_equipped') || '[]') });
+    if (gameStarted && currentLevel) reportLevel(currentLevel); // the level that started before connecting (or before a reconnect)
 
     // Broadcast position + health every 50 ms
     if (moveInterval) clearInterval(moveInterval);
@@ -6501,9 +6495,18 @@ function initSocket() {
     if (reportList) {
       const entry = document.createElement('div');
       entry.className = 'report-entry';
-      entry.innerHTML = `<span class="report-time">${time}</span> <b>${reporter}</b> → <b>${targetUsername}</b>: <span class="report-reason">${reason || '—'}</span>`;
+      entry.innerHTML = `<span class="report-time">${_esc(time)}</span> <b>${_esc(reporter)}</b> → <b>${_esc(targetUsername)}</b>: <span class="report-reason">${_esc(reason || '—')}</span>`;
       reportList.insertBefore(entry, reportList.firstChild);
     }
+  });
+
+  // Paid for a level (see reportLevel)
+  socket.on('levelReward', ({ gained, bucks }) => showBucks(bucks, gained));
+
+  // Someone else is playing, so the shared mode stays as it is
+  socket.on('gameModeLocked', ({ mode }) => {
+    ['solo', 'ffa', 'tdm'].forEach(m => document.getElementById('mode-btn-' + m)?.classList.toggle('active', m === mode));
+    pushKillFeed(`Others are playing ${mode.toUpperCase()} right now: the mode can change when they've left`);
   });
 
   // Request current game mode on connect
@@ -6633,8 +6636,8 @@ function renderFriendsList(friends) {
   el.innerHTML = friends.map(f =>
     `<div class="friend-row ${f.online ? 'online' : ''}">
       <span class="friend-dot"></span>
-      <span class="friend-name" onclick="showProfileModal('${_esc(f.username)}')">${_esc(f.username)}</span>
-      <button class="friend-remove-btn" onclick="removeFriend('${_esc(f.username)}')">✕</button>
+      <span class="friend-name" onclick="showProfileModal(${_jsArg(f.username)})">${_esc(f.username)}</span>
+      <button class="friend-remove-btn" onclick="removeFriend(${_jsArg(f.username)})">✕</button>
     </div>`
   ).join('');
 }
@@ -6829,7 +6832,9 @@ function _fpsChatAppend(sender, text, isSelf, isSystem) {
   while (box.children.length > 120) box.removeChild(box.firstChild);
 }
 
-function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+// A value for an inline onclick="fn(...)": a JavaScript string, escaped for the attribute
+function _jsArg(s) { return _esc(JSON.stringify(String(s))); }
 
 // ── Patch pushKillFeed to also post system messages to chat ──
 const _origPushKillFeed = pushKillFeed;
