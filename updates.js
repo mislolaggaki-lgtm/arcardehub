@@ -2,6 +2,17 @@
 // and by the server (the weekly email always features UPDATES[0]).
 const UPDATES = [
   {
+    version: '2.2', date: 'November 2026', title: 'DAILY STREAKS & SAFER ACCOUNTS',
+    changes: [
+      'Daily streaks: play 5 minutes of FPS Arena a day to keep your flame alive. It shows next to your name in the top bar',
+      'Your flame changes as your streak grows: Flame, Blaze, Red-Hot, Inferno and Legend, with a celebration every day you keep it',
+      'See your friends\' streaks: tap a friend, then their streak',
+      '11 streak badges, from First Flame to Eternal Flame, plus Clutch Save, Perfect Week and Rekindled',
+      'Every 50th level now pays 10 bucks on top of the usual level rewards',
+      'Safer accounts: limits on password guessing, and resetting your password signs you out everywhere else',
+    ]
+  },
+  {
     version: '2.1', date: 'September 2026', title: 'GRAPHICS OVERHAUL, BADGES & CODES',
     changes: [
       'Big graphics upgrade in FPS Arena: HDR lighting, smoother edges, reflections and detailed textures, and the game now runs up to 4x faster',

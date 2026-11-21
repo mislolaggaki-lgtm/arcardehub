@@ -146,6 +146,7 @@ app.use(express.json());
 // Only the website's own files are public. The project folder also holds the server
 // code (with redeem codes), settings files and node_modules, which must never be served.
 const PUBLIC_FILES = new Set(['/', '/index.html', '/terms.html', '/sw.js', '/updates.js', '/robot-builder.js', '/passkeys.js',
+  '/streak-flame.js', '/streak-flame.css', '/streak.js',
   '/favicon.ico', '/arcadehub-game-logo.png', '/dropdown-gameai-logo.png']);
 const PUBLIC_DIRS = new Set(['icons', 'email', 'games']);
 app.use((req, res, next) => {
@@ -248,6 +249,11 @@ function verifyToken(authHeader) {
 // Days are UK days (like iTutor): 'YYYY-MM-DD' in London
 const _ukFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' });
 const ukDay = (d = new Date()) => _ukFmt.format(d);
+const _ukHourFmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: 'numeric', hourCycle: 'h23' });
+const ukHour = () => parseInt(_ukHourFmt.format(new Date()), 10);
+// Calendar sums on 'YYYY-MM-DD' days
+const addDays = (day, n) => new Date(Date.parse(day + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+const weekday = day => new Date(day + 'T12:00:00Z').getUTCDay(); // 0 = Sunday
 
 // ── Guessing limits ───────────────────────────────────────────
 // At most `max` attempts per key in a sliding window. hit() records one and says whether it
@@ -500,6 +506,80 @@ async function start() {
     }
   }
 
+  // ── Daily streak ────────────────────────────────────────────
+  // Like iTutor's: a day counts once you've played 5 minutes of FPS Arena that day (UK days),
+  // in any mode. The server counts the minutes itself from the positions the game sends while
+  // you play, and only the moments you move or turn count, so a game left open doesn't.
+  // Saved on the account as streak: { count, best, lastDay, days (the last 60 kept days),
+  // playDay, playSecs (today's play), warned (the day the at-risk alert went out), news }.
+  const STREAK_GOAL_SECS = 5 * 60;
+  const playClock = new Map();   // userId → when their play was last looked at (ms)
+  const playPending = new Map(); // userId → play counted but not saved yet (ms)
+  function countPlay(userId, moved) {
+    const now = Date.now(), last = playClock.get(userId);
+    playClock.set(userId, now);
+    // Only the time since the last update (sent every 50 ms), and only when it was moving
+    if (moved && last && now - last > 0 && now - last <= 1000) playPending.set(userId, (playPending.get(userId) || 0) + (now - last));
+  }
+  async function savePlay(userId) {
+    const ms = playPending.get(userId) || 0;
+    if (ms < 1000) return;
+    const secs = Math.floor(ms / 1000);
+    playPending.set(userId, ms - secs * 1000);
+    const day = ukDay(), _id = new ObjectId(userId), opts = { returnDocument: 'after', projection: { streak: 1, username: 1, badges: 1 } };
+    try {
+      const u = await usersCol.findOneAndUpdate({ _id, 'streak.playDay': day }, { $inc: { 'streak.playSecs': secs } }, opts)
+        || await usersCol.findOneAndUpdate({ _id, 'streak.playDay': { $ne: day } }, { $set: { 'streak.playDay': day, 'streak.playSecs': secs } }, opts);
+      if (u && u.streak.playSecs >= STREAK_GOAL_SECS && u.streak.lastDay !== day) await keepStreak(u, day);
+    } catch (err) { console.error('savePlay:', err.message); }
+  }
+  setInterval(() => { for (const id of playPending.keys()) savePlay(id); }, 10 * 1000);
+
+  // Badges for the streak (given only by the server)
+  const STREAK_BADGES = [['first_flame', 1], ['streak_3', 3], ['dedicated', 7], ['streak_14', 14], ['daily_grinder', 30],
+    ['streak_50', 50], ['streak_100', 100], ['streak_365', 365]];
+  // Today is kept: one more day after yesterday, or a new streak after a gap
+  async function keepStreak(u, day) {
+    const s = u.streak || {}, yesterday = addDays(day, -1);
+    const count = s.lastDay === yesterday ? (s.count || 0) + 1 : 1;
+    const best = Math.max(s.best || 0, count);
+    const days = [...(s.days || []).filter(d => d !== day), day].slice(-60);
+    const earned = STREAK_BADGES.filter(([, n]) => count >= n).map(([b]) => b);
+    if (ukHour() >= 22) earned.push('clutch_save');                                  // kept late in the evening
+    if (weekday(day) === 0 && count >= 7) earned.push('perfect_week');                // every day Monday to Sunday
+    if (count === 1 && (s.count || 0) >= 7 && s.lastDay && s.lastDay < yesterday) earned.push('rekindled'); // back after losing a big one
+    const fresh = earned.filter(b => !(u.badges || []).includes(b));
+    // Only if nothing else kept it in the meantime
+    const r = await usersCol.updateOne({ _id: u._id, 'streak.lastDay': s.lastDay || null }, {
+      $set: { 'streak.count': count, 'streak.best': best, 'streak.lastDay': day, 'streak.days': days, 'streak.news': { day, count, badges: fresh } },
+      $addToSet: { badges: { $each: earned } },
+    });
+    if (!r.modifiedCount) return;
+    // Tell the player now: the game shows a small note, the hub (if it's open) the full screen
+    const id = String(u._id), msg = { streak: count, best, badges: fresh };
+    for (const sock of io.sockets.sockets.values()) if (sock.data.userId === id || chatUsers.get(sock.id)?.username === u.username) sock.emit('streakKept', msg);
+  }
+
+  // What the app shows. A streak that wasn't kept yesterday or today counts as 0.
+  function streakView(s, lastDays = 7) {
+    s = s || {};
+    const today = ukDay(), yesterday = addDays(today, -1);
+    const alive = s.lastDay === today || s.lastDay === yesterday;
+    const count = alive ? s.count || 0 : 0, keptToday = s.lastDay === today;
+    const kept = new Set(s.days || []);
+    const days = [];
+    for (let k = lastDays - 1; k >= 0; k--) { const d = addDays(today, -k); days.push({ day: d, kept: kept.has(d) }); }
+    return {
+      streak: count, best: Math.max(s.best || 0, count), keptToday,
+      // Kept today: lit. Not yet: grey, and from 6pm (UK) at risk
+      state: keptToday ? 'lit' : count > 0 && ukHour() >= 18 ? 'risk' : 'dim',
+      playedSecs: s.playDay === today ? s.playSecs || 0 : 0, goalSecs: STREAK_GOAL_SECS,
+      startedOn: count > 0 ? addDays(s.lastDay, -(count - 1)) : null,
+      lost: !alive && (s.count || 0) > 1 ? s.count : 0, // a streak that ran out (and how long it was)
+      days,
+    };
+  }
+
   // ── Deleting an account: the account, and what's left of it elsewhere ─
   async function _deleteAccount(filter) {
     const user = await usersCol.findOneAndDelete(filter, { projection: { _id: 1, username: 1 } });
@@ -520,7 +600,7 @@ async function start() {
     const inGameSet = new Set([...players.values()].map(p => p.username));
     if (friends.length === 0) return [];
     const friendDocs = await usersCol
-      .find({ username: { $in: friends } }, { projection: { username:1, bio:1, avatar:1 } })
+      .find({ username: { $in: friends } }, { projection: { username:1, bio:1, avatar:1, streak:1 } })
       .toArray();
     const docMap = new Map(friendDocs.map(d => [d.username, d]));
     return friends.map(f => {
@@ -530,6 +610,7 @@ async function start() {
         status:   inGameSet.has(f) ? 'in-game' : onlineSet.has(f) ? 'online' : 'offline',
         bio:      doc.bio    || '',
         avatar:   doc.avatar || null,
+        ...(() => { const v = streakView(doc.streak, 1); return { streak: v.streak, streakState: v.state }; })(),
       };
     });
   }
@@ -626,6 +707,11 @@ async function start() {
     socket.on('move', ({ x, y, z, rotationY, health, gunId }) => {
       const player = players.get(socket.id);
       if (!player) return;
+      // Play time for the streak: only while actually moving or turning
+      if (socket.data.userId) {
+        const moved = [x, y, z, rotationY].every(Number.isFinite) && (Math.abs(x - player.x) + Math.abs(y - player.y) + Math.abs(z - player.z) > 0.01 || Math.abs(rotationY - player.rotationY) > 0.002);
+        countPlay(socket.data.userId, moved);
+      }
       player.x = x; player.y = y; player.z = z; player.rotationY = rotationY;
       if (health !== undefined) player.health = health;
       if (gunId  !== undefined) player.gunId  = gunId;
@@ -1133,6 +1219,7 @@ async function start() {
     });
 
     socket.on('disconnect', () => {
+      if (socket.data.userId) savePlay(socket.data.userId);
       players.delete(socket.id);
       ffaKills.delete(socket.id);
       tdmTeams.delete(socket.id);
@@ -1591,9 +1678,11 @@ async function start() {
         'sharpshooter', 'laser_focus', 'long_shot', 'map_master', 'comeback_kid', 'daily_grinder',
         'legend_of_hub', 'cosmic_warrior', 'deity_mode', 'omniscient',
         'fashionista', 'trendsetter', 'big_spender', 'legendary_drip', 'full_drip', 'rare_taste',
+        // The daily streak (given by the server: see keepStreak)
+        'first_flame', 'streak_3', 'streak_14', 'streak_50', 'streak_100', 'streak_365', 'clutch_save', 'perfect_week', 'rekindled',
   ];
   // Given only by the server, from what it has seen (levels reached, the daily streak)
-  const SERVER_BADGES = new Set([...Object.keys(LEVEL_BADGES), 'code_breaker']);
+  const SERVER_BADGES = new Set([...Object.keys(LEVEL_BADGES), ...STREAK_BADGES.map(([b]) => b), 'clutch_save', 'perfect_week', 'rekindled', 'code_breaker']);
   // Shown in the hub but not earnable yet: only an admin can grant these
   const ADMIN_ONLY_BADGE_IDS = ['apex_predator', 'carry', 'easter_egg', 'melee_master', 'melee_only',
     'oops_i_died', 'phoenix_rise', 'secret_finder', 'try_hard', 'wingman'];
@@ -2069,6 +2158,62 @@ async function start() {
         kd: (u.deaths || 0) > 0 ? ((u.kills||0)/(u.deaths)).toFixed(1) : String(u.kills || 0),
       }))});
     } catch { res.status(500).json({ error: 'Server error.' }); }
+  });
+
+  // ── GET /api/streak ─────────────────────────────────────────
+  // Your streak (streak.js in the hub). In the evening, a streak not kept yet gets an
+  // "at risk" notification, once a day, when the hub is opened.
+  app.get('/api/streak', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const u = await usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { streak: 1, username: 1 } });
+      if (!u) return res.status(404).json({ error: 'User not found.' });
+      const s = u.streak || {}, v = streakView(s), today = ukDay();
+      if (v.state === 'risk' && s.warned !== today) {
+        const r = await usersCol.updateOne({ _id: u._id, 'streak.warned': { $ne: today } }, { $set: { 'streak.warned': today } });
+        if (r.modifiedCount) {
+          const left = Math.max(1, Math.ceil((v.goalSecs - v.playedSecs) / 60));
+          await pushNotif(u.username, 'streak', 'Your streak is at risk!',
+            `Play ${left} more minute${left === 1 ? '' : 's'} of FPS Arena today to keep your ${v.streak}-day streak.`, { streak: v.streak });
+        }
+      }
+      res.json({ ...v, news: s.news && s.news.day === today ? s.news : null });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      console.error('/api/streak error:', err);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // The "streak kept" screen has been shown
+  app.post('/api/streak/seen', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      await usersCol.updateOne({ _id: new ObjectId(payload.userId) }, { $unset: { 'streak.news': '' } });
+      res.json({ success: true });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  // ── GET /api/friends/:username/streak ───────────────────────
+  // A friend's streak, all of it: only for friends (both of you have each other in your lists)
+  app.get('/api/friends/:username/streak', async (req, res) => {
+    try {
+      const payload = verifyToken(req.headers.authorization);
+      const name = String(req.params.username);
+      const [me, friend] = await Promise.all([
+        usersCol.findOne({ _id: new ObjectId(payload.userId) }, { projection: { username: 1, friends: 1 } }),
+        usersCol.findOne({ username: name }, { projection: { username: 1, friends: 1, streak: 1 } }),
+      ]);
+      if (!me || !friend || !(me.friends || []).includes(friend.username) || !(friend.friends || []).includes(me.username))
+        return res.status(403).json({ error: 'You can only see the streaks of your friends.' });
+      res.json({ username: friend.username, ...streakView(friend.streak, 35) });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      res.status(500).json({ error: 'Server error.' });
+    }
   });
 
   // ── GET /api/profile/:username ──────────────────────────────

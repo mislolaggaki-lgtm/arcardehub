@@ -103,7 +103,7 @@ Key attachment effects: Extended Mag → +50–75% ammo; Silencer → spread −
 
 === AVATAR SHOP — CURRENCY & RARITY ===
 Currency: B$ (Bucks), earned through gameplay.
-• How to earn B$: from level 100 onward, every new level you start pays 100 B$. Other players can gift or trade you B$, and secret codes can grant B$. There is NO extra B$ bonus for beating a boss — never claim one.
+• How to earn B$: from level 100 onward, every new level you start pays 100 B$, and every 50th level (50, 100, 150…) pays 10 B$ more. Levels pay once each as you climb, and playing pays at most 3,000 B$ a day. Other players can gift or trade you B$, and secret codes can grant B$. There is NO extra B$ bonus for beating a boss — never claim one.
 Rarity prices (cosmetics): Common 50 B$, Rare 100 B$, Epic 200 B$, Legendary 500 B$
 Emote prices: Common 300 B$, Rare 400 B$, Epic 500 B$
 Attachment prices: Common 200–350 B$, Rare 350–600 B$, Epic 600–1000 B$, Legendary 1200–2000 B$
@@ -157,6 +157,13 @@ Accessible from the main menu: sensitivity, FOV (field of view), quality, volume
 • You do NOT know any codes. Never guess, invent or hint at a code. If asked, explain how to redeem codes and that they are kept secret — players have to find them.
 • Badges: 100 collectible badges shown on the badge wall on the hub. They unlock by playing: kills, headshots, kill streaks, level milestones, boss kills, visiting every biome, collecting cosmetics, playing at special times of day or year, and more. Some are secret. LEGEND OF THE HUB unlocks after earning every other trackable badge.
 
+=== DAILY STREAK ===
+• Play 5 minutes of FPS Arena in a day (any mode: solo, co-op or online) to keep your daily streak going. Only time spent moving counts. Days run on UK time; miss a day and the streak starts again from 1.
+• The flame next to your name in the hub's top bar shows it: lit once today is kept, grey until then, and nervous from 6pm if you haven't played yet (you also get a notification). Tap it to see today's minutes, the last 7 days, your best streak and when it started.
+• The flame changes look as the streak grows: Flame (day 1), Blaze (7 days), Red-Hot (30), Inferno (100) and Legend (365). A celebration screen plays each day you keep it.
+• Friends can see each other's streaks: tap a friend, then their streak.
+• Streak badges: First Flame (day 1), On Fire (3 days), Dedicated (7), Fortnight Fury (14), Daily Grinder (30), Half Century (50), Inferno (100), Eternal Flame (365), Clutch Save (kept after 10pm), Perfect Week (every day Monday to Sunday) and Rekindled (a new streak after losing one of 7 days or more).
+
 === VERSION HISTORY ===
 v1.1 (April 2026): Game modes & Arena — Mezzanine second floor with staircase, 100-level progression, co-op multiplayer, trading system
 v1.2 (April 2026): Emotes & Animations — 61 emotes with robot body animations
@@ -205,6 +212,7 @@ const TOPICS = [
   ['ACCOUNT',            'account|password|email|verif|log ?in|sign ?up|register|reset|username|bann?(ed)?\\b|security|delete'],
   ['FPS SETTINGS',       'setting|sensitiv|fov\\b|field of view|quality|graphic|volume|fps\\b|lag|perform|smooth'],
   ['CODES & BADGES',     'codes?\\b|redeem|promo|cheat|secret|gift|voucher|badge|achiev|troph|unlock|collect'],
+  ['DAILY STREAK',       'streak|flame|daily|every day|in a row|blaze|red-?hot|inferno|clutch|perfect week|rekindl'],
   ['VERSION HISTORY',    'update|version|patch|changelog|what.?s new|new feature|release|history|v\\d'],
 ].map(([topic, stems]) => [topic, new RegExp(`\\b(?:${stems})`)]);
 const DEFAULT_TOPICS = ['WEAPONS', 'CONTROLS', 'GAME MODES', 'LEVEL PROGRESSION'];

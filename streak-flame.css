@@ -1,0 +1,224 @@
+/* The streak flame (streak-flame.js, from iTutor) and the streak in the hub (streak.js) and the
+   FPS game. The flame's outline morphs in the SVG itself (<animate>); here it sways, glows, pulses
+   and throws embers. Only transforms and opacity move, so it stays smooth. */
+svg.sf { overflow: visible; display: block; filter: none !important; color: inherit !important; }
+.sf .sf-fire { transform-box: view-box; transform-origin: 32px 66px; animation: sf-sway 3s ease-in-out infinite; }
+.sf .sf-glow { transform-box: view-box; transform-origin: 32px 42px; animation: sf-glow 2.4s ease-in-out infinite; }
+.sf .sf-core { transform-box: view-box; transform-origin: 32px 58px; animation: sf-core .9s ease-in-out infinite alternate; }
+.sf .sf-bloom { transform-box: view-box; transform-origin: 32px 53px; animation: sf-bloom 1.3s ease-in-out infinite alternate; }
+.sf .sf-embers circle { transform-box: fill-box; transform-origin: center; animation: sf-ember 2.4s ease-out infinite; }
+.sf .sf-embers circle:nth-child(2n) { --sx: -5px; animation-duration: 2.8s; }
+.sf .sf-stars path { transform-box: fill-box; transform-origin: center; animation: sf-twinkle 2.2s ease-in-out infinite; }
+@keyframes sf-sway { 0%, 100% { transform: skewX(0deg) scale(1, 1); } 30% { transform: skewX(-2.6deg) scale(.99, 1.015); } 70% { transform: skewX(2.2deg) scale(1.01, .99); } }
+@keyframes sf-glow { 0%, 100% { opacity: .75; transform: scale(1); } 50% { opacity: 1; transform: scale(1.07); } }
+@keyframes sf-core { from { transform: scale(.95, .93); } to { transform: scale(1.04, 1.07); } }
+@keyframes sf-bloom { from { opacity: .7; transform: scale(.9); } to { opacity: 1; transform: scale(1.12); } }
+@keyframes sf-ember { 0% { transform: translate(0, 10px) scale(.4); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(var(--sx, 3px), -16px) scale(.15); opacity: 0; } }
+@keyframes sf-twinkle { 0%, 100% { transform: scale(.45) rotate(0deg); opacity: .35; } 50% { transform: scale(1.1) rotate(45deg); opacity: 1; } }
+/* Not kept yet today: grey, barely moving. At risk in the evening: a nervous shiver, the core fighting on */
+.sf.is-dim .sf-fire { animation-duration: 5.5s; }
+.sf.is-dim .sf-core { animation: none; }
+.sf.is-risk .sf-fire { animation: sf-shiver .5s ease-in-out infinite; }
+.sf.is-risk .sf-glow { animation: sf-flicker 1.1s ease-in-out infinite; }
+.sf.is-risk .sf-core { animation-duration: .35s; }
+@keyframes sf-shiver { 0%, 100% { transform: skewX(0deg); } 25% { transform: skewX(-1.6deg) scale(.995, 1.01); } 75% { transform: skewX(1.4deg) scale(1.005, .99); } }
+@keyframes sf-flicker { 0%, 100% { opacity: .55; } 40% { opacity: .95; } 55% { opacity: .4; } 70% { opacity: .85; } }
+/* Small sizes (the header) stay calm; a still flame doesn't move at all */
+.sf.is-small .sf-fire { animation-duration: 3.8s; }
+.sf.is-still *, .sf.is-still { animation: none !important; }
+
+/* ── The day the streak is kept (streakFlame.celebrate) ──
+   A burst; the flame springs out of it; the number rolls up; the words, the week (today filling in),
+   any new badges and Continue follow. --t is when the burst happens; --t2 is when the flame is out,
+   later on a day the flame evolves. */
+.sfc { --t: .25s; --t2: var(--t); position: fixed; inset: 0; z-index: 3400; display: grid; place-items: center; overflow-y: auto;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--glow, #ff922b) 30%, transparent), rgba(10, 10, 15, .97) 62%), #0a0a0f;
+  color: #fff; font-family: 'Inter', sans-serif; opacity: 0; transition: opacity .3s ease; }
+.sfc.is-evolve { --t2: calc(var(--t) + .85s); }
+.sfc.is-in { opacity: 1; }
+.sfc.is-out { opacity: 0; transition-duration: .3s; }
+.sfc-card { width: min(420px, 100%); display: grid; justify-items: center; text-align: center; gap: 6px; }
+.sfc-stage { position: relative; width: 220px; height: 220px; display: grid; place-items: center; margin-bottom: -6px; }
+.sfc-stage > div { position: absolute; display: grid; place-items: center; }
+.sfc-stage > .sfc-flame, .sfc-stage > .sfc-old { bottom: 6px; }
+/* The burst: a flash, a ring and rays */
+.sfc-flash { width: 46px; height: 46px; border-radius: 50%; background: #fff; box-shadow: 0 0 60px 26px var(--glow, #ff922b); opacity: 0; }
+.sfc.is-in .sfc-flash { animation: sfc-flash .6s ease-out var(--t) both; }
+.sfc-ring { width: 60px; height: 60px; border-radius: 50%; border: 5px solid var(--glow, #ff922b); opacity: 0; }
+.sfc.is-in .sfc-ring { animation: sfc-ring .7s cubic-bezier(.2, .7, .3, 1) var(--t) both; }
+.sfc-burst { inset: 0; }
+.sfc-burst i { position: absolute; left: 50%; top: 50%; width: 6px; height: 18px; margin: -9px -3px; border-radius: 3px; background: linear-gradient(#fff, var(--glow, #ff922b)); opacity: 0; transform: rotate(var(--a)) translateY(-18px); }
+.sfc.is-in .sfc-burst i { animation: sfc-ray .75s cubic-bezier(.15, .7, .3, 1) calc(var(--t) + var(--d)) both; }
+.sfc.is-evolve.is-in .sfc-flash, .sfc.is-evolve.is-in .sfc-ring { animation-delay: var(--t2); }
+.sfc.is-evolve.is-in .sfc-burst i { animation-delay: calc(var(--t2) + var(--d)); }
+@keyframes sfc-flash { 0% { opacity: 0; transform: scale(.3); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(5); } }
+@keyframes sfc-ring { 0% { opacity: .9; transform: scale(.3); } 100% { opacity: 0; transform: scale(3.4); border-width: 1px; } }
+@keyframes sfc-ray { 0% { opacity: 1; transform: rotate(var(--a)) translateY(-18px) scaleY(1); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(calc(var(--l) * -1)) scaleY(.35); } }
+/* The flame springs out of the burst (on an evolve day, the old one first, swelling and shaking) */
+.sfc-flame { opacity: 0; transform-origin: 50% 90%; }
+.sfc.is-in .sfc-flame { animation: sfc-spring .8s linear var(--t2) both; }
+@keyframes sfc-spring {
+  0% { opacity: 0; transform: scale(.2, .1); } 12% { opacity: 1; }
+  30% { transform: scale(1.14, 1.2); } 48% { transform: scale(.94, .9); } 66% { transform: scale(1.04, 1.05); } 82% { transform: scale(.99, .98); } 100% { opacity: 1; transform: scale(1); }
+}
+.sfc-old { opacity: 0; transform-origin: 50% 90%; }
+.sfc.is-in .sfc-old { animation: sfc-spring .8s linear var(--t) both, sfc-swell .7s ease-in calc(var(--t) + .2s) forwards; }
+@keyframes sfc-swell { 0% { opacity: 1; transform: scale(1); } 60% { transform: scale(1.1, .94) rotate(-3deg); } 75% { transform: scale(1.12, .92) rotate(3deg); } 90% { transform: scale(1.16, .9) rotate(-2deg); opacity: 1; } 100% { opacity: 0; transform: scale(1.3, .7); } }
+
+/* The number rolls up from yesterday's count */
+.sfc-count { --h: 1.08em; display: flex; justify-content: center; font: 900 clamp(68px, 20vw, 104px)/1 'Bebas Neue', 'Inter', sans-serif; letter-spacing: -.02em; margin-top: 2px; }
+.sfc-col { display: block; height: var(--h); overflow: hidden; }
+.sfc-strip { display: flex; flex-direction: column; }
+.sfc-strip > span { height: var(--h); line-height: var(--h); background: linear-gradient(180deg, var(--n0, #ffc145), var(--n1, #f76707)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.sfc.is-in .sfc-strip { animation: sfc-roll .75s cubic-bezier(.25, 1.45, .45, 1) calc(var(--t2) + .25s) both; }
+.sfc.is-in .sfc-count { animation: sfc-thump .5s cubic-bezier(.3, 1.6, .5, 1) calc(var(--t2) + .55s) both; }
+@keyframes sfc-roll { from { transform: translateY(0); } to { transform: translateY(calc(var(--steps) * var(--h) * -1)); } }
+@keyframes sfc-thump { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.sfc-label { font: 800 1.05rem/1.2 'Bebas Neue', 'Inter', sans-serif; color: var(--n1, #f76707); margin-top: -4px; }
+
+/* The words, the week and Continue */
+.sfc-title { margin: 10px 0 0; font: 800 clamp(1.4rem, 5.5vw, 1.75rem)/1.2 'Bebas Neue', 'Inter', sans-serif; text-wrap: balance; }
+.sfc.is-milestone .sfc-title, .sfc.is-evolve .sfc-title { background: linear-gradient(90deg, #fff, var(--n0, #ffc145), #fff); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: sfc-shine 2.6s linear infinite; }
+.sfc-sub, .sfc-next { margin: 0; font-size: .95rem; color: rgba(255, 255, 255, .78); max-width: 32ch; }
+.sfc-next { font-size: .84rem; color: rgba(255, 255, 255, .6); }
+.sfc-week { display: flex; gap: 8px; justify-content: center; margin: 12px 0 4px; flex-wrap: wrap; }
+.sfc-day { display: grid; justify-items: center; gap: 5px; }
+.sfc-day i { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 255, 255, .07); border: 2px solid rgba(255, 255, 255, .13); }
+.sfc-day.is-on i { background: color-mix(in srgb, var(--glow, #ff922b) 24%, transparent); border-color: color-mix(in srgb, var(--glow, #ff922b) 75%, transparent); }
+.sfc-day i svg { width: 18px !important; height: 20px !important; }
+.sfc-day small { font-size: .7rem; font-weight: 700; text-transform: uppercase; color: rgba(255, 255, 255, .6); }
+.sfc-day.is-today small { color: #fff; }
+.sfc-go { margin-top: 14px; min-width: 220px; padding: 14px 28px; border: 0; border-radius: 999px; background: #fff; color: #15121f; font: 800 1rem 'Bebas Neue', 'Inter', sans-serif; cursor: pointer; box-shadow: 0 6px 0 rgba(0, 0, 0, .25), 0 0 30px color-mix(in srgb, var(--glow, #ff922b) 45%, transparent); transition: transform .12s ease, box-shadow .12s ease; }
+.sfc-go:hover { transform: translateY(-1px); }
+.sfc-go:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(0, 0, 0, .25), 0 0 30px color-mix(in srgb, var(--glow, #ff922b) 45%, transparent); }
+.sfc-go:focus-visible { outline: 3px solid var(--n0, #ffc145); outline-offset: 3px; }
+/* They arrive one after another once the flame is out */
+.sfc-label, .sfc-title, .sfc-sub, .sfc-week, .sfc-next, .sfc-go { opacity: 0; }
+.sfc.is-in .sfc-label { animation: sfc-up .4s ease-out calc(var(--t2) + .45s) both; }
+.sfc.is-in .sfc-title { animation: sfc-up .45s ease-out calc(var(--t2) + .6s) both; }
+.sfc.is-in.is-milestone .sfc-title, .sfc.is-in.is-evolve .sfc-title { animation: sfc-up .45s ease-out calc(var(--t2) + .6s) both, sfc-shine 2.6s linear calc(var(--t2) + .6s) infinite; }
+.sfc.is-in .sfc-sub { animation: sfc-up .45s ease-out calc(var(--t2) + .7s) both; }
+.sfc.is-in .sfc-week { animation: sfc-up .45s ease-out calc(var(--t2) + .8s) both; }
+.sfc.is-in .sfc-next { animation: sfc-up .45s ease-out calc(var(--t2) + .95s) both; }
+.sfc.is-in .sfc-go { animation: sfc-up .45s ease-out calc(var(--t2) + 1s) both; }
+.sfc.is-in .sfc-day.is-today i { animation: sfc-today .55s cubic-bezier(.3, 1.6, .5, 1) calc(var(--t2) + 1.05s) both; }
+.sfc.is-in .sfc-day.is-today i svg { animation: sfc-pop .5s cubic-bezier(.3, 1.7, .5, 1) calc(var(--t2) + 1.15s) both; }
+@keyframes sfc-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes sfc-today { from { transform: scale(.75); background: rgba(255, 255, 255, .07); border-color: rgba(255, 255, 255, .13); } to { transform: scale(1); background: color-mix(in srgb, var(--glow, #ff922b) 24%, transparent); border-color: color-mix(in srgb, var(--glow, #ff922b) 75%, transparent); } }
+@keyframes sfc-pop { from { transform: scale(0) rotate(-20deg); } to { transform: scale(1) rotate(0); } }
+@keyframes sfc-shine { to { background-position: -200% 0; } }
+
+/* Reduced motion: no burst, just the finished screen */
+.sfc.is-calm, .sfc.is-calm * { animation: none !important; transition: none !important; }
+.sfc.is-calm .sfc-old, .sfc.is-calm .sfc-flash, .sfc.is-calm .sfc-ring, .sfc.is-calm .sfc-burst { display: none; }
+.sfc.is-calm .sfc-flame, .sfc.is-calm .sfc-label, .sfc.is-calm .sfc-title, .sfc.is-calm .sfc-sub, .sfc.is-calm .sfc-week, .sfc.is-calm .sfc-next, .sfc.is-calm .sfc-go { opacity: 1; }
+.sfc.is-calm .sfc-strip { transform: translateY(calc(var(--steps) * var(--h) * -1)); }
+.sfc.is-calm .sfc-day.is-today i { background: color-mix(in srgb, var(--glow, #ff922b) 24%, transparent); border-color: color-mix(in srgb, var(--glow, #ff922b) 75%, transparent); }
+.sfc.is-calm.is-milestone .sfc-title, .sfc.is-calm.is-evolve .sfc-title { color: #fff; background: none; }
+
+/* ArcadeHub: the number, label, title and button in Bebas Neue; badges earned with today's day */
+.sfc-count { font-weight: 400; font-size: clamp(84px, 24vw, 128px); letter-spacing: .02em; margin-top: 12px; }
+.sfc-label { font-weight: 400; font-size: 1.35rem; letter-spacing: .22em; margin-top: -8px; }
+.sfc-title { font-weight: 400; font-size: clamp(1.9rem, 7vw, 2.4rem); letter-spacing: .06em; }
+.sfc-go { font-weight: 400; font-size: 1.25rem; letter-spacing: .16em; }
+.sfc-badges { display: grid; gap: 8px; margin: 10px 0 2px; width: min(320px, 100%); opacity: 0; }
+.sfc.is-in .sfc-badges { animation: sfc-up .45s ease-out calc(var(--t2) + .9s) both; }
+.sfc.is-calm .sfc-badges { opacity: 1; }
+.sfc-badge { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 12px; text-align: left;
+  background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .12); font: 400 1.15rem/1.1 'Bebas Neue', sans-serif; letter-spacing: .08em; }
+.sfc-badge small { display: block; font: 700 .62rem 'Inter', sans-serif; letter-spacing: .14em; color: var(--n0, #ffc145); }
+.sfc-badge-icon svg { width: 40px; height: 40px; display: block; }
+
+/* ── Where the flame lives in the hub ── */
+/* The top bar: your flame and number */
+.nav-streak { display: none; align-items: center; gap: 6px; padding: 5px 12px 5px 8px; border-radius: 999px; cursor: pointer;
+  background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .12); color: #c0c0ee;
+  font: 400 1.25rem/1 'Bebas Neue', sans-serif; letter-spacing: .06em; transition: background .2s, border-color .2s, box-shadow .2s; }
+.nav-streak.is-on { display: inline-flex; }
+.nav-streak:hover { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .25); }
+.nav-streak:focus-visible { outline: 2px solid #ffc145; outline-offset: 2px; }
+.nav-streak svg.sf { width: 20px; height: 22px; margin-top: -3px; }
+.nav-streak.is-lit { color: #ffd27a; border-color: rgba(255, 159, 28, .45); box-shadow: 0 0 18px rgba(255, 146, 43, .2); }
+.nav-streak.is-risk { color: #ffb366; border-color: rgba(255, 146, 43, .35); }
+.nav-streak[data-rank="redhot"].is-lit { color: #ff8787; border-color: rgba(255, 107, 107, .55); box-shadow: 0 0 22px rgba(255, 107, 107, .25); }
+.nav-streak[data-rank="inferno"].is-lit { color: #faa2c1; border-color: rgba(247, 131, 172, .55); box-shadow: 0 0 22px rgba(247, 131, 172, .28); }
+.nav-streak[data-rank="legend"].is-lit { color: #d0bfff; border-color: rgba(151, 117, 250, .6); box-shadow: 0 0 24px rgba(151, 117, 250, .32); }
+@media (max-width: 600px) { .nav-streak { padding: 4px 10px 4px 6px; font-size: 1.1rem; } }
+
+/* Your streak panel, and a friend's (the same layout) */
+.sp-overlay { position: fixed; inset: 0; z-index: 3300; display: grid; place-items: center; padding: 16px;
+  background: rgba(5, 5, 10, .78); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: sp-fade .2s ease-out; }
+@keyframes sp-fade { from { opacity: 0; } }
+.sp { position: relative; width: min(420px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; border-radius: 18px; padding: 26px 22px 22px;
+  background: linear-gradient(180deg, #121222 0%, #0b0b16 100%); border: 1px solid rgba(255, 255, 255, .09);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6), 0 0 0 1px rgba(0, 0, 0, .4); color: #ddddf0; font-family: 'Inter', sans-serif;
+  display: grid; justify-items: center; text-align: center; gap: 4px; animation: sp-in .25s cubic-bezier(.3, 1.3, .5, 1); }
+@keyframes sp-in { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+.sp-close { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border-radius: 9px; border: 0; cursor: pointer;
+  background: rgba(255, 255, 255, .05); color: #8888aa; font-size: 15px; }
+.sp-close:hover { color: #fff; background: rgba(255, 255, 255, .1); }
+.sp-who { font: 700 .7rem 'Inter', sans-serif; letter-spacing: .2em; color: #6666aa; text-transform: uppercase; }
+.sp-flame { display: grid; place-items: center; height: 116px; margin-top: 2px; }
+.sp-flame svg.sf { width: 96px; height: 108px; }
+.sp-num { font: 400 4.6rem/0.9 'Bebas Neue', sans-serif; letter-spacing: .02em; background: linear-gradient(180deg, var(--n0, #ffc145), var(--n1, #f76707));
+  -webkit-background-clip: text; background-clip: text; color: transparent; }
+.sp.is-dim .sp-num, .sp.is-risk .sp-num { background: linear-gradient(180deg, #d6dbe2, #8a939f); -webkit-background-clip: text; background-clip: text; }
+.sp-label { font: 400 1.2rem 'Bebas Neue', sans-serif; letter-spacing: .22em; color: #8888aa; margin-top: -2px; }
+.sp-rank { margin-top: 6px; font: 400 1.1rem 'Bebas Neue', sans-serif; letter-spacing: .12em; color: var(--n0, #ffc145); }
+.sp-rank small { display: block; font: 500 .74rem 'Inter', sans-serif; letter-spacing: 0; color: #6f6f92; margin-top: 1px; }
+.sp-state { margin: 10px 0 2px; font-size: .9rem; line-height: 1.45; color: #b8b8d8; max-width: 34ch; text-wrap: balance; }
+.sp.is-risk .sp-state { color: #ffb366; }
+/* Today's 5 minutes */
+.sp-today { width: 100%; margin-top: 8px; display: grid; gap: 6px; }
+.sp-today-row { display: flex; justify-content: space-between; font-size: .74rem; font-weight: 700; letter-spacing: .08em; color: #8888aa; text-transform: uppercase; }
+.sp-today-row b { color: #ddddf0; font-weight: 700; }
+.sp-bar { height: 10px; border-radius: 999px; background: rgba(255, 255, 255, .07); overflow: hidden; }
+.sp-bar i { display: block; height: 100%; border-radius: inherit; width: var(--p, 0%); background: linear-gradient(90deg, #f76707, #ffc145); box-shadow: 0 0 12px rgba(255, 146, 43, .5); }
+/* The last days */
+.sp-week { display: flex; gap: 6px; justify-content: center; margin-top: 14px; }
+.sp-day { display: grid; justify-items: center; gap: 4px; }
+.sp-day i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255, 255, 255, .05); border: 2px solid rgba(255, 255, 255, .09); }
+.sp-day.is-on i { background: rgba(255, 146, 43, .18); border-color: rgba(255, 146, 43, .7); }
+.sp-day i svg { width: 16px !important; height: 18px !important; }
+.sp-day small { font-size: .64rem; font-weight: 700; color: #6f6f92; text-transform: uppercase; }
+.sp-day.is-today small { color: #ddddf0; }
+.sp-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; width: 100%; margin-top: 14px; }
+.sp-cal span { aspect-ratio: 1; border-radius: 7px; background: rgba(255, 255, 255, .05); display: grid; place-items: center; font-size: .66rem; color: #4a4a68; }
+.sp-cal span.is-on { background: linear-gradient(160deg, #ff9f1c, #f76707); color: #fff; font-weight: 700; box-shadow: 0 0 10px rgba(255, 146, 43, .3); }
+.sp-cal span.is-today { outline: 2px solid rgba(255, 255, 255, .5); outline-offset: 1px; }
+.sp-cal-head { width: 100%; margin-top: 14px; display: flex; justify-content: space-between; font-size: .7rem; font-weight: 700; letter-spacing: .1em; color: #6f6f92; text-transform: uppercase; }
+/* Best and started */
+.sp-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; margin-top: 14px; }
+.sp-stats div { padding: 10px 8px; border-radius: 12px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .06); }
+.sp-stats strong { display: block; font: 400 1.5rem/1 'Bebas Neue', sans-serif; letter-spacing: .04em; color: #ddddf0; }
+.sp-stats small { font-size: .68rem; font-weight: 700; letter-spacing: .08em; color: #6f6f92; text-transform: uppercase; }
+.sp-how { margin: 14px 0 0; font-size: .78rem; line-height: 1.5; color: #6f6f92; max-width: 36ch; }
+.sp-play { margin-top: 14px; display: inline-block; padding: 11px 26px; border-radius: 10px; background: #e74c3c; color: #fff; text-decoration: none;
+  font: 400 1.15rem 'Bebas Neue', sans-serif; letter-spacing: .14em; box-shadow: 0 6px 20px rgba(231, 76, 60, .35); }
+.sp-play:hover { background: #ff5e4d; }
+.sp-msg { padding: 30px 10px; color: #8888aa; font-size: .9rem; }
+
+/* Friends: a small flame and number on each friend, and a streak row on their profile */
+.fl-streak { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; font: 400 .95rem/1 'Bebas Neue', sans-serif; letter-spacing: .05em; color: #8a939f; vertical-align: -1px; }
+.fl-streak svg.sf { width: 13px; height: 15px; margin-top: -2px; }
+.fl-streak.is-lit { color: #ffc145; }
+.fl-streak.is-risk { color: #ffb366; }
+.fl-pc-streak { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 300px; margin-top: 4px; padding: 10px 14px; border-radius: 12px; cursor: pointer;
+  background: rgba(255, 146, 43, .07); border: 1px solid rgba(255, 146, 43, .22); color: #ddddf0; font-family: inherit; text-align: left; }
+.fl-pc-streak:hover { background: rgba(255, 146, 43, .13); }
+.fl-pc-streak svg.sf { width: 28px; height: 32px; flex-shrink: 0; }
+.fl-pc-streak b { font: 400 1.2rem 'Bebas Neue', sans-serif; letter-spacing: .06em; display: block; }
+.fl-pc-streak small { font-size: .72rem; color: #8888aa; }
+.fl-pc-streak .go { margin-left: auto; color: #8888aa; font-size: 1.1rem; }
+
+/* The FPS game: a note at the top when the streak is kept (it never stops the game) */
+.game-streak-note { position: fixed; top: 150px; left: 50%; z-index: 9000; display: flex; align-items: center; gap: 12px; padding: 10px 20px 10px 12px;
+  border-radius: 14px; background: rgba(12, 10, 22, .9); border: 1px solid rgba(255, 146, 43, .5); box-shadow: 0 0 30px rgba(255, 146, 43, .3);
+  color: #fff; font-family: inherit; font-size: 1.05rem; font-weight: 700; line-height: 1; letter-spacing: .14em; pointer-events: none;
+  transform: translate(-50%, -16px); opacity: 0; transition: transform .35s cubic-bezier(.3, 1.5, .5, 1), opacity .3s ease; }
+.game-streak-note.is-in { transform: translate(-50%, 0); opacity: 1; }
+.game-streak-note svg.sf { width: 30px; height: 34px; }
+.game-streak-note small { display: block; font-size: .62rem; font-weight: 700; letter-spacing: .16em; color: #ffc145; margin-top: 5px; }
+
+@media (prefers-reduced-motion: reduce) { .sf *, .sf { animation: none !important; } .sp, .sp-overlay { animation: none; } }

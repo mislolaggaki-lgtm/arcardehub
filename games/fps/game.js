@@ -40,6 +40,19 @@ let coopBotTimer     = 0;
 const _isLocal = ['localhost','127.0.0.1'].includes(window.location.hostname);
 const _API_BASE = _isLocal ? 'http://localhost:3001' : window.location.origin;
 
+// The daily streak was just kept: a note at the top for a few seconds (streak-flame.js draws the flame)
+function showStreakNote(streak, badges) {
+  const el = document.createElement('div');
+  el.className = 'game-streak-note';
+  el.setAttribute('role', 'status');
+  const flame = window.streakFlame ? streakFlame(streak, { size: 30, state: 'lit' }) : '🔥';
+  const badgeName = badges.length ? (_BADGE_NAMES[badges[badges.length - 1]] || '') : '';
+  el.innerHTML = `${flame}<span>STREAK KEPT · ${Number(streak) || 1} DAY${streak === 1 ? '' : 'S'}<small>${badgeName ? 'NEW BADGE: ' + _esc(badgeName) : 'SEE YOU TOMORROW'}</small></span>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('is-in')));
+  setTimeout(() => { el.classList.remove('is-in'); setTimeout(() => el.remove(), 400); }, 4200);
+}
+
 // Bucks for levels are paid by the server ('levelReward'), never added by the game itself
 function showBucks(total, gained) {
   localStorage.setItem('ah_bucks', String(total));
@@ -157,7 +170,10 @@ const _ALL_TRACKABLE_BADGES = ['besto_frendo','pro_gamer','unstoppable','veteran
 
 // ── Badge unlock helper ──────────────────────────────────────
 const _earnedBadges = new Set(JSON.parse(localStorage.getItem('ah_badges') || '[]'));
-const _BADGE_NAMES  = { besto_frendo:'MY BESTO FRENDO', pro_gamer:'PRO GAMER', unstoppable:'UNSTOPPABLE', veteran:'VETERAN', code_breaker:'CODE BREAKER', ..._BADGE_NAMES2 };
+// Daily-streak badges: given by the server (not part of the LEGEND "every other badge" check)
+const _STREAK_BADGE_NAMES = { first_flame:'FIRST FLAME', streak_3:'ON FIRE', streak_14:'FORTNIGHT FURY', streak_50:'HALF CENTURY',
+  streak_100:'INFERNO', streak_365:'ETERNAL FLAME', clutch_save:'CLUTCH SAVE', perfect_week:'PERFECT WEEK', rekindled:'REKINDLED' };
+const _BADGE_NAMES  = { besto_frendo:'MY BESTO FRENDO', pro_gamer:'PRO GAMER', unstoppable:'UNSTOPPABLE', veteran:'VETERAN', code_breaker:'CODE BREAKER', ..._BADGE_NAMES2, ..._STREAK_BADGE_NAMES };
 
 // Queued so two badges unlocking at once don't stomp on each other's popup
 let _achievementQueue   = [];
@@ -224,22 +240,7 @@ function unlockBadge(badgeId) {
   if (month === 11 && date === 25)   unlockBadge('christmas_commando');
   if (month === 0  && date === 1)    unlockBadge('new_year_hero');
 
-  // Consecutive-day play streak
-  const todayKey    = now.toISOString().slice(0, 10);
-  const daysPlayed  = JSON.parse(localStorage.getItem('ah_days_played') || '[]');
-  if (!daysPlayed.includes(todayKey)) {
-    daysPlayed.push(todayKey);
-    localStorage.setItem('ah_days_played', JSON.stringify(daysPlayed));
-  }
-  const daySet = new Set(daysPlayed);
-  let streak = 0;
-  const cursor = new Date(now);
-  while (daySet.has(cursor.toISOString().slice(0, 10))) {
-    streak++;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  if (streak >= 7)  unlockBadge('dedicated');
-  if (streak >= 30) unlockBadge('daily_grinder');
+  // (Days-in-a-row badges come from the server's daily streak: see 'streakKept')
 })();
 
 // ── Playtime / survival-duration badges — polled every 30s ─────────────────
@@ -6502,6 +6503,20 @@ function initSocket() {
 
   // Paid for a level (see reportLevel)
   socket.on('levelReward', ({ gained, bucks }) => showBucks(bucks, gained));
+
+  // Today's 5 minutes are played: the daily streak is kept (the server counts the minutes).
+  // A note at the top that never stops the game; the full screen waits for the hub.
+  socket.on('streakKept', ({ streak, badges = [] }) => {
+    showStreakNote(streak, badges);
+    badges.forEach(id => {
+      if (_earnedBadges.has(id)) return;
+      _earnedBadges.add(id);
+      localStorage.setItem('ah_badges', JSON.stringify([..._earnedBadges]));
+      const name = _BADGE_NAMES[id] || id;
+      pushKillFeed(`🏅 Badge unlocked: ${name}`);
+      setTimeout(() => showAchievementPopup(name), 3200);
+    });
+  });
 
   // Someone else is playing, so the shared mode stays as it is
   socket.on('gameModeLocked', ({ mode }) => {
